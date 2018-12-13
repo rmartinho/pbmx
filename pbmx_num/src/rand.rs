@@ -1,4 +1,5 @@
 use std::cell::UnsafeCell;
+use std::ops::{Deref, DerefMut};
 
 use rand::{CryptoRng, Error, RngCore};
 use rug::rand::{RandGen, RandState};
@@ -12,12 +13,28 @@ pub fn thread_rng() -> ThreadRng {
     ThreadRng(THREAD_RAND_STATE.with(|s| s.get()), rand::thread_rng())
 }
 
+impl Deref for ThreadRng {
+    type Target = RandState<'static>;
+
+    fn deref(&self) -> &Self::Target {
+        // SAFE: pointer obtained from UnsafeCell
+        unsafe { &*self.0 }
+    }
+}
+
+impl DerefMut for ThreadRng {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        // SAFE: pointer obtained from UnsafeCell
+        unsafe { &mut *self.0 }
+    }
+}
+
 thread_local! {
     static THREAD_RAND_GEN: UnsafeCell<ThreadRandGen> = UnsafeCell::new(ThreadRandGen);
 
     static THREAD_RAND_STATE: UnsafeCell<RandState<'static>> =
         UnsafeCell::new(RandState::new_custom(
-            // SAFE: pointer is guaranteed dereferenceable thanks to UnsafeCell
+            // SAFE: pointer obtained from UnsafeCell
             unsafe { &mut *THREAD_RAND_GEN.with(|g| g.get()) },
         ));
 }

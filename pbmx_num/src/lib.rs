@@ -4,3 +4,6 @@
 
 /// Random number generation utilities
 pub mod rand;
+
+/// Prime number utilities
+pub mod prime;
