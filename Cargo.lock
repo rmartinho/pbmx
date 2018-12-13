@@ -1,0 +1,39 @@
+[[package]]
+name = "gmp-mpfr-sys"
+version = "1.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libc"
+version = "0.2.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "pbmx_num"
+version = "0.1.0"
+dependencies = [
+ "rug 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rug"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "gmp-mpfr-sys 1.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "serde"
+version = "1.0.82"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[metadata]
+"checksum gmp-mpfr-sys 1.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "44c134f130ccafac31fa35d08e4cb67e5d14369bf0a819de75f71dc6e4bc6a32"
+"checksum libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)" = "2d2857ec59fadc0773853c664d2d18e7198e83883e7060b63c924cb077bd5c74"
+"checksum rug 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "becfc07b9c2379b3eaa43c42adadfe5eb573b3c42fe00e36ab003f02573ce4ac"
+"checksum serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)" = "6fa52f19aee12441d5ad11c9a00459122bd8f98707cadf9778c540674f1935b6"

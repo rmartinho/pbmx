@@ -1,0 +1,10 @@
+[package]
+name = "pbmx_num"
+version = "0.1.0"
+authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
+edition = "2018"
+
+[dependencies.rug]
+version = "1.2"
+default-features = false
+features = ["integer", "rand", "serde"]
