@@ -1,7 +1,6 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+#![warn(missing_docs)]
+
+//! Numeric utilities for PBMX
+
+/// Random number generation utilities
+pub mod rand;
