@@ -1,19 +1,21 @@
-use crate::rand::thread_rng;
+use rand::thread_rng;
+use rug::{integer::IsPrime, Assign, Integer};
 
-use rug::integer::IsPrime;
-use rug::{Assign, Integer};
-
-/// Generates a random (probable) prime number with the given `bits` that passes the given `test`.
+/// Generates a random (probable) prime number with the given `bits` that passes
+/// the given `test`.
 ///
-/// The probability of a composite number being generated is less than 4^-iterations.
+/// The probability of a composite number being generated is less than
+/// 4^-iterations.
 pub fn generate_prime_with<F>(bits: u32, iterations: u32, test: F) -> Integer
 where
     F: Fn(&Integer) -> bool,
 {
     let mut rng = thread_rng();
     let mut n = Integer::new();
+    use rand::Rng;
+    let dist = crate::rand::Bits(bits);
     loop {
-        n.assign(Integer::random_bits(bits, &mut rng));
+        n.assign(rng.sample(&dist));
         n.set_bit(0, true);
         n.set_bit(bits - 1, true);
         if test(&n) && n.is_probably_prime(iterations) != IsPrime::No {
@@ -27,8 +29,10 @@ pub fn generate_coprime_below(n: &Integer) -> Integer {
     let mut rng = thread_rng();
     let mut i = Integer::new();
     let mut gcd = Integer::new();
+    use rand::Rng;
+    let dist = crate::rand::Modulo(n.clone());
     loop {
-        i.assign(n.random_below_ref(&mut rng));
+        i.assign(rng.sample(&dist));
         gcd.assign(i.gcd_ref(n));
         if gcd == 1 {
             break;

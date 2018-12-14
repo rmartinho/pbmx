@@ -1,2 +1,4 @@
 [workspace]
-members = ["pbmx_num"]
+members = [
+    "pbmx_num",
+]

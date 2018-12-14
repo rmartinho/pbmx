@@ -1,65 +1,45 @@
-use std::cell::UnsafeCell;
-use std::ops::{Deref, DerefMut};
+use rand::{distributions::Distribution, Rng};
+use rug::{
+    rand::{RandGen, RandState},
+    Integer,
+};
 
-use rand::{CryptoRng, Error, RngCore};
-use rug::rand::{RandGen, RandState};
+/// A distribution that produces Integers below n
+pub struct Modulo(pub Integer);
 
-/// A thread-local RNG bridging the `rand` and `rug` crates
-#[derive(Clone, Debug)]
-pub struct ThreadRng(*mut RandState<'static>, rand::rngs::ThreadRng);
-
-/// Retrieves this thread's RNG
-pub fn thread_rng() -> ThreadRng {
-    ThreadRng(THREAD_RAND_STATE.with(|s| s.get()), rand::thread_rng())
-}
-
-impl Deref for ThreadRng {
-    type Target = RandState<'static>;
-
-    fn deref(&self) -> &Self::Target {
-        // SAFE: pointer obtained from UnsafeCell
-        unsafe { &*self.0 }
+impl Distribution<Integer> for Modulo {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Integer {
+        let mut wrapper = RandGenWrapper(rng);
+        let mut state = RandState::new_custom(&mut wrapper);
+        self.0.random_below_ref(&mut state).into()
     }
 }
 
-impl DerefMut for ThreadRng {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        // SAFE: pointer obtained from UnsafeCell
-        unsafe { &mut *self.0 }
+/// A distribution that produces Integers with n bits
+pub struct Bits(pub u32);
+
+impl Distribution<Integer> for Bits {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Integer {
+        let mut wrapper = RandGenWrapper(rng);
+        let mut state = RandState::new_custom(&mut wrapper);
+        Integer::random_bits(self.0, &mut state).into()
     }
 }
 
-thread_local! {
-    static THREAD_RAND_GEN: UnsafeCell<ThreadRandGen> = UnsafeCell::new(ThreadRandGen);
+struct RandGenWrapper<'a, R: ?Sized>(&'a mut R);
 
-    static THREAD_RAND_STATE: UnsafeCell<RandState<'static>> =
-        UnsafeCell::new(RandState::new_custom(
-            // SAFE: pointer obtained from UnsafeCell
-            unsafe { &mut *THREAD_RAND_GEN.with(|g| g.get()) },
-        ));
-}
+// SAFE: not really Send, but this won't be used across threads (rug is stupid
+// to require this)
+unsafe impl<'a, R: ?Sized> Send for RandGenWrapper<'a, R> {}
+// SAFE: not really Sync, but this won't be used across threads (rug is stupid
+// to require this)
+unsafe impl<'a, R: ?Sized> Sync for RandGenWrapper<'a, R> {}
 
-struct ThreadRandGen;
-impl RandGen for ThreadRandGen {
+impl<'a, R> RandGen for RandGenWrapper<'a, R>
+where
+    R: Rng + ?Sized,
+{
     fn gen(&mut self) -> u32 {
-        use rand::Rng;
-        rand::thread_rng().gen()
-    }
-}
-
-impl CryptoRng for ThreadRng {}
-
-impl RngCore for ThreadRng {
-    fn next_u32(&mut self) -> u32 {
-        self.1.next_u32()
-    }
-    fn next_u64(&mut self) -> u64 {
-        self.1.next_u64()
-    }
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.1.fill_bytes(dest)
-    }
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        self.1.try_fill_bytes(dest)
+        self.0.gen()
     }
 }
