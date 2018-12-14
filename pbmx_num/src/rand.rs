@@ -4,10 +4,10 @@ use rug::{
     Integer,
 };
 
-/// A distribution that produces Integers below n
-pub struct Modulo(pub Integer);
+/// A distribution that produces [Integer]s below a certain value.
+pub struct Modulo<'a>(pub &'a Integer);
 
-impl Distribution<Integer> for Modulo {
+impl<'a> Distribution<Integer> for Modulo<'a> {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Integer {
         let mut wrapper = RandGenWrapper(rng);
         let mut state = RandState::new_custom(&mut wrapper);
@@ -16,7 +16,7 @@ impl Distribution<Integer> for Modulo {
 }
 // TODO(#1) Distributions for incomplete types
 
-/// A distribution that produces Integers with n bits
+/// A distribution that produces [Integer]s with a certain number of bits.
 pub struct Bits(pub u32);
 
 impl Distribution<Integer> for Bits {
