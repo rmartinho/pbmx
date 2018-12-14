@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![feature(iter_unfold)]
 
 //! Numeric utilities for PBMX
 
@@ -15,3 +16,5 @@ pub mod prime;
 
 /// Schnorr groups
 pub mod schnorr;
+
+mod fpowm;

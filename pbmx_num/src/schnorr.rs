@@ -1,10 +1,10 @@
 use crate::{
+    fpowm::FastPowModTable,
     prime::Primes,
     rand::{BitsExact, Modulo},
 };
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::IsPrime, Assign, Integer};
-
 use serde::{de, Deserialize, Deserializer};
 
 /// A distribution that produces Schnorr groups from primes *p*, *q* with the
@@ -68,47 +68,20 @@ pub struct SchnorrGroup {
     q: Integer,
     k: Integer,
     g: Integer,
+
+    #[serde(skip)]
+    fpowm: FastPowModTable,
 }
 
 impl SchnorrGroup {
     unsafe fn new_unchecked(p: Integer, q: Integer, k: Integer, g: Integer) -> SchnorrGroup {
-        Self { p, q, k, g }
-    }
-
-    fn check(self) -> Option<SchnorrGroup> {
-        let mut x = Integer::from(&self.q * &self.k);
-        x += 1;
-        if self.p != x {
-            return None;
-        }
-
-        if self.p.is_probably_prime(SCHNORR_MILLER_RABIN_ITERATIONS) == IsPrime::No
-            || self.q.is_probably_prime(SCHNORR_MILLER_RABIN_ITERATIONS) == IsPrime::No
-        {
-            return None;
-        }
-
-        x.assign(self.q.gcd_ref(&self.k));
-        if x != 1 {
-            return None;
-        }
-
-        x.assign(&self.p - 1);
-        if self.g <= 1 || self.g == x {
-            return None;
-        }
-
-        x.assign(self.g.pow_mod_ref(&self.q, &self.p).unwrap()); // TODO powmodtable
-        if x != 1 {
-            return None;
-        }
-
-        Some(self)
+        Self { fpowm: FastPowModTable::new(q.significant_bits(), &p, &g), p, q, k, g }
     }
 
     /// Creates a new group from the given parameters
     pub fn new(p: Integer, q: Integer, k: Integer, g: Integer) -> Option<SchnorrGroup> {
-        Self { p, q, k, g }.check()
+        // SAFE: the value is checked before returning
+        unsafe { Self::new_unchecked(p, q, k, g) }.check()
     }
 
     /// Gets the modulus of the group (aka *p*)
@@ -130,6 +103,37 @@ impl SchnorrGroup {
     pub fn generator(&self) -> &Integer {
         &self.g
     }
+
+    fn check(self) -> Option<SchnorrGroup> {
+        let mut x = Integer::from(&self.q * &self.k);
+        x += 1;
+        if self.p != x {
+            return None;
+        }
+
+        if self.p.is_probably_prime(MILLER_RABIN_ITERATIONS) == IsPrime::No
+            || self.q.is_probably_prime(MILLER_RABIN_ITERATIONS) == IsPrime::No
+        {
+            return None;
+        }
+
+        x.assign(self.q.gcd_ref(&self.k));
+        if x != 1 {
+            return None;
+        }
+
+        x.assign(&self.p - 1);
+        if self.g <= 1 || self.g == x {
+            return None;
+        }
+
+        x = self.fpowm.pow_mod(&self.q).unwrap();
+        if x != 1 {
+            return None;
+        }
+
+        Some(self)
+    }
 }
 
 impl<'de> Deserialize<'de> for SchnorrGroup {
@@ -137,14 +141,14 @@ impl<'de> Deserialize<'de> for SchnorrGroup {
     where
         D: Deserializer<'de>,
     {
-        SchnorrGroupRaw::deserialize(deserializer)?
+        // SAFE: we explicit check the values before returning
+        unsafe { SchnorrGroupRaw::deserialize(deserializer)?.into() }
             .check()
             .ok_or(de::Error::custom("invalid Schnorr group parameters"))
     }
 }
 
 #[derive(Deserialize)]
-#[serde(remote = "SchnorrGroup")]
 struct SchnorrGroupRaw {
     p: Integer,
     q: Integer,
@@ -152,17 +156,24 @@ struct SchnorrGroupRaw {
     g: Integer,
 }
 
-const SCHNORR_MILLER_RABIN_ITERATIONS: u32 = 64;
+impl SchnorrGroupRaw {
+    unsafe fn into(self) -> SchnorrGroup {
+        SchnorrGroup::new_unchecked(self.p, self.q, self.k, self.g)
+    }
+}
+
+const MILLER_RABIN_ITERATIONS: u32 = 64;
 
 #[cfg(test)]
 mod test {
-    use super::Schnorr;
+    use super::{Schnorr, MILLER_RABIN_ITERATIONS};
     use rand::{thread_rng, Rng};
     use rug::integer::IsPrime;
 
     #[test]
     fn schnorr_produces_schnorr_groups() {
-        let dist = Schnorr { field_bits: 2048, group_bits: 1024, iterations: 64 };
+        let dist =
+            Schnorr { field_bits: 2048, group_bits: 1024, iterations: MILLER_RABIN_ITERATIONS };
         let schnorr = thread_rng().sample(&dist);
 
         assert_eq!(schnorr.p.significant_bits(), 2048);
