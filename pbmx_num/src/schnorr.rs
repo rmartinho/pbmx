@@ -81,7 +81,7 @@ impl SchnorrGroup {
     /// Creates a new group from the given parameters
     pub fn new(p: Integer, q: Integer, k: Integer, g: Integer) -> Option<SchnorrGroup> {
         // SAFE: the value is checked before returning
-        unsafe { Self::new_unchecked(p, q, k, g) }.check()
+        unsafe { Self::new_unchecked(p, q, k, g) }.validate()
     }
 
     /// Gets the modulus of the group (aka *p*)
@@ -104,7 +104,17 @@ impl SchnorrGroup {
         &self.g
     }
 
-    fn check(self) -> Option<SchnorrGroup> {
+    /// Tests whether a given number is an element of the group
+    pub fn has_element(&self, e: &Integer) -> bool {
+        if *e <= 0 || *e >= self.p {
+            return false;
+        }
+
+        let x = Integer::from(e.pow_mod_ref(&self.q, &self.p).unwrap());
+        x == 1
+    }
+
+    fn validate(self) -> Option<SchnorrGroup> {
         let mut x = Integer::from(&self.q * &self.k);
         x += 1;
         if self.p != x {
@@ -141,9 +151,9 @@ impl<'de> Deserialize<'de> for SchnorrGroup {
     where
         D: Deserializer<'de>,
     {
-        // SAFE: we explicit check the values before returning
+        // SAFE: we explicit validate the values before returning
         unsafe { SchnorrGroupRaw::deserialize(deserializer)?.into() }
-            .check()
+            .validate()
             .ok_or(de::Error::custom("invalid Schnorr group parameters"))
     }
 }
