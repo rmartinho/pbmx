@@ -16,7 +16,7 @@ impl<'a> Distribution<Integer> for Modulo<'a> {
 }
 // TODO(#1) Distributions for incomplete types
 
-/// A distribution that produces [Integer]s with a certain number of bits.
+/// A distribution that produces [Integer]s up to a certain number of bits.
 pub struct Bits(pub u32);
 
 impl Distribution<Integer> for Bits {
@@ -24,6 +24,17 @@ impl Distribution<Integer> for Bits {
         let mut wrapper = RandGenWrapper(rng);
         let mut state = RandState::new_custom(&mut wrapper);
         Integer::random_bits(self.0, &mut state).into()
+    }
+}
+
+/// A distribution that produces [Integer]s with an exact number of bits.
+pub struct BitsExact(pub u32);
+
+impl Distribution<Integer> for BitsExact {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Integer {
+        let mut n = rng.sample(&Bits(self.0));
+        n.set_bit(self.0 - 1, true);
+        n
     }
 }
 
