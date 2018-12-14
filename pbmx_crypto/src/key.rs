@@ -15,7 +15,7 @@ pub struct PrivateKey {
 /// A public key
 ///
 /// This key consists of a public member *h* of a Schnorr group, such that
-/// *h* = *g*^*x* mod *p*.
+/// *h* = *g*^*x* mod *p* and *x* is secret.
 #[derive(Clone, Debug, Serialize)]
 pub struct PublicKey {
     g: SchnorrGroup,
@@ -38,6 +38,16 @@ pub struct SharedKey {
 impl PrivateKey {
     unsafe fn new_unchecked(g: SchnorrGroup, x: Integer) -> Self {
         Self { g, x }
+    }
+
+    /// Gets the group used by this key
+    pub fn group(&self) -> &SchnorrGroup {
+        &self.g
+    }
+
+    /// Gets this key's secret value
+    pub fn value(&self) -> &Integer {
+        &self.x
     }
 
     fn validate(self) -> Option<Self> {
@@ -72,10 +82,14 @@ impl SharedKey {
         }
     }
 
-    /// Combines a new public key with this shared key
-    pub fn combine(&mut self, pk: &PublicKey) {
-        assert!(self.g == pk.g);
-        self.h *= &pk.h
+    /// Gets the group used by this key
+    pub fn group(&self) -> &SchnorrGroup {
+        &self.g
+    }
+
+    /// Gets this key's shared value
+    pub fn value(&self) -> &Integer {
+        &self.h
     }
 
     fn validate(self) -> Option<Self> {
@@ -87,9 +101,33 @@ impl SharedKey {
     }
 }
 
-impl From<PublicKey> for SharedKey {
+/// A builder for [SharedKey]
+///
+/// This builder constructs a [SharedKey] from several [PublicKey]s.
+#[derive(Clone, Debug)]
+pub struct SharedKeyBuilder {
+    g: SchnorrGroup,
+    h: Integer,
+}
+
+impl SharedKeyBuilder {
+    /// Combines a new public key into this builder
+    pub fn combine(&mut self, pk: &PublicKey) -> &mut Self {
+        assert!(self.g == pk.g);
+        self.h *= &pk.h;
+        self
+    }
+}
+
+impl From<PublicKey> for SharedKeyBuilder {
     fn from(pk: PublicKey) -> Self {
-        // SAFE: a public key is valid as a shared key without change
+        Self { g: pk.g, h: pk.h }
+    }
+}
+
+impl From<SharedKeyBuilder> for SharedKey {
+    fn from(pk: SharedKeyBuilder) -> Self {
+        // SAFE: a builder holds the same invariants as a shared key
         unsafe { Self::new_unchecked(pk.g, pk.h) }
     }
 }
@@ -150,7 +188,7 @@ impl KeyRaw {
     }
 }
 
-/// A distribution that produces keys from a given Schnorr group.
+/// A distribution that produces keys from a Schnorr group.
 #[derive(Clone, Debug)]
 pub struct Keys<'a>(&'a SchnorrGroup);
 
