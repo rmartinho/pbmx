@@ -14,6 +14,7 @@ impl Distribution<Integer> for Modulo {
         self.0.random_below_ref(&mut state).into()
     }
 }
+// TODO(#1) Distributions for incomplete types
 
 /// A distribution that produces Integers with n bits
 pub struct Bits(pub u32);
@@ -28,11 +29,9 @@ impl Distribution<Integer> for Bits {
 
 struct RandGenWrapper<'a, R: ?Sized>(&'a mut R);
 
-// SAFE: not really Send, but this won't be used across threads (rug is stupid
-// to require this)
+// SAFE: not really Send, but this won't be used across threads (rug is stupid)
 unsafe impl<'a, R: ?Sized> Send for RandGenWrapper<'a, R> {}
-// SAFE: not really Sync, but this won't be used across threads (rug is stupid
-// to require this)
+// SAFE: not really Sync, but this won't be used across threads (rug is stupid)
 unsafe impl<'a, R: ?Sized> Sync for RandGenWrapper<'a, R> {}
 
 impl<'a, R> RandGen for RandGenWrapper<'a, R>
