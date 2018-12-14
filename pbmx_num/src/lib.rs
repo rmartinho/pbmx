@@ -2,8 +2,11 @@
 
 //! Numeric utilities for PBMX
 
-/// Random number generation utilities
+/// Random number generation
 pub mod rand;
 
-/// Prime number utilities
+/// Prime numbers
 pub mod prime;
+
+/// Schnorr groups
+pub mod schnorr;
