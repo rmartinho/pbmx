@@ -5,26 +5,28 @@ use crate::{
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::IsPrime, Assign, Integer};
 
-/// A distribution that produces a Schnorr groups from primes *p*, *q* with the
+use serde::{de, Deserialize, Deserializer};
+
+/// A distribution that produces Schnorr groups from primes *p*, *q* with the
 /// given bit sizes.
 pub struct Schnorr {
-    /// The number of bits for *p*
-    pub p_bits: u32,
-    /// The number of bits for *q*
-    pub q_bits: u32,
+    /// The number of bits in the field
+    pub field_bits: u32,
+    /// The number of bits in the subgroup
+    pub group_bits: u32,
     /// The number of Miller-Rabin iterations for primality tests
     pub iterations: u32,
 }
 
 impl Distribution<SchnorrGroup> for Schnorr {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> SchnorrGroup {
-        let q = rng.sample(&Primes::new(self.q_bits, self.iterations));
+        let q = rng.sample(&Primes::new(self.group_bits, self.iterations));
 
         let mut k;
         let mut p = Integer::new();
         let mut div = Integer::new();
         loop {
-            k = rng.sample(&BitsExact(self.p_bits - self.q_bits));
+            k = rng.sample(&BitsExact(self.field_bits - self.group_bits));
             if k.is_odd() {
                 k += 1;
             }
@@ -34,7 +36,7 @@ impl Distribution<SchnorrGroup> for Schnorr {
 
             div.assign(k.gcd_ref(&q));
             if div == 1
-                && p.significant_bits() == self.p_bits
+                && p.significant_bits() == self.field_bits
                 && p.is_probably_prime(self.iterations) != IsPrime::No
             {
                 break;
@@ -60,6 +62,7 @@ impl Distribution<SchnorrGroup> for Schnorr {
 /// A Schnorr group.
 ///
 /// See the wikipedia page on [Schnorr groups](https://en.wikipedia.org/wiki/Schnorr_group).
+#[derive(Serialize)]
 pub struct SchnorrGroup {
     p: Integer,
     q: Integer,
@@ -69,18 +72,18 @@ pub struct SchnorrGroup {
 
 impl SchnorrGroup {
     unsafe fn new_unchecked(p: Integer, q: Integer, k: Integer, g: Integer) -> SchnorrGroup {
-        SchnorrGroup { p, q, k, g }
+        Self { p, q, k, g }
     }
 
-    fn check(self, iterations: u32) -> Option<SchnorrGroup> {
+    fn check(self) -> Option<SchnorrGroup> {
         let mut x = Integer::from(&self.q * &self.k);
         x += 1;
         if self.p != x {
             return None;
         }
 
-        if self.p.is_probably_prime(iterations) == IsPrime::No
-            || self.q.is_probably_prime(iterations) == IsPrime::No
+        if self.p.is_probably_prime(SCHNORR_MILLER_RABIN_ITERATIONS) == IsPrime::No
+            || self.q.is_probably_prime(SCHNORR_MILLER_RABIN_ITERATIONS) == IsPrime::No
         {
             return None;
         }
@@ -105,7 +108,7 @@ impl SchnorrGroup {
 
     /// Creates a new group from the given parameters
     pub fn new(p: Integer, q: Integer, k: Integer, g: Integer) -> Option<SchnorrGroup> {
-        SchnorrGroup { p, q, k, g }.check(SCHNORR_MILLER_RABIN_ITERATIONS)
+        Self { p, q, k, g }.check()
     }
 
     /// Gets the modulus of the group (aka *p*)
@@ -118,10 +121,35 @@ impl SchnorrGroup {
         &self.q
     }
 
+    /// Gets the factor between the modulus and the order of the group (aka *k*)
+    pub fn factor(&self) -> &Integer {
+        &self.k
+    }
+
     /// Gets the generator of the group (aka *g*)
     pub fn generator(&self) -> &Integer {
         &self.g
     }
+}
+
+impl<'de> Deserialize<'de> for SchnorrGroup {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        SchnorrGroupRaw::deserialize(deserializer)?
+            .check()
+            .ok_or(de::Error::custom("invalid Schnorr group parameters"))
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(remote = "SchnorrGroup")]
+struct SchnorrGroupRaw {
+    p: Integer,
+    q: Integer,
+    k: Integer,
+    g: Integer,
 }
 
 const SCHNORR_MILLER_RABIN_ITERATIONS: u32 = 64;
@@ -134,7 +162,7 @@ mod test {
 
     #[test]
     fn schnorr_produces_schnorr_groups() {
-        let dist = Schnorr { p_bits: 2048, q_bits: 1024, iterations: 64 };
+        let dist = Schnorr { field_bits: 2048, group_bits: 1024, iterations: 64 };
         let schnorr = thread_rng().sample(&dist);
 
         assert_eq!(schnorr.p.significant_bits(), 2048);

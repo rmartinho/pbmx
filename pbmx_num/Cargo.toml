@@ -11,3 +11,9 @@ features = ["integer", "rand", "serde"]
 
 [dependencies.rand]
 version = "0.6"
+
+[dependencies.serde]
+version = "1.0"
+
+[dependencies.serde_derive]
+version = "1.0"
