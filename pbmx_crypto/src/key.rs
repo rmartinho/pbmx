@@ -120,6 +120,7 @@ impl SharedKeyBuilder {
     pub fn combine(&mut self, pk: &PublicKey) -> &mut Self {
         assert!(self.g == pk.g);
         self.h *= &pk.h;
+        self.h %= self.g.modulus();
         self
     }
 
@@ -242,10 +243,35 @@ mod test {
         assert_eq!(*sk.group(), group);
         assert!(sk.value() < group.order());
 
-        let builder = pk.into_builder();
-        let shared = builder.build();
-        assert_eq!(*shared.group(), group);
-        assert!(group.has_element(shared.value()));
-        assert_eq!(*shared.value(), group.element(sk.value()));
+        let pk = pk.into_builder().build();
+        assert_eq!(*pk.group(), group);
+        assert!(group.has_element(pk.value()));
+        assert_eq!(*pk.value(), group.element(sk.value()));
+    }
+
+    #[test]
+    fn shared_key_builder_builds_key_correctly() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let dist = Keys(&group);
+        let (_, pk1) = rng.sample(&dist);
+        let (_, pk2) = rng.sample(&dist);
+        let (_, pk3) = rng.sample(&dist);
+
+        let product = pk1.h.clone() * &pk2.h * &pk3.h % group.modulus();
+
+        let mut builder = pk1.into_builder();
+        builder.combine(&pk2);
+        builder.combine(&pk3);
+        let hk = builder.build();
+
+        assert_eq!(*hk.group(), group);
+        assert!(group.has_element(hk.value()));
+        assert_eq!(*hk.value(), product);
     }
 }
