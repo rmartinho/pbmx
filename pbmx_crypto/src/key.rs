@@ -64,6 +64,11 @@ impl PublicKey {
         Self { g, h }
     }
 
+    /// Creates a [SharedKeyBuilder] based on this key
+    pub fn into_builder(self) -> SharedKeyBuilder {
+        self.into()
+    }
+
     fn validate(self) -> Option<Self> {
         if self.g.has_element(&self.h) {
             Some(self)
@@ -116,6 +121,11 @@ impl SharedKeyBuilder {
         assert!(self.g == pk.g);
         self.h *= &pk.h;
         self
+    }
+
+    /// Builds the shared key
+    pub fn build(self) -> SharedKey {
+        self.into()
     }
 }
 
@@ -208,5 +218,34 @@ impl<'a> Distribution<(PrivateKey, PublicKey)> for Keys<'a> {
                 h,
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Keys;
+    use pbmx_num::schnorr::Schnorr;
+    use rand::{thread_rng, Rng};
+
+    #[test]
+    fn keys_produces_valid_keys() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let dist = Keys(&group);
+        let (sk, pk) = rng.sample(&dist);
+
+        assert_eq!(*sk.group(), group);
+        assert!(sk.value() < group.order());
+
+        let builder = pk.into_builder();
+        let shared = builder.build();
+        assert_eq!(*shared.group(), group);
+        assert!(group.has_element(shared.value()));
+        assert_eq!(*shared.value(), group.element(sk.value()));
     }
 }
