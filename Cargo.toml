@@ -1,4 +1,5 @@
 [workspace]
 members = [
     "pbmx_num",
+    "pbmx_crypto",
 ]

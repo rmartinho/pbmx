@@ -1,29 +1,36 @@
 use rug::Integer;
-use std::{cmp::min as at_most, iter};
+use std::iter;
 
+/// Precomputed fast modular exponentiation table
+#[derive(Clone, Debug)]
 pub struct FastPowModTable {
     table: Vec<Integer>,
     modulus: Integer,
 }
 
 impl FastPowModTable {
-    pub fn new(bits: u32, modulus: &Integer, seed: &Integer) -> FastPowModTable {
+    /// Creates a new table supporting exponents with up to the given number of
+    /// bits, for the given modulus and base.
+    pub fn new(bits: u32, modulus: &Integer, base: &Integer) -> FastPowModTable {
         let mut table = Vec::new();
-        let size = at_most(MAX_TABLE_SIZE, bits as _);
-        table.reserve_exact(size);
+        table.reserve_exact(bits as _);
 
-        table.push(seed.clone());
+        table.push(base.clone());
         table.extend(
-            iter::unfold(seed.clone(), |g| {
+            iter::unfold(base.clone(), |g| {
                 g.square_mut();
                 *g %= modulus;
                 Some(g.clone())
             })
-            .take(size),
+            .take(bits as _),
         );
-        FastPowModTable { table, modulus: modulus.clone() }
+        FastPowModTable {
+            table,
+            modulus: modulus.clone(),
+        }
     }
 
+    /// Performs a fast modular exponentiation
     pub fn pow_mod(&self, exponent: &Integer) -> Option<Integer> {
         let exp_abs = exponent.clone().abs();
         let bits = exp_abs.significant_bits() as _;
@@ -31,7 +38,7 @@ impl FastPowModTable {
         if bits <= self.table.len() {
             let mut r = Integer::from(1);
             for i in 0..bits {
-                // TODO(#1) timing attack protections
+                // TODO(#2) timing attack protections
                 if exp_abs.get_bit(i as _) {
                     r *= &self.table[i];
                     r %= &self.modulus;
@@ -46,5 +53,3 @@ impl FastPowModTable {
         }
     }
 }
-
-const MAX_TABLE_SIZE: usize = 2048;

@@ -1,5 +1,5 @@
 #indent_style = "Block" # Block | Visual
-use_small_heuristics = "Max" # Default | Off | Max
+#use_small_heuristics = "Default" # Default | Off | Max
 #binop_separator = "Front" # Front | Back
 #combine_control_expr = true
 #comment_width = 80

@@ -5,6 +5,7 @@ use rug::{
 };
 
 /// A distribution that produces [Integer]s below a certain value.
+#[derive(Clone, Debug)]
 pub struct Modulo<'a>(pub &'a Integer);
 
 impl<'a> Distribution<Integer> for Modulo<'a> {
@@ -17,6 +18,7 @@ impl<'a> Distribution<Integer> for Modulo<'a> {
 // TODO(#1) Distributions for incomplete types
 
 /// A distribution that produces [Integer]s up to a certain number of bits.
+#[derive(Clone, Debug)]
 pub struct Bits(pub u32);
 
 impl Distribution<Integer> for Bits {
@@ -28,6 +30,7 @@ impl Distribution<Integer> for Bits {
 }
 
 /// A distribution that produces [Integer]s with an exact number of bits.
+#[derive(Clone, Debug)]
 pub struct BitsExact(pub u32);
 
 impl Distribution<Integer> for BitsExact {

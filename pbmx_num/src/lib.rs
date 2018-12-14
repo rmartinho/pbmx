@@ -6,8 +6,6 @@
 #[macro_use]
 extern crate serde_derive;
 
-extern crate serde;
-
 /// Random number generation
 pub mod rand;
 
@@ -17,4 +15,5 @@ pub mod prime;
 /// Schnorr groups
 pub mod schnorr;
 
-mod fpowm;
+/// Fast exponentiation table
+pub mod fpowm;
