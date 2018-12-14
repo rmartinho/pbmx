@@ -4,7 +4,10 @@ use crate::{
     rand::{BitsExact, Modulo},
 };
 use rand::{distributions::Distribution, Rng};
-use rug::{integer::IsPrime, Assign, Integer};
+use rug::{
+    integer::{IsPrime, SmallInteger},
+    Assign, Integer,
+};
 use serde::{de, Deserialize, Deserializer};
 
 /// A distribution that produces Schnorr groups from primes *p*, *q* with the
@@ -114,6 +117,11 @@ impl SchnorrGroup {
         x == 1
     }
 
+    /// Retrieves the i-th element of the group
+    pub fn element(&self, i: usize) -> Integer {
+        self.fpowm.pow_mod(&SmallInteger::from(i)).unwrap()
+    }
+
     fn validate(self) -> Option<SchnorrGroup> {
         let mut x = Integer::from(&self.q * &self.k);
         x += 1;
@@ -143,6 +151,19 @@ impl SchnorrGroup {
         }
 
         Some(self)
+    }
+}
+
+impl Distribution<Integer> for SchnorrGroup {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Integer {
+        let mut i: Integer;
+        loop {
+            i = rng.sample(&Modulo(&self.q));
+            if i != 0 {
+                break;
+            }
+        }
+        self.fpowm.pow_mod(&i).unwrap()
     }
 }
 

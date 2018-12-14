@@ -31,6 +31,7 @@ impl FastPowModTable {
         if bits <= self.table.len() {
             let mut r = Integer::from(1);
             for i in 0..bits {
+                // TODO(#1) timing attack protections
                 if exp_abs.get_bit(i as _) {
                     r *= &self.table[i];
                     r %= &self.modulus;
