@@ -1,5 +1,8 @@
 use crate::{
-    crypto::key::{Keys, PrivateKey, PublicKey},
+    crypto::{
+        key::{Keys, PrivateKey, PublicKey},
+        vtmf::Vtmf,
+    },
     num::schnorr::SchnorrGroup,
 };
 use rand::{thread_rng, Rng};
@@ -68,6 +71,22 @@ impl KeyExchange {
         self.kex += 1;
         Ok(())
     }
+
+    /// Finalizes the key exchange protocol and creates a [Vtmf] instance
+    pub fn finalize(self) -> Result<Vtmf, KeyExchangeError> {
+        if !self.has_all_keys() {
+            return Err(KeyExchangeError::IncompleteExchange);
+        }
+
+        // SAFE: KeyExchange holds the same invariant as Vtmf
+        unsafe {
+            Ok(Vtmf::new_unchecked(
+                self.g,
+                self.sk.unwrap(),
+                self.pk.unwrap(),
+            ))
+        }
+    }
 }
 
 /// An error resulting from wrong usage of the key exchange protocol
@@ -81,4 +100,6 @@ pub enum KeyExchangeError {
     RepeatedKeyGeneration,
     /// Occurs when a key exchange is attempted with a key from the wrong group
     InvalidPublicKey,
+    /// Occurs when attempting to finalize the exchange before it is complete
+    IncompleteExchange,
 }
