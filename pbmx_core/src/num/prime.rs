@@ -1,4 +1,4 @@
-use crate::rand::{BitsExact, Modulo};
+use crate::num::integer::{BitsExact, Modulo};
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::IsPrime, Assign, Integer};
 

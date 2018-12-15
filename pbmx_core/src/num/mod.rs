@@ -1,7 +1,7 @@
 //! Numeric utilities for PBMX
 
-/// Random number generation
-pub mod rand;
+/// Big integer utilities
+pub mod integer;
 
 /// Prime numbers
 pub mod prime;

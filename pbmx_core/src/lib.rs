@@ -6,5 +6,5 @@
 #[macro_use]
 extern crate serde_derive;
 
-pub mod num;
 pub mod crypto;
+pub mod num;

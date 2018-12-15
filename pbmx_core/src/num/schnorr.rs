@@ -1,7 +1,7 @@
-use crate::{
+use crate::num::{
     fpowm::FastPowModTable,
+    integer::{BitsExact, Modulo},
     prime::Primes,
-    rand::{BitsExact, Modulo},
 };
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::IsPrime, Assign, Integer};

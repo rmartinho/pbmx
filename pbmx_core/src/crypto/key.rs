@@ -1,4 +1,4 @@
-use pbmx_num::{rand::Modulo, schnorr::SchnorrGroup};
+use crate::num::{integer::Modulo, schnorr::SchnorrGroup};
 use rand::{distributions::Distribution, Rng};
 use rug::Integer;
 use serde::{de, Deserialize, Deserializer};
@@ -92,7 +92,7 @@ impl KeyRaw {
 
 /// A distribution that produces keys from a Schnorr group.
 #[derive(Clone, Debug)]
-pub struct Keys<'a>(&'a SchnorrGroup);
+pub struct Keys<'a>(pub &'a SchnorrGroup);
 
 impl<'a> Distribution<(PrivateKey, PublicKey)> for Keys<'a> {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> (PrivateKey, PublicKey) {
@@ -116,7 +116,7 @@ impl<'a> Distribution<(PrivateKey, PublicKey)> for Keys<'a> {
 #[cfg(test)]
 mod test {
     use super::Keys;
-    use pbmx_num::schnorr::Schnorr;
+    use crate::num::schnorr::Schnorr;
     use rand::{thread_rng, Rng};
 
     #[test]
