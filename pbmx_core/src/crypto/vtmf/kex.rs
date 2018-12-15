@@ -82,6 +82,7 @@ impl KeyExchange {
         unsafe {
             Ok(Vtmf::new_unchecked(
                 self.g,
+                self.n,
                 self.sk.unwrap(),
                 self.pk.unwrap(),
             ))
