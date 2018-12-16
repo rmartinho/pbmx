@@ -13,10 +13,11 @@ pub fn prove(
     h: &Integer,
     alpha: &Integer,
 ) -> Proof {
+    let p = vtmf.g.modulus();
     let q = vtmf.g.order();
     let omega = thread_rng().sample(&Modulo(q));
-    let a = vtmf.g.element(&omega);
-    let b = vtmf.fpowm.pow_mod(&omega).unwrap();
+    let a = Integer::from(g.pow_mod_ref(&omega, p).unwrap());
+    let b = Integer::from(h.pow_mod_ref(&omega, p).unwrap());
 
     let c = challenge(&a, &b, x, y, g, h);
     let r = (&omega - Integer::from(&c * alpha)) % q;
@@ -33,10 +34,10 @@ pub fn verify(vtmf: &Vtmf, x: &Integer, y: &Integer, g: &Integer, h: &Integer, c
     }
 
     let xc = Integer::from(x.pow_mod_ref(c, p).unwrap());
-    let a = vtmf.g.element(r) * xc % p;
+    let a = Integer::from(g.pow_mod_ref(&r, p).unwrap()) * xc % p;
 
     let yc = Integer::from(y.pow_mod_ref(c, p).unwrap());
-    let b = vtmf.fpowm.pow_mod(r).unwrap() * yc % p;
+    let b = Integer::from(h.pow_mod_ref(&r, p).unwrap()) * yc % p;
 
     let c1 = challenge(&a, &b, x, y, g, h);
 
@@ -98,14 +99,13 @@ mod test {
         let ok = verify(&vtmf, &x, &y, vtmf.g.generator(), &vtmf.pk.h, &proof);
         assert!(
             ok,
-            "proof isn't valid\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\talpha = {}\n\tproof = ({}, {})",
+            "proof isn't valid\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\talpha = {}\n\tproof = {:?}",
             x,
             y,
             vtmf.g.generator(),
             vtmf.pk.h,
             i,
-            proof.0,
-            proof.1
+            proof
         );
 
         // break the proof
@@ -113,14 +113,13 @@ mod test {
         let ok = verify(&vtmf, &x, &y, vtmf.g.generator(), &vtmf.pk.h, &proof);
         assert!(
             !ok,
-            "invalid proof was accepted\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\talpha = {}\n\tproof = ({}, {})",
+            "invalid proof was accepted\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\talpha = {}\n\tproof = {:?}",
             x,
             y,
             vtmf.g.generator(),
             vtmf.pk.h,
             i,
-            proof.0,
-            proof.1
+            proof
         );
     }
 }

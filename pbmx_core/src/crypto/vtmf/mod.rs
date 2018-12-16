@@ -76,7 +76,7 @@ impl Vtmf {
         let g = self.g.generator();
         let h = &self.pk.h;
         let m1 = Integer::from(m.invert_ref(p).unwrap());
-        let hr = &c.1 * m1;
+        let hr = &c.1 * m1 % p;
         cp::verify(self, &c.0, &hr, g, h, proof)
     }
 
@@ -104,9 +104,9 @@ impl Vtmf {
         let h = &self.pk.h;
 
         let c11 = Integer::from(m.0.invert_ref(p).unwrap());
-        let gr = &c.0 * c11;
+        let gr = &c.0 * c11 % p;
         let c21 = Integer::from(m.1.invert_ref(p).unwrap());
-        let hr = &c.1 * c21;
+        let hr = &c.1 * c21 % p;
         cp::verify(self, &gr, &hr, g, h, proof)
     }
 
@@ -178,7 +178,10 @@ derive_base64_conversions!(Vtmf);
 #[cfg(test)]
 mod test {
     use super::{KeyExchange, Vtmf};
-    use crate::{crypto::key::Keys, num::schnorr::Schnorr};
+    use crate::{
+        crypto::key::Keys,
+        num::{integer::Bits, schnorr::Schnorr},
+    };
     use rand::{thread_rng, Rng};
     use std::str::FromStr;
 
@@ -211,5 +214,88 @@ mod test {
         assert_eq!(original.fp, recovered.fp);
         assert_eq!(original.pki, recovered.pki);
         assert_eq!(original.fpowm, recovered.fpowm);
+    }
+
+    #[test]
+    fn vtmf_masking_and_unmasking_work() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let mut kex0 = KeyExchange::new(group.clone(), 2);
+        let pk0 = kex0.generate_key().unwrap();
+        let mut kex1 = KeyExchange::new(group, 2);
+        let pk1 = kex1.generate_key().unwrap();
+        let fp1 = pk1.fingerprint();
+        kex0.update_key(pk1).unwrap();
+        kex1.update_key(pk0).unwrap();
+        let vtmf0 = kex0.finalize().unwrap();
+        let vtmf1 = kex1.finalize().unwrap();
+
+        let x = rng.sample(&Bits(128));
+        let (mask, proof) = vtmf0.mask(&x);
+        let ok = vtmf1.verify_mask(&x, &mask, &proof);
+        assert!(
+            ok,
+            "mask verification failed\n\tx = {}\n\tmask = {:?}\n\tproof = {:?}",
+            x, mask, proof
+        );
+
+        let mut dec0 = vtmf0.unmask(mask.clone());
+        let mut dec1 = vtmf1.unmask(mask.clone());
+        let _ = dec0.reveal_share().unwrap();
+        let (di, proof) = dec1.reveal_share().unwrap();
+        dec0.add_share(&fp1, &di, &proof).unwrap();
+        assert!(dec0.is_complete());
+        let r = dec0.decrypt().unwrap();
+        assert_eq!(r, x);
+    }
+
+    #[test]
+    fn vtmf_masking_remasking_and_unmasking_work() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let mut kex0 = KeyExchange::new(group.clone(), 2);
+        let pk0 = kex0.generate_key().unwrap();
+        let mut kex1 = KeyExchange::new(group, 2);
+        let pk1 = kex1.generate_key().unwrap();
+        let fp1 = pk1.fingerprint();
+        kex0.update_key(pk1).unwrap();
+        kex1.update_key(pk0).unwrap();
+        let vtmf0 = kex0.finalize().unwrap();
+        let vtmf1 = kex1.finalize().unwrap();
+
+        let x = rng.sample(&Bits(128));
+        let (mask, proof) = vtmf0.mask(&x);
+        let ok = vtmf1.verify_mask(&x, &mask, &proof);
+        assert!(
+            ok,
+            "mask verification failed\n\tx = {}\n\tmask = {:?}\n\tproof = {:?}",
+            x, mask, proof
+        );
+        let (remask, proof) = vtmf0.remask(&mask);
+        let ok = vtmf1.verify_remask(&mask, &remask, &proof);
+        assert!(
+            ok,
+            "remask verification failed\n\tmask = {:?}\n\tremask = {:?}\n\tproof = {:?}",
+            mask, remask, proof
+        );
+
+        let mut dec0 = vtmf0.unmask(mask.clone());
+        let mut dec1 = vtmf1.unmask(mask.clone());
+        let _ = dec0.reveal_share().unwrap();
+        let (di, proof) = dec1.reveal_share().unwrap();
+        dec0.add_share(&fp1, &di, &proof).unwrap();
+        assert!(dec0.is_complete());
+        let r = dec0.decrypt().unwrap();
+        assert_eq!(r, x);
     }
 }

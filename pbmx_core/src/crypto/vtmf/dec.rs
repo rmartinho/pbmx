@@ -3,6 +3,9 @@ use crate::crypto::key::Fingerprint;
 use rug::Integer;
 use std::collections::HashSet;
 
+/// One party's share of a secret
+pub type SecretShare = Integer;
+
 /// The VTMF decryption protocol
 pub struct Decryption<'a> {
     vtmf: &'a Vtmf,
@@ -14,7 +17,7 @@ pub struct Decryption<'a> {
 impl<'a> Decryption<'a> {
     pub(super) fn new(vtmf: &'a Vtmf, c: Mask) -> Self {
         Self {
-            d: self_secret(&c.0, &vtmf.sk.x, vtmf.g.modulus()),
+            d: Integer::new(),
             seen: HashSet::new(),
             vtmf,
             c,
@@ -22,25 +25,26 @@ impl<'a> Decryption<'a> {
     }
 
     /// Publishing step of the verifiable decryption protocol
-    pub fn reveal_share(&mut self) -> Result<(Integer, Proof), DecryptionError> {
+    pub fn reveal_share(&mut self) -> Result<(SecretShare, Proof), DecryptionError> {
         if self.seen.len() > 0 {
             return Err(DecryptionError::RepeatedReveal);
         }
 
         let g = self.vtmf.g.generator();
+        let p = self.vtmf.g.modulus();
 
         let hi = self.vtmf.g.element(&self.vtmf.sk.x);
-        let di = self_secret(&self.c.0, &self.vtmf.sk.x, self.vtmf.g.modulus());
-        let proof = cp::prove(self.vtmf, &di, &hi, &self.c.0, g, &self.vtmf.sk.x);
+        self.d = Integer::from(self.c.0.pow_mod_ref(&self.vtmf.sk.x, p).unwrap());
+        let proof = cp::prove(self.vtmf, &self.d, &hi, &self.c.0, g, &self.vtmf.sk.x);
         self.seen.insert(self.vtmf.fp.clone());
-        Ok((di, proof))
+        Ok((self.d.clone(), proof))
     }
 
     /// Accumulate step of the verifiable decryption protocol
-    pub fn accumulate_share(
+    pub fn add_share(
         &mut self,
         pk_fp: &Fingerprint,
-        di: &Integer,
+        di: &SecretShare,
         proof: &Proof,
     ) -> Result<(), DecryptionError> {
         if self.seen.len() == 0 || self.is_complete() {
@@ -48,6 +52,7 @@ impl<'a> Decryption<'a> {
         }
 
         let g = self.vtmf.g.generator();
+        let p = self.vtmf.g.modulus();
         let pk = self
             .vtmf
             .pki
@@ -56,6 +61,7 @@ impl<'a> Decryption<'a> {
 
         if cp::verify(self.vtmf, di, &pk.h, &self.c.0, g, proof) {
             self.d *= di;
+            self.d %= p;
             self.seen.insert(pk.fingerprint());
             Ok(())
         } else {
@@ -63,13 +69,13 @@ impl<'a> Decryption<'a> {
         }
     }
 
-    /// Tests whether
+    /// Tests whether all shares have been provided
     pub fn is_complete(&self) -> bool {
         self.seen.len() == self.vtmf.n as usize
     }
 
     /// Decrypting step of the verifiable decryption protocol
-    pub fn decrypt(self, c: &(Integer, Integer)) -> Result<Integer, DecryptionError> {
+    pub fn decrypt(self) -> Result<Integer, DecryptionError> {
         if !self.is_complete() {
             return Err(DecryptionError::IncompleteSecret);
         }
@@ -77,12 +83,8 @@ impl<'a> Decryption<'a> {
         let p = self.vtmf.g.modulus();
         let d1 = Integer::from(self.d.invert_ref(&p).unwrap());
 
-        Ok(&c.1 * d1)
+        Ok(&self.c.1 * d1 % p)
     }
-}
-
-fn self_secret(c1: &Integer, x: &Integer, p: &Integer) -> Integer {
-    Integer::from(c1.pow_mod_ref(x, p).unwrap())
 }
 
 /// An error resulting from wrong usage of the decryption protocol
