@@ -56,3 +56,39 @@ where
         self.0.gen()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::{Bits, BitsExact, Modulo};
+    use rand::{thread_rng, Rng};
+    use rug::Integer;
+
+    #[test]
+    fn modulo_produces_values_less_than_n() {
+        let eight = Integer::from(8);
+        for _ in 0..128 {
+            let x = thread_rng().sample(&Modulo(&eight));
+            assert!(x < eight, "result isn't modulo 8\n\tx = {}", x);
+        }
+    }
+
+    #[test]
+    fn bits_produces_values_with_up_to_bit_size() {
+        let eight = Integer::from(8);
+        for _ in 0..128 {
+            let x = thread_rng().sample(&Bits(3));
+            assert!(x < eight, "result has more than 3 bits\n\tx = {}", x);
+        }
+    }
+
+    #[test]
+    fn bits_exact_produces_values_with_exact_bit_size() {
+        let four = Integer::from(4);
+        let eight = Integer::from(8);
+        for _ in 0..128 {
+            let x = thread_rng().sample(&BitsExact(3));
+            assert!(x >= four, "result has less than 3 bits\n\tx = {}", x);
+            assert!(x < eight, "result has more than 3 bits\n\tx = {}", x);
+        }
+    }
+}

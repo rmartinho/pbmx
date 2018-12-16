@@ -79,26 +79,37 @@ impl<'a> Distribution<Integer> for Coprimes<'a> {
 #[cfg(test)]
 mod test {
     use super::{Coprimes, Primes};
+    use crate::num::integer::Bits;
     use rand::{thread_rng, Rng};
-    use rug::{integer::IsPrime, Integer};
+    use rug::integer::IsPrime;
 
     #[test]
     fn primes_produces_primes_with_property() {
         let dist = Primes::with_test(1024, 64, &|p| p.is_congruent_u(3, 4));
         let prime = thread_rng().sample(&dist);
 
-        assert!(prime.is_congruent_u(3, 4));
+        assert!(
+            prime.is_congruent_u(3, 4),
+            "result is not congruent 3 mod 4\n\tprime = {}",
+            prime
+        );
         assert_eq!(prime.significant_bits(), 1024);
         assert_ne!(prime.is_probably_prime(64), IsPrime::No);
     }
 
     #[test]
     fn coprimes_produces_coprimes() {
-        let n = Integer::from(1209302942);
+        let mut rng = thread_rng();
+        let n = rng.sample(&Bits(128));
         let dist = Coprimes(&n);
-        let coprime = thread_rng().sample(&dist);
+        let coprime = rng.sample(&dist);
 
-        assert!(coprime < n);
+        assert!(
+            coprime < n,
+            "result is not modulo n\n\tresult = {}\n\tn= {}",
+            coprime,
+            n
+        );
         assert_eq!(coprime.gcd(&n), 1);
     }
 }

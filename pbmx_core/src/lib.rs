@@ -10,4 +10,5 @@ extern crate serde_derive;
 mod macros;
 
 pub mod crypto;
+pub mod error;
 pub mod num;
