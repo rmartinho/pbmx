@@ -13,7 +13,8 @@ pub use self::kex::*;
 mod dec;
 pub use self::dec::*;
 
-mod cp;
+mod dlog_eq;
+pub use self::dlog_eq::Proof as DlogEqProof;
 
 /// A verifiable *k*-out-of-*k* threshold masking function
 #[derive(Serialize)]
@@ -29,9 +30,6 @@ pub struct Vtmf {
     #[serde(skip)]
     fpowm: FastPowModTable,
 }
-
-/// A zero-knownledge proof
-pub type Proof = (Integer, Integer);
 /// A masked value
 pub type Mask = (Integer, Integer);
 
@@ -56,7 +54,7 @@ impl Vtmf {
     }
 
     /// Applies the verifiable masking protocol
-    pub fn mask(&self, m: &Integer) -> (Mask, Proof) {
+    pub fn mask(&self, m: &Integer) -> (Mask, DlogEqProof) {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
@@ -65,23 +63,23 @@ impl Vtmf {
         let r = thread_rng().sample(&Modulo(q));
         let c1 = self.g.element(&r);
         let hr = self.fpowm.pow_mod(&r).unwrap();
-        let proof = cp::prove(self, &c1, &hr, g, h, &r);
+        let proof = dlog_eq::prove(self, &c1, &hr, g, h, &r);
         let c2 = hr * m % p;
         ((c1, c2), proof)
     }
 
     /// Verifies the application of the masking protocol
-    pub fn verify_mask(&self, m: &Integer, c: &Mask, proof: &Proof) -> bool {
+    pub fn verify_mask(&self, m: &Integer, c: &Mask, proof: &DlogEqProof) -> bool {
         let p = self.g.modulus();
         let g = self.g.generator();
         let h = &self.pk.h;
         let m1 = Integer::from(m.invert_ref(p).unwrap());
         let hr = &c.1 * m1 % p;
-        cp::verify(self, &c.0, &hr, g, h, proof)
+        dlog_eq::verify(self, &c.0, &hr, g, h, proof)
     }
 
     /// Applies the verifiable re-masking protocol
-    pub fn remask(&self, c: &Mask) -> (Mask, Proof) {
+    pub fn remask(&self, c: &Mask) -> (Mask, DlogEqProof) {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
@@ -90,7 +88,7 @@ impl Vtmf {
         let r = thread_rng().sample(&Modulo(q));
         let gr = self.g.element(&r);
         let hr = self.fpowm.pow_mod(&r).unwrap();
-        let proof = cp::prove(self, &gr, &hr, g, h, &r);
+        let proof = dlog_eq::prove(self, &gr, &hr, g, h, &r);
 
         let c1 = gr * &c.0 % p;
         let c2 = hr * &c.1 % p;
@@ -98,7 +96,7 @@ impl Vtmf {
     }
 
     /// Verifies the application of the re-masking protocol
-    pub fn verify_remask(&self, m: &Mask, c: &Mask, proof: &Proof) -> bool {
+    pub fn verify_remask(&self, m: &Mask, c: &Mask, proof: &DlogEqProof) -> bool {
         let p = self.g.modulus();
         let g = self.g.generator();
         let h = &self.pk.h;
@@ -107,7 +105,7 @@ impl Vtmf {
         let gr = &c.0 * c11 % p;
         let c21 = Integer::from(m.1.invert_ref(p).unwrap());
         let hr = &c.1 * c21 % p;
-        cp::verify(self, &gr, &hr, g, h, proof)
+        dlog_eq::verify(self, &gr, &hr, g, h, proof)
     }
 
     /// Starts an instance of the verifiable decryption protocol

@@ -1,9 +1,12 @@
-use super::{Proof, Vtmf};
+use super::Vtmf;
 use crate::{crypto::hash::Hash, num::integer::Modulo};
 use digest::Digest;
 use rand::{thread_rng, Rng};
 use rug::{integer::Order, Integer};
 use std::cmp::Ordering;
+
+/// Zero-knowledge proof of equality of discrete logarithms
+pub type Proof = (Integer, Integer);
 
 pub fn prove(
     vtmf: &Vtmf,

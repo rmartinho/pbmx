@@ -1,4 +1,4 @@
-use super::{cp, Mask, Proof, Vtmf};
+use super::{dlog_eq, DlogEqProof, Mask, Vtmf};
 use crate::crypto::key::Fingerprint;
 use rug::Integer;
 use std::collections::HashSet;
@@ -25,7 +25,7 @@ impl<'a> Decryption<'a> {
     }
 
     /// Publishing step of the verifiable decryption protocol
-    pub fn reveal_share(&mut self) -> Result<(SecretShare, Proof), DecryptionError> {
+    pub fn reveal_share(&mut self) -> Result<(SecretShare, DlogEqProof), DecryptionError> {
         if self.seen.len() > 0 {
             return Err(DecryptionError::RepeatedReveal);
         }
@@ -35,7 +35,7 @@ impl<'a> Decryption<'a> {
 
         let hi = self.vtmf.g.element(&self.vtmf.sk.x);
         self.d = Integer::from(self.c.0.pow_mod_ref(&self.vtmf.sk.x, p).unwrap());
-        let proof = cp::prove(self.vtmf, &self.d, &hi, &self.c.0, g, &self.vtmf.sk.x);
+        let proof = dlog_eq::prove(self.vtmf, &self.d, &hi, &self.c.0, g, &self.vtmf.sk.x);
         self.seen.insert(self.vtmf.fp.clone());
         Ok((self.d.clone(), proof))
     }
@@ -45,7 +45,7 @@ impl<'a> Decryption<'a> {
         &mut self,
         pk_fp: &Fingerprint,
         di: &SecretShare,
-        proof: &Proof,
+        proof: &DlogEqProof,
     ) -> Result<(), DecryptionError> {
         if self.seen.len() == 0 || self.is_complete() {
             return Err(DecryptionError::TooManyShares);
@@ -59,7 +59,7 @@ impl<'a> Decryption<'a> {
             .get(pk_fp)
             .ok_or(DecryptionError::UnknownKeyShare)?;
 
-        if cp::verify(self.vtmf, di, &pk.h, &self.c.0, g, proof) {
+        if dlog_eq::verify(self.vtmf, di, &pk.h, &self.c.0, g, proof) {
             self.d *= di;
             self.d %= p;
             self.seen.insert(pk.fingerprint());
