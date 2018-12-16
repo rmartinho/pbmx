@@ -2,7 +2,7 @@ use rug::Integer;
 use std::iter;
 
 /// Precomputed fast modular exponentiation table
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FastPowModTable {
     table: Vec<Integer>,
     modulus: Integer,

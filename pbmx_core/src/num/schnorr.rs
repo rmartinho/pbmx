@@ -207,11 +207,14 @@ impl Distribution<SchnorrGroup> for Schnorr {
 
 const MILLER_RABIN_ITERATIONS: u32 = 64;
 
+derive_base64_conversions!(SchnorrGroup);
+
 #[cfg(test)]
 mod test {
-    use super::{Schnorr, MILLER_RABIN_ITERATIONS};
+    use super::{Schnorr, SchnorrGroup, MILLER_RABIN_ITERATIONS};
     use rand::{thread_rng, Rng};
     use rug::integer::IsPrime;
+    use std::str::FromStr;
 
     #[test]
     fn schnorr_produces_schnorr_groups() {
@@ -227,5 +230,26 @@ mod test {
         assert_eq!(schnorr.q.significant_bits(), 1024);
         assert_ne!(schnorr.q.is_probably_prime(64), IsPrime::No);
         assert_eq!(schnorr.p, schnorr.q.clone() * schnorr.k + 1);
+    }
+
+    #[test]
+    fn schnorr_group_roundtrips_via_base64() {
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: MILLER_RABIN_ITERATIONS,
+        };
+        let original = thread_rng().sample(&dist);
+        println!("group = {}", original);
+
+        let exported = original.to_string();
+
+        let recovered = SchnorrGroup::from_str(&exported).unwrap();
+
+        assert_eq!(original.p, recovered.p);
+        assert_eq!(original.q, recovered.q);
+        assert_eq!(original.k, recovered.k);
+        assert_eq!(original.g, recovered.g);
+        assert_eq!(original.fpowm, recovered.fpowm);
     }
 }
