@@ -3,6 +3,7 @@ use crate::crypto::key::Fingerprint;
 use rug::Integer;
 use std::collections::HashSet;
 
+// TODO serialization
 /// The VTMF decryption protocol
 pub struct Decryption<'a> {
     vtmf: &'a Vtmf,

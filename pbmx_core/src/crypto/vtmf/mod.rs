@@ -172,3 +172,44 @@ impl VtmfRaw {
         Vtmf::new_unchecked(self.g, self.n, self.sk, self.pk, self.fp, self.pki)
     }
 }
+
+derive_base64_conversions!(Vtmf);
+
+#[cfg(test)]
+mod test {
+    use super::{KeyExchange, Vtmf};
+    use crate::{crypto::key::Keys, num::schnorr::Schnorr};
+    use rand::{thread_rng, Rng};
+    use std::str::FromStr;
+
+    #[test]
+    fn vtmf_roundtrips_via_base64() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let (_, pk1) = rng.sample(&Keys(&group));
+        let (_, pk2) = rng.sample(&Keys(&group));
+        let mut kex = KeyExchange::new(group, 3);
+        let _ = kex.generate_key().unwrap();
+        kex.update_key(pk1).unwrap();
+        kex.update_key(pk2).unwrap();
+        let original = kex.finalize().unwrap();
+        println!("vtmf = {}", original);
+
+        let exported = original.to_string();
+
+        let recovered = Vtmf::from_str(&exported).unwrap();
+
+        assert_eq!(original.g, recovered.g);
+        assert_eq!(original.n, recovered.n);
+        assert_eq!(original.sk, recovered.sk);
+        assert_eq!(original.pk, recovered.pk);
+        assert_eq!(original.fp, recovered.fp);
+        assert_eq!(original.pki, recovered.pki);
+        assert_eq!(original.fpowm, recovered.fpowm);
+    }
+}

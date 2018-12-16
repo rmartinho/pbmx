@@ -15,7 +15,7 @@ use std::{
 /// A private key
 ///
 /// This key consists of a secret exponent *x*, together with a Schnorr group.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PrivateKey {
     pub(super) g: SchnorrGroup,
     pub(super) x: Integer,
@@ -25,7 +25,7 @@ pub struct PrivateKey {
 ///
 /// This key consists of a public member *h* of a Schnorr group, such that
 /// *h* = *g*^*x* mod *p* and *x* is secret.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PublicKey {
     pub(super) g: SchnorrGroup,
     pub(super) h: Integer,

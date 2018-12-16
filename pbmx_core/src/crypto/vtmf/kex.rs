@@ -97,6 +97,8 @@ impl KeyExchange {
     }
 }
 
+derive_base64_conversions!(KeyExchange);
+
 /// An error resulting from wrong usage of the key exchange protocol
 #[derive(Copy, Clone, Debug)]
 pub enum KeyExchangeError {
@@ -110,4 +112,40 @@ pub enum KeyExchangeError {
     InvalidPublicKey,
     /// Occurs when attempting to finalize the exchange before it is complete
     IncompleteExchange,
+}
+
+#[cfg(test)]
+mod test {
+    use super::KeyExchange;
+    use crate::{crypto::key::Keys, num::schnorr::Schnorr};
+    use rand::{thread_rng, Rng};
+    use std::str::FromStr;
+
+    #[test]
+    fn key_exchange_roundtrips_via_base64() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let (_, pk1) = rng.sample(&Keys(&group));
+        let mut kex = KeyExchange::new(group, 3);
+        let _ = kex.generate_key().unwrap();
+        kex.update_key(pk1).unwrap();
+        let original = kex;
+        println!("kex = {}", original);
+
+        let exported = original.to_string();
+
+        let recovered = KeyExchange::from_str(&exported).unwrap();
+
+        assert_eq!(original.g, recovered.g);
+        assert_eq!(original.n, recovered.n);
+        assert_eq!(original.sk, recovered.sk);
+        assert_eq!(original.pk, recovered.pk);
+        assert_eq!(original.fp, recovered.fp);
+        assert_eq!(original.pki, recovered.pki);
+    }
 }
