@@ -97,7 +97,7 @@ impl KeyExchange {
 }
 
 /// An error resulting from wrong usage of the key exchange protocol
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub enum KeyExchangeError {
     /// Occurs when an operation that requires a key is attempted before
     /// generating keys

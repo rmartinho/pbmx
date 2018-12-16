@@ -63,3 +63,64 @@ fn challenge(
         Order::MsfBe,
     )
 }
+
+#[cfg(test)]
+mod test {
+    use super::{prove, verify};
+    use crate::{
+        crypto::{key::Keys, vtmf::KeyExchange},
+        num::{integer::Bits, schnorr::Schnorr},
+    };
+    use rand::{thread_rng, Rng};
+
+    #[test]
+    fn prove_and_verify_agree() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let (_, pk1) = rng.sample(&Keys(&group));
+        let (_, pk2) = rng.sample(&Keys(&group));
+        let mut kex = KeyExchange::new(group, 3);
+        let _ = kex.generate_key().unwrap();
+        kex.update_key(pk1).unwrap();
+        kex.update_key(pk2).unwrap();
+        let vtmf = kex.finalize().unwrap();
+
+        let i = rng.sample(&Bits(128));
+        let x = vtmf.g.element(&i);
+        let y = vtmf.fpowm.pow_mod(&i).unwrap();
+        let mut proof = prove(&vtmf, &x, &y, vtmf.g.generator(), &vtmf.pk.h, &i);
+
+        let ok = verify(&vtmf, &x, &y, vtmf.g.generator(), &vtmf.pk.h, &proof);
+        assert!(
+            ok,
+            "proof isn't valid\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\talpha = {}\n\tproof = ({}, {})",
+            x,
+            y,
+            vtmf.g.generator(),
+            vtmf.pk.h,
+            i,
+            proof.0,
+            proof.1
+        );
+
+        // break the proof
+        proof.1 += 1;
+        let ok = verify(&vtmf, &x, &y, vtmf.g.generator(), &vtmf.pk.h, &proof);
+        assert!(
+            !ok,
+            "invalid proof was accepted\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\talpha = {}\n\tproof = ({}, {})",
+            x,
+            y,
+            vtmf.g.generator(),
+            vtmf.pk.h,
+            i,
+            proof.0,
+            proof.1
+        );
+    }
+}

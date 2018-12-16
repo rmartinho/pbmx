@@ -86,7 +86,7 @@ fn self_secret(c1: &Integer, x: &Integer, p: &Integer) -> Integer {
 }
 
 /// An error resulting from wrong usage of the decryption protocol
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub enum DecryptionError {
     /// Occurs when the reveal step is attempted a second time
     RepeatedReveal,
