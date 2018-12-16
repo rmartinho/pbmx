@@ -112,5 +112,4 @@ pub enum KeyExchangeError {
 }
 
 #[cfg(test)]
-mod test {
-}
+mod test {}

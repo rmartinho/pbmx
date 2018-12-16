@@ -212,8 +212,9 @@ derive_base64_conversions!(SchnorrGroup);
 #[cfg(test)]
 mod test {
     use super::{Schnorr, SchnorrGroup, MILLER_RABIN_ITERATIONS};
+    use crate::num::integer::Bits;
     use rand::{thread_rng, Rng};
-    use rug::integer::IsPrime;
+    use rug::{integer::IsPrime, Integer};
     use std::str::FromStr;
 
     #[test]
@@ -230,6 +231,77 @@ mod test {
         assert_eq!(schnorr.q.significant_bits(), 1024);
         assert_ne!(schnorr.q.is_probably_prime(64), IsPrime::No);
         assert_eq!(schnorr.p, schnorr.q.clone() * schnorr.k + 1);
+    }
+
+    #[test]
+    fn schnorr_group_element_produces_elements_correctly() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: MILLER_RABIN_ITERATIONS,
+        };
+        let schnorr = rng.sample(&dist);
+
+        let i = rng.sample(&Bits(128));
+        let gi = Integer::from(
+            schnorr
+                .generator()
+                .pow_mod_ref(&i, schnorr.modulus())
+                .unwrap(),
+        );
+
+        let element = schnorr.element(&i);
+
+        assert_eq!(element, gi);
+    }
+
+    #[test]
+    fn schnorr_group_has_element_detects_elements_correctly() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: MILLER_RABIN_ITERATIONS,
+        };
+        let schnorr = rng.sample(&dist);
+
+        let i = rng.sample(&Bits(128));
+        let gi = Integer::from(
+            schnorr
+                .generator()
+                .pow_mod_ref(&i, schnorr.modulus())
+                .unwrap(),
+        );
+
+        assert!(
+            schnorr.has_element(&gi),
+            "element was not detected\n\tgenerator = {}\n\tmodulus = {}\n\telement = {}",
+            schnorr.generator(),
+            schnorr.modulus(),
+            gi
+        );
+
+        // find small non-element
+        let mut x = Integer::from(1);
+        loop {
+            let xq = x
+                .clone()
+                .pow_mod(schnorr.order(), schnorr.modulus())
+                .unwrap();
+            if xq != 1 {
+                break;
+            }
+            x += 1;
+        }
+
+        assert!(
+            !schnorr.has_element(&x),
+            "element was not detected\n\tgenerator = {}\n\tmodulus = {}\n\telement = {}",
+            schnorr.generator(),
+            schnorr.modulus(),
+            gi
+        );
     }
 
     #[test]
