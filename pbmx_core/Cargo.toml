@@ -17,3 +17,9 @@ version = "1.0"
 
 [dependencies.serde_derive]
 version = "1.0"
+
+[dependencies.digest]
+version = "0.8"
+
+[dependencies.ripemd160]
+version = "0.8"

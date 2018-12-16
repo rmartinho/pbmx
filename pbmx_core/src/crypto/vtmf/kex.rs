@@ -1,6 +1,6 @@
 use crate::{
     crypto::{
-        key::{Keys, PrivateKey, PublicKey},
+        key::{Fingerprint, Keys, PrivateKey, PublicKey},
         vtmf::Vtmf,
     },
     num::schnorr::SchnorrGroup,
@@ -14,7 +14,8 @@ pub struct KeyExchange {
     n: u32,
     sk: Option<PrivateKey>,
     pk: Option<PublicKey>,
-    kex: u32,
+    fp: Option<Fingerprint>,
+    pki: Vec<PublicKey>,
 }
 
 impl KeyExchange {
@@ -27,18 +28,19 @@ impl KeyExchange {
             n: parties,
             sk: None,
             pk: None,
-            kex: 0,
+            fp: None,
+            pki: Vec::new(),
         }
     }
 
     /// Tests whether the private key for this VTMF has been generated.
     pub fn has_private_key(&self) -> bool {
-        self.kex > 0
+        self.pki.len() > 0
     }
 
     /// Tests whether the keys for this VTMF have been exchanged.
     pub fn has_all_keys(&self) -> bool {
-        self.kex == self.n
+        self.pki.len() == self.n as usize
     }
 
     /// Generates a private key for this VTMF and returns the corresponding
@@ -51,12 +53,13 @@ impl KeyExchange {
         let (sk, pk) = thread_rng().sample(&Keys(&self.g));
         self.sk = Some(sk);
         self.pk = Some(pk.clone());
-        self.kex = 1;
+        self.fp = Some(pk.fingerprint());
+        self.pki.push(pk.clone());
         Ok(pk)
     }
 
     /// Updates the public key with another party's contribution
-    pub fn update_key(&mut self, pk: &PublicKey) -> Result<(), KeyExchangeError> {
+    pub fn update_key(&mut self, pk: PublicKey) -> Result<(), KeyExchangeError> {
         if !self.has_private_key() {
             return Err(KeyExchangeError::NoKeyGenerated);
         }
@@ -67,8 +70,10 @@ impl KeyExchange {
             return Err(KeyExchangeError::InvalidPublicKey);
         }
 
-        self.pk.as_mut().unwrap().h *= &pk.h;
-        self.kex += 1;
+        let h = &mut self.pk.as_mut().unwrap().h;
+        *h *= &pk.h;
+        *h %= self.g.modulus();
+        self.pki.push(pk);
         Ok(())
     }
 
@@ -85,6 +90,8 @@ impl KeyExchange {
                 self.n,
                 self.sk.unwrap(),
                 self.pk.unwrap(),
+                self.fp.unwrap(),
+                self.pki,
             ))
         }
     }

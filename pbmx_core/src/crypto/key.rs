@@ -1,6 +1,10 @@
-use crate::num::{integer::Modulo, schnorr::SchnorrGroup};
+use crate::{
+    crypto::hash::Hash,
+    num::{integer::Modulo, schnorr::SchnorrGroup},
+};
+use digest::Digest;
 use rand::{distributions::Distribution, Rng};
-use rug::Integer;
+use rug::{integer::Order, Integer};
 use serde::{de, Deserialize, Deserializer};
 
 /// A private key
@@ -8,8 +12,8 @@ use serde::{de, Deserialize, Deserializer};
 /// This key consists of a secret exponent *x*, together with a Schnorr group.
 #[derive(Clone, Debug, Serialize)]
 pub struct PrivateKey {
-    pub(crate) g: SchnorrGroup,
-    pub(crate) x: Integer,
+    pub(super) g: SchnorrGroup,
+    pub(super) x: Integer,
 }
 
 /// A public key
@@ -18,9 +22,13 @@ pub struct PrivateKey {
 /// *h* = *g*^*x* mod *p* and *x* is secret.
 #[derive(Clone, Debug, Serialize)]
 pub struct PublicKey {
-    pub(crate) g: SchnorrGroup,
-    pub(crate) h: Integer,
+    pub(super) g: SchnorrGroup,
+    pub(super) h: Integer,
 }
+
+/// A public key fingerprint
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Fingerprint(pub [u8; FINGERPRINT_SIZE]);
 
 impl PrivateKey {
     unsafe fn new_unchecked(g: SchnorrGroup, x: Integer) -> Self {
@@ -39,6 +47,21 @@ impl PrivateKey {
 impl PublicKey {
     unsafe fn new_unchecked(g: SchnorrGroup, h: Integer) -> Self {
         Self { g, h }
+    }
+
+    /// Gets this key's fingerprint
+    pub fn fingerprint(&self) -> Fingerprint {
+        assert!(Hash::output_size() >= FINGERPRINT_SIZE);
+
+        let digest = Hash::new()
+            .chain(&self.g.generator().to_digits(Order::MsfBe))
+            .chain(&self.g.modulus().to_digits(Order::MsfBe))
+            .chain(&self.g.order().to_digits(Order::MsfBe))
+            .chain(&self.h.to_digits(Order::MsfBe))
+            .result();
+        let mut fp = Fingerprint([0; FINGERPRINT_SIZE]);
+        fp.0.copy_from_slice(&digest);
+        fp
     }
 
     fn validate(self) -> Option<Self> {
@@ -112,6 +135,8 @@ impl<'a> Distribution<(PrivateKey, PublicKey)> for Keys<'a> {
         )
     }
 }
+
+const FINGERPRINT_SIZE: usize = 20;
 
 #[cfg(test)]
 mod test {
