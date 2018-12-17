@@ -30,6 +30,7 @@ pub struct Vtmf {
     #[serde(skip)]
     fpowm: FastPowModTable,
 }
+
 /// A masked value
 pub type Mask = (Integer, Integer);
 
@@ -112,6 +113,9 @@ impl Vtmf {
     pub fn unmask(&self, c: Mask) -> Decryption {
         Decryption::new(self, c)
     }
+
+    /// Applies the mask shuffle protocol
+    pub fn mask_shuffle(&self, _d: &[Integer]) -> () {}
 
     fn validate(self) -> Option<Self> {
         if self.g == self.pk.g && self.g == self.sk.g && self.n > 1 {
