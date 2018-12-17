@@ -1,6 +1,9 @@
 use crate::{
-    crypto::key::{Fingerprint, PrivateKey, PublicKey},
-    num::{fpowm::FastPowModTable, integer::Modulo, schnorr::SchnorrGroup},
+    crypto::{
+        key::{Fingerprint, PrivateKey, PublicKey},
+        schnorr::SchnorrGroup,
+    },
+    num::{fpowm::FastPowModTable, integer::Modulo},
 };
 use rand::{thread_rng, Rng};
 use rug::Integer;

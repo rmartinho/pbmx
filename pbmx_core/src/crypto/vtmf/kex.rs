@@ -1,9 +1,7 @@
-use crate::{
-    crypto::{
-        key::{Fingerprint, Keys, PrivateKey, PublicKey},
-        vtmf::Vtmf,
-    },
-    num::schnorr::SchnorrGroup,
+use crate::crypto::{
+    key::{Fingerprint, Keys, PrivateKey, PublicKey},
+    schnorr::SchnorrGroup,
+    vtmf::Vtmf,
 };
 use rand::{thread_rng, Rng};
 

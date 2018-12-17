@@ -1,7 +1,7 @@
 use crate::{
-    crypto::hash::Hash,
+    crypto::{hash::Hash, schnorr::SchnorrGroup},
     error::Error,
-    num::{integer::Modulo, schnorr::SchnorrGroup},
+    num::integer::Modulo,
 };
 use digest::Digest;
 use rand::{distributions::Distribution, Rng};
