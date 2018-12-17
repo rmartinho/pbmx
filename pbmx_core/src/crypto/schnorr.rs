@@ -18,7 +18,7 @@ pub struct SchnorrGroup {
     g: Integer,
 
     #[serde(skip)]
-    fpowm: FastPowModTable,
+    pub(super) fpowm: FastPowModTable,
 }
 
 impl SchnorrGroup {

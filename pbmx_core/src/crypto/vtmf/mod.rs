@@ -67,7 +67,16 @@ impl Vtmf {
         let r = thread_rng().sample(&Modulo(q));
         let c1 = self.g.element(&r);
         let hr = self.fpowm.pow_mod(&r).unwrap();
-        let proof = dlog_eq::prove(self, &c1, &hr, g, h, &r);
+        let proof = dlog_eq::prove(
+            self,
+            &c1,
+            &hr,
+            g,
+            h,
+            &r,
+            Some(&self.g.fpowm),
+            Some(&self.fpowm),
+        );
         let c2 = hr * m % p;
         ((c1, c2), proof)
     }
@@ -79,7 +88,16 @@ impl Vtmf {
         let h = &self.pk.h;
         let m1 = Integer::from(m.invert_ref(p).unwrap());
         let hr = &c.1 * m1 % p;
-        dlog_eq::verify(self, &c.0, &hr, g, h, proof)
+        dlog_eq::verify(
+            self,
+            &c.0,
+            &hr,
+            g,
+            h,
+            proof,
+            Some(&self.g.fpowm),
+            Some(&self.fpowm),
+        )
     }
 
     /// Applies the verifiable re-masking protocol
@@ -92,7 +110,16 @@ impl Vtmf {
         let r = thread_rng().sample(&Modulo(q));
         let gr = self.g.element(&r);
         let hr = self.fpowm.pow_mod(&r).unwrap();
-        let proof = dlog_eq::prove(self, &gr, &hr, g, h, &r);
+        let proof = dlog_eq::prove(
+            self,
+            &gr,
+            &hr,
+            g,
+            h,
+            &r,
+            Some(&self.g.fpowm),
+            Some(&self.fpowm),
+        );
 
         let c1 = gr * &c.0 % p;
         let c2 = hr * &c.1 % p;
@@ -109,16 +136,22 @@ impl Vtmf {
         let gr = &c.0 * c11 % p;
         let c21 = Integer::from(m.1.invert_ref(p).unwrap());
         let hr = &c.1 * c21 % p;
-        dlog_eq::verify(self, &gr, &hr, g, h, proof)
+        dlog_eq::verify(
+            self,
+            &gr,
+            &hr,
+            g,
+            h,
+            proof,
+            Some(&self.g.fpowm),
+            Some(&self.fpowm),
+        )
     }
 
     /// Starts an instance of the verifiable decryption protocol
     pub fn unmask(&self, c: Mask) -> Decryption {
         Decryption::new(self, c)
     }
-
-    /// Applies the mask shuffle protocol
-    pub fn mask_shuffle(&self, _d: &[Integer]) -> () {}
 
     fn validate(self) -> Option<Self> {
         if self.g == self.pk.g && self.g == self.sk.g && self.n > 1 {
@@ -184,8 +217,8 @@ derive_base64_conversions!(Vtmf);
 mod test {
     use super::{KeyExchange, Vtmf};
     use crate::{
-        crypto::key::Keys,
-        num::{integer::Bits, schnorr::Schnorr},
+        crypto::{key::Keys, schnorr::Schnorr},
+        num::integer::Bits,
     };
     use rand::{thread_rng, Rng};
     use std::str::FromStr;

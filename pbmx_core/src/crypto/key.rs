@@ -176,7 +176,7 @@ const FINGERPRINT_SIZE: usize = 20;
 #[cfg(test)]
 mod test {
     use super::{Fingerprint, Keys, PrivateKey, PublicKey};
-    use crate::num::schnorr::Schnorr;
+    use crate::crypto::schnorr::Schnorr;
     use rand::{thread_rng, Rng};
     use std::str::FromStr;
 
