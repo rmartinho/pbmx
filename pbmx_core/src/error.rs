@@ -10,9 +10,9 @@ pub enum Error {
     /// Occurs when deserialization from hex fails
     Hex(Option<std::num::ParseIntError>),
     /// Occurs when key exchange fails
-    KeyExchange(crate::crypto::vtmf::KeyExchangeError),
+    KeyExchange(crate::crypto::barnett_smart::KeyExchangeError),
     /// Occurs when decryption fails
-    Decryption(crate::crypto::vtmf::DecryptionError),
+    Decryption(crate::crypto::barnett_smart::DecryptionError),
 }
 
 impl From<bincode::Error> for Error {

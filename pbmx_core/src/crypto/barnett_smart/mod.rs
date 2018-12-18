@@ -1,7 +1,7 @@
 use crate::{
     crypto::{
-        key::{Fingerprint, PrivateKey, PublicKey},
-        schnorr::SchnorrGroup,
+        elgamal::{Fingerprint, PrivateKey, PublicKey},
+        schnorr,
     },
     num::{fpowm::FastPowModTable, integer::Modulo},
 };
@@ -22,7 +22,7 @@ pub use self::dlog_eq::Proof as DlogEqProof;
 /// A verifiable *k*-out-of-*k* threshold masking function
 #[derive(Serialize)]
 pub struct Vtmf {
-    g: SchnorrGroup,
+    g: schnorr::Group,
     n: u32,
     sk: PrivateKey,
     pk: PublicKey,
@@ -39,7 +39,7 @@ pub type Mask = (Integer, Integer);
 
 impl Vtmf {
     unsafe fn new_unchecked(
-        g: SchnorrGroup,
+        g: schnorr::Group,
         n: u32,
         sk: PrivateKey,
         pk: PublicKey,
@@ -197,7 +197,7 @@ impl<'de> Deserialize<'de> for Vtmf {
 
 #[derive(Deserialize)]
 struct VtmfRaw {
-    g: SchnorrGroup,
+    g: schnorr::Group,
     n: u32,
     sk: PrivateKey,
     pk: PublicKey,
@@ -217,7 +217,7 @@ derive_base64_conversions!(Vtmf);
 mod test {
     use super::{KeyExchange, Vtmf};
     use crate::{
-        crypto::{key::Keys, schnorr::Schnorr},
+        crypto::{elgamal::Keys, schnorr},
         num::integer::Bits,
     };
     use rand::{thread_rng, Rng};
@@ -226,7 +226,7 @@ mod test {
     #[test]
     fn vtmf_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = schnorr::Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -257,7 +257,7 @@ mod test {
     #[test]
     fn vtmf_masking_and_unmasking_work() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = schnorr::Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -295,7 +295,7 @@ mod test {
     #[test]
     fn vtmf_masking_remasking_and_unmasking_work() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = schnorr::Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

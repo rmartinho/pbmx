@@ -1,13 +1,13 @@
 use crate::crypto::{
-    key::{Fingerprint, Keys, PrivateKey, PublicKey},
-    schnorr::SchnorrGroup,
-    vtmf::Vtmf,
+    barnett_smart::Vtmf,
+    elgamal::{Fingerprint, Keys, PrivateKey, PublicKey},
+    schnorr,
 };
 use rand::{thread_rng, Rng};
 
 /// The VTMF key exchange protocol
 pub struct KeyExchange {
-    g: SchnorrGroup,
+    g: schnorr::Group,
     n: u32,
     sk: Option<PrivateKey>,
     pk: Option<PublicKey>,
@@ -18,7 +18,7 @@ pub struct KeyExchange {
 impl KeyExchange {
     /// Creates a new [KeyExchange] instance for a given number of parties with
     /// an agreed group.
-    pub fn new(g: SchnorrGroup, parties: u32) -> Self {
+    pub fn new(g: schnorr::Group, parties: u32) -> Self {
         assert!(parties > 1);
         Self {
             g,

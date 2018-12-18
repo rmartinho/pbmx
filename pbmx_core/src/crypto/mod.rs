@@ -1,7 +1,7 @@
 //! Cryptography utilities for PBMX
 
-/// Cryptographic keys
-pub mod key;
+/// ElGamal keys
+pub mod elgamal;
 
 /// Cryptographic hash functions
 pub mod hash;
@@ -12,5 +12,5 @@ pub mod schnorr;
 /// Pedersen commitment scheme
 pub mod pedersen;
 
-/// Verifiable *k*-out-of-*k* Threshold Masking Function
-pub mod vtmf;
+/// Barnett and Smart's verifiable *k*-out-of-*k* Threshold Masking Function
+pub mod barnett_smart;

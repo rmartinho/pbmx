@@ -1,5 +1,5 @@
 use crate::{
-    crypto::schnorr::SchnorrGroup,
+    crypto::schnorr,
     num::{fpowm::FastPowModTable, integer::Modulo},
 };
 use rand::{thread_rng, Rng};
@@ -8,8 +8,8 @@ use serde::{de, Deserialize, Deserializer};
 
 /// The Pedersen commitment scheme
 #[derive(Serialize)]
-pub struct PedersenScheme {
-    group: SchnorrGroup,
+pub struct CommitmentScheme {
+    group: schnorr::Group,
     h: Integer,
     g: Vec<Integer>,
 
@@ -20,8 +20,8 @@ pub struct PedersenScheme {
     fpowm_h: FastPowModTable,
 }
 
-impl PedersenScheme {
-    unsafe fn new_unchecked(group: SchnorrGroup, h: Integer, g: Vec<Integer>) -> Self {
+impl CommitmentScheme {
+    unsafe fn new_unchecked(group: schnorr::Group, h: Integer, g: Vec<Integer>) -> Self {
         let p = group.modulus();
         let q = group.order();
         Self {
@@ -37,7 +37,7 @@ impl PedersenScheme {
     }
 
     /// Creates a new commitment scheme from the given parameters
-    pub fn new(group: SchnorrGroup, h: Integer, n: usize) -> Option<Self> {
+    pub fn new(group: schnorr::Group, h: Integer, n: usize) -> Option<Self> {
         let mut rng = thread_rng();
         let g = rng.sample_iter(&group).take(n).collect();
         // SAFE: the value is checked before returning
@@ -120,13 +120,13 @@ impl PedersenScheme {
     }
 }
 
-impl<'de> Deserialize<'de> for PedersenScheme {
+impl<'de> Deserialize<'de> for CommitmentScheme {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         // SAFE: we explicit validate the values before returning
-        unsafe { PedersenSchemeRaw::deserialize(deserializer)?.into() }
+        unsafe { CommitmentSchemeRaw::deserialize(deserializer)?.into() }
             .validate()
             .ok_or(de::Error::custom(
                 "invalid Pedersen commitment scheme parameters",
@@ -135,25 +135,25 @@ impl<'de> Deserialize<'de> for PedersenScheme {
 }
 
 #[derive(Deserialize)]
-struct PedersenSchemeRaw {
-    group: SchnorrGroup,
+struct CommitmentSchemeRaw {
+    group: schnorr::Group,
     h: Integer,
     g: Vec<Integer>,
 }
 
-impl PedersenSchemeRaw {
-    unsafe fn into(self) -> PedersenScheme {
-        PedersenScheme::new_unchecked(self.group, self.h, self.g)
+impl CommitmentSchemeRaw {
+    unsafe fn into(self) -> CommitmentScheme {
+        CommitmentScheme::new_unchecked(self.group, self.h, self.g)
     }
 }
 // TODO(#4) macro for deserializing with invariants
 
-derive_base64_conversions!(PedersenScheme);
+derive_base64_conversions!(CommitmentScheme);
 
 #[cfg(test)]
 mod test {
-    use super::PedersenScheme;
-    use crate::crypto::schnorr::Schnorr;
+    use super::CommitmentScheme;
+    use crate::crypto::schnorr;
     use rand::{thread_rng, Rng};
     use rug::Integer;
     use std::str::FromStr;
@@ -161,14 +161,14 @@ mod test {
     #[test]
     fn pedersen_scheme_commitments_agree_with_validation() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = schnorr::Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
         };
         let group = rng.sample(&dist);
         let h = rng.sample(&group);
-        let com = PedersenScheme::new(group, h, 3).unwrap();
+        let com = CommitmentScheme::new(group, h, 3).unwrap();
 
         let m = [Integer::from(2), Integer::from(3), Integer::from(4)];
         let (c, r) = com.commit_to(&m);
@@ -209,7 +209,7 @@ mod test {
         );
 
         let fake = [Integer::from(2), Integer::from(4), Integer::from(3)];
-        let (c1, r1) = com.commit_to(&m);
+        let (c1, r1) = com.commit_to(&fake);
         assert!(
             com.is_valid(&c1),
             "commitment is not valid\n\tc = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}",
@@ -219,25 +219,25 @@ mod test {
             com.g
         );
         let ok = com.open(&m, &c1, &r1);
-        assert!(ok, "bad opening is not detected\n\tm = {:?}\n\tc = {}\n\tr = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}", m, c1, r1, com.group, com.h, com.g);
+        assert!(!ok, "bad opening is not detected\n\tm = {:?}\n\tc = {}\n\tr = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}", m, c1, r1, com.group, com.h, com.g);
     }
 
     #[test]
     fn pedersen_scheme_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = schnorr::Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
         };
         let group = rng.sample(&dist);
         let h = rng.sample(&group);
-        let original = PedersenScheme::new(group, h, 3).unwrap();
+        let original = CommitmentScheme::new(group, h, 3).unwrap();
         println!("scheme = {}", original);
 
         let exported = original.to_string();
 
-        let recovered = PedersenScheme::from_str(&exported).unwrap();
+        let recovered = CommitmentScheme::from_str(&exported).unwrap();
 
         assert_eq!(original.group, recovered.group);
         assert_eq!(original.h, recovered.h);

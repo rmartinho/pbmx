@@ -104,7 +104,7 @@ fn challenge(
 mod test {
     use super::{prove, verify};
     use crate::{
-        crypto::{key::Keys, schnorr::Schnorr, vtmf::KeyExchange},
+        crypto::{barnett_smart::KeyExchange, elgamal::Keys, schnorr},
         num::integer::Bits,
     };
     use rand::{thread_rng, Rng};
@@ -112,7 +112,7 @@ mod test {
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = schnorr::Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -188,7 +188,7 @@ mod test {
     #[test]
     fn prove_and_verify_agree_with_fpowm() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = schnorr::Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

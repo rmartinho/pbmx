@@ -11,7 +11,7 @@ use serde::{de, Deserialize, Deserializer};
 ///
 /// See the wikipedia page on [Schnorr groups](https://en.wikipedia.org/wiki/Schnorr_group).
 #[derive(Clone, Debug, Serialize)]
-pub struct SchnorrGroup {
+pub struct Group {
     p: Integer,
     q: Integer,
     k: Integer,
@@ -21,7 +21,7 @@ pub struct SchnorrGroup {
     pub(super) fpowm: FastPowModTable,
 }
 
-impl SchnorrGroup {
+impl Group {
     unsafe fn new_unchecked(p: Integer, q: Integer, k: Integer, g: Integer) -> Self {
         Self {
             fpowm: FastPowModTable::new(&g, q.significant_bits(), &p),
@@ -105,15 +105,15 @@ impl SchnorrGroup {
     }
 }
 
-impl PartialEq for SchnorrGroup {
+impl PartialEq for Group {
     fn eq(&self, rhs: &Self) -> bool {
         self.p == rhs.p && self.q == rhs.q && self.k == rhs.k && self.g == rhs.g
     }
 }
 
-impl Eq for SchnorrGroup {}
+impl Eq for Group {}
 
-impl Distribution<Integer> for SchnorrGroup {
+impl Distribution<Integer> for Group {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Integer {
         let mut i: Integer;
         loop {
@@ -126,36 +126,36 @@ impl Distribution<Integer> for SchnorrGroup {
     }
 }
 
-impl<'de> Deserialize<'de> for SchnorrGroup {
+impl<'de> Deserialize<'de> for Group {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         // SAFE: we explicit validate the values before returning
-        unsafe { SchnorrGroupRaw::deserialize(deserializer)?.into() }
+        unsafe { GroupRaw::deserialize(deserializer)?.into() }
             .validate()
             .ok_or(de::Error::custom("invalid Schnorr group parameters"))
     }
 }
 
 #[derive(Deserialize)]
-struct SchnorrGroupRaw {
+struct GroupRaw {
     p: Integer,
     q: Integer,
     k: Integer,
     g: Integer,
 }
 
-impl SchnorrGroupRaw {
-    unsafe fn into(self) -> SchnorrGroup {
-        SchnorrGroup::new_unchecked(self.p, self.q, self.k, self.g)
+impl GroupRaw {
+    unsafe fn into(self) -> Group {
+        Group::new_unchecked(self.p, self.q, self.k, self.g)
     }
 }
 
 /// A distribution that produces Schnorr groups from primes *p*, *q* with the
 /// given bit sizes.
 #[derive(Clone, Debug)]
-pub struct Schnorr {
+pub struct Groups {
     /// The number of bits in the field
     pub field_bits: u32,
     /// The number of bits in the subgroup
@@ -164,8 +164,8 @@ pub struct Schnorr {
     pub iterations: u32,
 }
 
-impl Distribution<SchnorrGroup> for Schnorr {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> SchnorrGroup {
+impl Distribution<Group> for Groups {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Group {
         let q = rng.sample(&Primes::new(self.group_bits, self.iterations));
 
         let mut k;
@@ -201,17 +201,17 @@ impl Distribution<SchnorrGroup> for Schnorr {
         }
 
         // SAFE: we just generated these values properly
-        unsafe { SchnorrGroup::new_unchecked(p, q, k, g) }
+        unsafe { Group::new_unchecked(p, q, k, g) }
     }
 }
 
-derive_base64_conversions!(SchnorrGroup);
+derive_base64_conversions!(Group);
 
 const MILLER_RABIN_ITERATIONS: u32 = 64;
 
 #[cfg(test)]
 mod test {
-    use super::{Schnorr, SchnorrGroup, MILLER_RABIN_ITERATIONS};
+    use super::{Group, Groups, MILLER_RABIN_ITERATIONS};
     use crate::num::integer::Bits;
     use rand::{thread_rng, Rng};
     use rug::{integer::IsPrime, Integer};
@@ -219,7 +219,7 @@ mod test {
 
     #[test]
     fn schnorr_produces_schnorr_groups() {
-        let dist = Schnorr {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: MILLER_RABIN_ITERATIONS,
@@ -236,7 +236,7 @@ mod test {
     #[test]
     fn schnorr_group_element_produces_elements_correctly() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: MILLER_RABIN_ITERATIONS,
@@ -259,7 +259,7 @@ mod test {
     #[test]
     fn schnorr_group_has_element_detects_elements_correctly() {
         let mut rng = thread_rng();
-        let dist = Schnorr {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: MILLER_RABIN_ITERATIONS,
@@ -306,7 +306,7 @@ mod test {
 
     #[test]
     fn schnorr_group_roundtrips_via_base64() {
-        let dist = Schnorr {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: MILLER_RABIN_ITERATIONS,
@@ -316,7 +316,7 @@ mod test {
 
         let exported = original.to_string();
 
-        let recovered = SchnorrGroup::from_str(&exported).unwrap();
+        let recovered = Group::from_str(&exported).unwrap();
 
         assert_eq!(original.p, recovered.p);
         assert_eq!(original.q, recovered.q);
