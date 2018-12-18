@@ -1,5 +1,6 @@
 #![warn(missing_docs)]
 #![feature(iter_unfold)]
+#![feature(try_from)]
 
 //! PBMX toolbox crate
 

@@ -9,10 +9,12 @@ pub enum Error {
     Base64(base64::DecodeError),
     /// Occurs when deserialization from hex fails
     Hex(Option<std::num::ParseIntError>),
-    /// Occurs when key exchange fails
+    /// Occurs when VTMF key exchange fails
     VtmfKeyExchange(crate::barnett_smart::KeyExchangeError),
-    /// Occurs when decryption fails
+    /// Occurs when VTMF decryption fails
     VtmfDecryption(crate::barnett_smart::DecryptionError),
+    /// Occurs when trying to create a permutation from a non-permutation vec
+    NonPermutation,
 }
 
 impl From<bincode::Error> for Error {
