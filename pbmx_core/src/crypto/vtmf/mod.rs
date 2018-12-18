@@ -47,7 +47,7 @@ impl Vtmf {
         pki: Vec<PublicKey>,
     ) -> Self {
         Self {
-            fpowm: FastPowModTable::new(g.order().significant_bits(), g.modulus(), &pk.h),
+            fpowm: FastPowModTable::new(&pk.h, g.order().significant_bits(), g.modulus()),
             g,
             n,
             sk,

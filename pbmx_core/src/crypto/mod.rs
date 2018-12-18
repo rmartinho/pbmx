@@ -9,5 +9,8 @@ pub mod hash;
 /// Schnorr groups
 pub mod schnorr;
 
+/// Pedersen commitment scheme
+pub mod pedersen;
+
 /// Verifiable *k*-out-of-*k* Threshold Masking Function
 pub mod vtmf;

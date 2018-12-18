@@ -11,7 +11,7 @@ pub struct FastPowModTable {
 impl FastPowModTable {
     /// Creates a new table supporting exponents with up to the given number of
     /// bits, for the given modulus and base.
-    pub fn new(bits: u32, modulus: &Integer, base: &Integer) -> FastPowModTable {
+    pub fn new(base: &Integer, bits: u32, modulus: &Integer) -> FastPowModTable {
         let mut table = Vec::new();
         table.reserve_exact(bits as _);
 

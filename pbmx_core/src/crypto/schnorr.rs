@@ -24,7 +24,7 @@ pub struct SchnorrGroup {
 impl SchnorrGroup {
     unsafe fn new_unchecked(p: Integer, q: Integer, k: Integer, g: Integer) -> Self {
         Self {
-            fpowm: FastPowModTable::new(q.significant_bits(), &p, &g),
+            fpowm: FastPowModTable::new(&g, q.significant_bits(), &p),
             p,
             q,
             k,
@@ -205,9 +205,9 @@ impl Distribution<SchnorrGroup> for Schnorr {
     }
 }
 
-const MILLER_RABIN_ITERATIONS: u32 = 64;
-
 derive_base64_conversions!(SchnorrGroup);
+
+const MILLER_RABIN_ITERATIONS: u32 = 64;
 
 #[cfg(test)]
 mod test {
