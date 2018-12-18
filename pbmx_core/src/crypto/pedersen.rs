@@ -65,12 +65,17 @@ impl PedersenScheme {
     pub fn open(&self, m: &[Integer], c: &Integer, r: &Integer) -> bool {
         assert!(m.len() == self.g.len());
 
+        if r >= self.group.order() {
+            return false;
+        }
+
         let c1 = self.commit_by(m, r);
         *c == c1
     }
 
     fn commit_by(&self, m: &[Integer], r: &Integer) -> Integer {
         assert!(m.len() == self.g.len());
+        assert!(r < self.group.order());
 
         let p = self.group.modulus();
 
@@ -139,5 +144,105 @@ struct PedersenSchemeRaw {
 impl PedersenSchemeRaw {
     unsafe fn into(self) -> PedersenScheme {
         PedersenScheme::new_unchecked(self.group, self.h, self.g)
+    }
+}
+// TODO(#4) macro for deserializing with invariants
+
+derive_base64_conversions!(PedersenScheme);
+
+#[cfg(test)]
+mod test {
+    use super::PedersenScheme;
+    use crate::crypto::schnorr::Schnorr;
+    use rand::{thread_rng, Rng};
+    use rug::Integer;
+    use std::str::FromStr;
+
+    #[test]
+    fn pedersen_scheme_commitments_agree_with_validation() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let h = rng.sample(&group);
+        let com = PedersenScheme::new(group, h, 3).unwrap();
+
+        let m = [Integer::from(2), Integer::from(3), Integer::from(4)];
+        let (c, r) = com.commit_to(&m);
+        assert!(
+            com.is_valid(&c),
+            "commitment is not valid\n\tc = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}",
+            c,
+            com.group,
+            com.h,
+            com.g
+        );
+        let ok = com.open(&m, &c, &r);
+        assert!(
+            ok,
+            "opening failed\n\tm = {:?}\n\tc = {}\n\tr = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}",
+            m, c, r, com.group, com.h, com.g
+        );
+
+        // find small non-element
+        let mut x = Integer::from(1);
+        loop {
+            let xq = x
+                .clone()
+                .pow_mod(com.group.order(), com.group.modulus())
+                .unwrap();
+            if xq != 1 {
+                break;
+            }
+            x += 1;
+        }
+        assert!(
+            !com.is_valid(&x),
+            "non-commitment is valid\n\tc = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}",
+            x,
+            com.group,
+            com.h,
+            com.g
+        );
+
+        let fake = [Integer::from(2), Integer::from(4), Integer::from(3)];
+        let (c1, r1) = com.commit_to(&m);
+        assert!(
+            com.is_valid(&c1),
+            "commitment is not valid\n\tc = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}",
+            c1,
+            com.group,
+            com.h,
+            com.g
+        );
+        let ok = com.open(&m, &c1, &r1);
+        assert!(ok, "bad opening is not detected\n\tm = {:?}\n\tc = {}\n\tr = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}", m, c1, r1, com.group, com.h, com.g);
+    }
+
+    #[test]
+    fn pedersen_scheme_roundtrips_via_base64() {
+        let mut rng = thread_rng();
+        let dist = Schnorr {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let h = rng.sample(&group);
+        let original = PedersenScheme::new(group, h, 3).unwrap();
+        println!("scheme = {}", original);
+
+        let exported = original.to_string();
+
+        let recovered = PedersenScheme::from_str(&exported).unwrap();
+
+        assert_eq!(original.group, recovered.group);
+        assert_eq!(original.h, recovered.h);
+        assert_eq!(original.g, recovered.g);
+        assert_eq!(original.fpowm_h, recovered.fpowm_h);
+        assert_eq!(original.fpowm_g, recovered.fpowm_g);
     }
 }

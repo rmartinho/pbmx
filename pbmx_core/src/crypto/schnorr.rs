@@ -276,7 +276,7 @@ mod test {
 
         assert!(
             schnorr.has_element(&gi),
-            "element was not detected\n\tgenerator = {}\n\tmodulus = {}\n\telement = {}",
+            "element is not detected\n\tgenerator = {}\n\tmodulus = {}\n\telement = {}",
             schnorr.generator(),
             schnorr.modulus(),
             gi
@@ -297,7 +297,7 @@ mod test {
 
         assert!(
             !schnorr.has_element(&x),
-            "element was not detected\n\tgenerator = {}\n\tmodulus = {}\n\telement = {}",
+            "non-element is detected\n\tgenerator = {}\n\tmodulus = {}\n\telement = {}",
             schnorr.generator(),
             schnorr.modulus(),
             gi
