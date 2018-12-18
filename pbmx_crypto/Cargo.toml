@@ -1,5 +1,5 @@
 [package]
-name = "pbmx_core"
+name = "pbmx_crypto"
 version = "0.1.0"
 authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
 edition = "2018"

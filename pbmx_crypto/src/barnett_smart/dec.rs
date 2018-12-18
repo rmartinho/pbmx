@@ -1,5 +1,5 @@
 use super::{dlog_eq, DlogEqProof, Mask, Vtmf};
-use crate::crypto::elgamal::Fingerprint;
+use crate::elgamal::Fingerprint;
 use rug::Integer;
 use std::collections::HashSet;
 

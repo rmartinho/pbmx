@@ -1,8 +1,6 @@
-use crate::{
-    crypto::{hash::Hash, schnorr},
-    error::Error,
-    num::integer::Modulo,
-};
+//! ElGamal encryption scheme
+
+use crate::{error::Error, hash::Hash, num::integer::Modulo, schnorr};
 use digest::Digest;
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::Order, Integer};
@@ -176,7 +174,7 @@ const FINGERPRINT_SIZE: usize = 20;
 #[cfg(test)]
 mod test {
     use super::{Fingerprint, Keys, PrivateKey, PublicKey};
-    use crate::crypto::schnorr;
+    use crate::schnorr;
     use rand::{thread_rng, Rng};
     use std::str::FromStr;
 

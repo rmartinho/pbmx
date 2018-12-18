@@ -1,9 +1,9 @@
+//! Barnett and Smart's verifiable *k*-out-of-*k* Threshold Masking Function
+
 use crate::{
-    crypto::{
-        elgamal::{Fingerprint, PrivateKey, PublicKey},
-        schnorr,
-    },
+    elgamal::{Fingerprint, PrivateKey, PublicKey},
     num::{fpowm::FastPowModTable, integer::Modulo},
+    schnorr,
 };
 use rand::{thread_rng, Rng};
 use rug::Integer;
@@ -216,10 +216,7 @@ derive_base64_conversions!(Vtmf);
 #[cfg(test)]
 mod test {
     use super::{KeyExchange, Vtmf};
-    use crate::{
-        crypto::{elgamal::Keys, schnorr},
-        num::integer::Bits,
-    };
+    use crate::{elgamal::Keys, num::integer::Bits, schnorr};
     use rand::{thread_rng, Rng};
     use std::str::FromStr;
 

@@ -1,4 +1,4 @@
-use crate::crypto::{
+use crate::{
     barnett_smart::Vtmf,
     elgamal::{Fingerprint, Keys, PrivateKey, PublicKey},
     schnorr,

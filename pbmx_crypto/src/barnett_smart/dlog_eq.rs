@@ -1,6 +1,6 @@
 use super::Vtmf;
 use crate::{
-    crypto::hash::Hash,
+    hash::Hash,
     num::{fpowm::FastPowModTable, integer::Modulo},
 };
 use digest::Digest;
@@ -103,10 +103,7 @@ fn challenge(
 #[cfg(test)]
 mod test {
     use super::{prove, verify};
-    use crate::{
-        crypto::{barnett_smart::KeyExchange, elgamal::Keys, schnorr},
-        num::integer::Bits,
-    };
+    use crate::{barnett_smart::KeyExchange, elgamal::Keys, num::integer::Bits, schnorr};
     use rand::{thread_rng, Rng};
 
     #[test]

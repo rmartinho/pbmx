@@ -1,6 +1,8 @@
+//! Pedersen commitment scheme
+
 use crate::{
-    crypto::schnorr,
     num::{fpowm::FastPowModTable, integer::Modulo},
+    schnorr,
 };
 use rand::{thread_rng, Rng};
 use rug::Integer;
@@ -153,7 +155,7 @@ derive_base64_conversions!(CommitmentScheme);
 #[cfg(test)]
 mod test {
     use super::CommitmentScheme;
-    use crate::crypto::schnorr;
+    use crate::schnorr;
     use rand::{thread_rng, Rng};
     use rug::Integer;
     use std::str::FromStr;

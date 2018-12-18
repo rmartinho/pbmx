@@ -9,7 +9,11 @@ extern crate serde_derive;
 #[macro_use]
 mod macros;
 
-pub mod crypto;
+pub mod barnett_smart;
+pub mod elgamal;
 pub mod error;
+pub mod hash;
 pub mod num;
+pub mod pedersen;
 pub mod perm;
+pub mod schnorr;

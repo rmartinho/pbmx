@@ -1,3 +1,5 @@
+//! Schnorr groups
+
 use crate::num::{
     fpowm::FastPowModTable,
     integer::{BitsExact, Modulo},
