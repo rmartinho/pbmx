@@ -191,7 +191,7 @@ impl<'de> Deserialize<'de> for Vtmf {
         // SAFE: we explicit validate the values before returning
         unsafe { VtmfRaw::deserialize(deserializer)?.into() }
             .validate()
-            .ok_or(de::Error::custom("invalid VTMF values"))
+            .ok_or_else(|| de::Error::custom("invalid VTMF values"))
     }
 }
 

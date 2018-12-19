@@ -88,7 +88,7 @@ impl CommitmentScheme {
             .map(|(fpowm, m)| fpowm.pow_mod(m).unwrap())
             .fold(Integer::from(1), |acc, gm| acc * gm % p);
 
-        let hr = Integer::from(self.fpowm_h.pow_mod(r).unwrap());
+        let hr = self.fpowm_h.pow_mod(r).unwrap();
         gm * hr % p
     }
 
@@ -130,9 +130,7 @@ impl<'de> Deserialize<'de> for CommitmentScheme {
         // SAFE: we explicit validate the values before returning
         unsafe { CommitmentSchemeRaw::deserialize(deserializer)?.into() }
             .validate()
-            .ok_or(de::Error::custom(
-                "invalid Pedersen commitment scheme parameters",
-            ))
+            .ok_or_else(|| de::Error::custom("invalid Pedersen commitment scheme parameters"))
     }
 }
 

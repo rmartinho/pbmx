@@ -32,7 +32,7 @@ impl KeyExchange {
 
     /// Tests whether the private key for this VTMF has been generated.
     pub fn has_private_key(&self) -> bool {
-        self.pki.len() > 0
+        !self.pki.is_empty()
     }
 
     /// Tests whether the keys for this VTMF have been exchanged.

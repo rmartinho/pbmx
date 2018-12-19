@@ -11,6 +11,7 @@ use std::cmp::Ordering;
 /// Zero-knowledge proof of equality of discrete logarithms
 pub type Proof = (Integer, Integer);
 
+#[allow(clippy::too_many_arguments)]
 pub fn prove(
     vtmf: &Vtmf,
     x: &Integer,
@@ -40,6 +41,7 @@ pub fn prove(
     (c, r)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn verify(
     vtmf: &Vtmf,
     x: &Integer,

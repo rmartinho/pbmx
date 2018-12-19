@@ -26,7 +26,7 @@ impl<'a> Decryption<'a> {
 
     /// Publishing step of the verifiable decryption protocol
     pub fn reveal_share(&mut self) -> Result<(SecretShare, DlogEqProof), DecryptionError> {
-        if self.seen.len() > 0 {
+        if !self.seen.is_empty() {
             return Err(DecryptionError::RepeatedReveal);
         }
 
@@ -56,7 +56,7 @@ impl<'a> Decryption<'a> {
         di: &SecretShare,
         proof: &DlogEqProof,
     ) -> Result<(), DecryptionError> {
-        if self.seen.len() == 0 || self.is_complete() {
+        if self.seen.is_empty() || self.is_complete() {
             return Err(DecryptionError::TooManyShares);
         }
 

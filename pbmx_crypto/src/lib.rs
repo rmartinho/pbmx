@@ -1,6 +1,8 @@
-#![warn(missing_docs)]
 #![feature(iter_unfold)]
 #![feature(try_from)]
+#![allow(clippy::many_single_char_names)]
+#![warn(missing_docs)]
+#![deny(clippy::correctness)]
 
 //! PBMX toolbox crate
 

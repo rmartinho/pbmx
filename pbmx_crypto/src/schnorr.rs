@@ -136,7 +136,7 @@ impl<'de> Deserialize<'de> for Group {
         // SAFE: we explicit validate the values before returning
         unsafe { GroupRaw::deserialize(deserializer)?.into() }
             .validate()
-            .ok_or(de::Error::custom("invalid Schnorr group parameters"))
+            .ok_or_else(|| de::Error::custom("invalid Schnorr group parameters"))
     }
 }
 

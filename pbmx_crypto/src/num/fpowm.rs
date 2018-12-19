@@ -44,7 +44,7 @@ impl FastPowModTable {
                     r %= &self.modulus;
                 }
             }
-            if exponent < &0 {
+            if *exponent < 0 {
                 r.invert_mut(&self.modulus).ok()?
             }
             Some(r)

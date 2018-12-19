@@ -84,7 +84,7 @@ impl<'de> Deserialize<'de> for PrivateKey {
         // SAFE: we explicit validate the values before returning
         unsafe { KeyRaw::deserialize(deserializer)?.into_private() }
             .validate()
-            .ok_or(de::Error::custom("invalid key values"))
+            .ok_or_else(|| de::Error::custom("invalid key values"))
     }
 }
 
@@ -96,7 +96,7 @@ impl<'de> Deserialize<'de> for PublicKey {
         // SAFE: we explicit validate the values before returning
         unsafe { KeyRaw::deserialize(deserializer)?.into_public() }
             .validate()
-            .ok_or(de::Error::custom("invalid key values"))
+            .ok_or_else(|| de::Error::custom("invalid key values"))
     }
 }
 
