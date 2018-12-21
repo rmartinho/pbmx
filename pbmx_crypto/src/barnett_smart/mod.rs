@@ -19,6 +19,9 @@ pub use self::dec::*;
 mod dlog_eq;
 pub use self::dlog_eq::Proof as DlogEqProof;
 
+mod dlog_eq_1ofn;
+pub use self::dlog_eq_1ofn::Proof as DlogEq1OfNProof;
+
 /// A verifiable *k*-out-of-*k* threshold masking function
 #[derive(Serialize)]
 pub struct Vtmf {
@@ -55,6 +58,31 @@ impl Vtmf {
             fp,
             pki: pki.into_iter().map(|k| (k.fingerprint(), k)).collect(),
         }
+    }
+
+    fn validate(self) -> Option<Self> {
+        if self.g == self.pk.g && self.g == self.sk.g && self.n > 1 {
+            Some(self)
+        } else {
+            let p = self.g.modulus();
+
+            let h = self
+                .pki
+                .values()
+                .fold(Integer::from(1), |acc, pk| acc * &pk.h % p);
+            if h == self.pk.h {
+                Some(self)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+impl Vtmf {
+    /// Applies a non-secret masking operation
+    pub fn mask_open(&self, m: &Integer) -> Mask {
+        (1.into(), m.into())
     }
 
     /// Applies the verifiable masking protocol
@@ -151,24 +179,6 @@ impl Vtmf {
     /// Starts an instance of the verifiable decryption protocol
     pub fn unmask(&self, c: Mask) -> Decryption {
         Decryption::new(self, c)
-    }
-
-    fn validate(self) -> Option<Self> {
-        if self.g == self.pk.g && self.g == self.sk.g && self.n > 1 {
-            Some(self)
-        } else {
-            let p = self.g.modulus();
-
-            let h = self
-                .pki
-                .values()
-                .fold(Integer::from(1), |acc, pk| acc * &pk.h % p);
-            if h == self.pk.h {
-                Some(self)
-            } else {
-                None
-            }
-        }
     }
 }
 
