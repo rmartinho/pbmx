@@ -128,6 +128,50 @@ impl Vtmf {
         )
     }
 
+    /// Applies a private masking operation from a given subset
+    pub fn mask_private(&self, m: &[Integer], idx: usize) -> (Mask, DlogEq1OfNProof) {
+        let p = self.g.modulus();
+        let q = self.g.order();
+        let g = self.g.generator();
+        let h = &self.pk.h;
+
+        let r = thread_rng().sample(&Modulo(q));
+        let c1 = self.g.element(&r);
+        let hr = self.fpowm.pow_mod(&r).unwrap();
+        let c2 = hr * &m[idx] % p;
+
+        let proof = dlog_eq_1ofn::prove(
+            self,
+            &c1,
+            &c2,
+            g,
+            h,
+            m,
+            idx,
+            &r,
+            Some(&self.g.fpowm),
+            Some(&self.fpowm),
+        );
+        ((c1, c2), proof)
+    }
+
+    /// Verifies the application of a private masking operation
+    pub fn verify_private_mask(&self, m: &[Integer], c: &Mask, proof: &DlogEq1OfNProof) -> bool {
+        let g = self.g.generator();
+        let h = &self.pk.h;
+        dlog_eq_1ofn::verify(
+            self,
+            &c.0,
+            &c.1,
+            g,
+            h,
+            m,
+            proof,
+            Some(&self.g.fpowm),
+            Some(&self.fpowm),
+        )
+    }
+
     /// Applies the verifiable re-masking protocol
     pub fn remask(&self, c: &Mask) -> (Mask, DlogEqProof) {
         let p = self.g.modulus();
@@ -228,6 +272,7 @@ mod test {
     use super::{KeyExchange, Vtmf};
     use crate::{elgamal::Keys, num::integer::Bits, schnorr};
     use rand::{thread_rng, Rng};
+    use rug::Integer;
     use std::str::FromStr;
 
     #[test]
@@ -272,6 +317,7 @@ mod test {
         let group = rng.sample(&dist);
         let mut kex0 = KeyExchange::new(group.clone(), 2);
         let pk0 = kex0.generate_key().unwrap();
+        let fp0 = pk0.fingerprint();
         let mut kex1 = KeyExchange::new(group, 2);
         let pk1 = kex1.generate_key().unwrap();
         let fp1 = pk1.fingerprint();
@@ -291,11 +337,17 @@ mod test {
 
         let mut dec0 = vtmf0.unmask(mask.clone());
         let mut dec1 = vtmf1.unmask(mask.clone());
-        let _ = dec0.reveal_share().unwrap();
-        let (di, proof) = dec1.reveal_share().unwrap();
-        dec0.add_share(&fp1, &di, &proof).unwrap();
+        let (d0, proof0) = dec0.reveal_share().unwrap();
+        let (d1, proof1) = dec1.reveal_share().unwrap();
+
+        dec0.add_share(&fp1, &d1, &proof1).unwrap();
         assert!(dec0.is_complete());
         let r = dec0.decrypt().unwrap();
+        assert_eq!(r, x);
+
+        dec1.add_share(&fp0, &d0, &proof0).unwrap();
+        assert!(dec1.is_complete());
+        let r = dec1.decrypt().unwrap();
         assert_eq!(r, x);
     }
 
@@ -342,5 +394,78 @@ mod test {
         assert!(dec0.is_complete());
         let r = dec0.decrypt().unwrap();
         assert_eq!(r, x);
+    }
+
+    #[test]
+    fn vtmf_open_masking_works() {
+        let mut rng = thread_rng();
+        let dist = schnorr::Groups {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let mut kex0 = KeyExchange::new(group.clone(), 2);
+        let pk0 = kex0.generate_key().unwrap();
+        let mut kex1 = KeyExchange::new(group, 2);
+        let pk1 = kex1.generate_key().unwrap();
+        let fp1 = pk1.fingerprint();
+        kex0.update_key(pk1).unwrap();
+        kex1.update_key(pk0).unwrap();
+        let vtmf0 = kex0.finalize().unwrap();
+        let vtmf1 = kex1.finalize().unwrap();
+
+        let x = rng.sample(&Bits(128));
+        let mask = vtmf0.mask_open(&x);
+
+        assert_eq!((1.into(), x.clone()), mask);
+
+        let mut dec0 = vtmf0.unmask(mask.clone());
+        let mut dec1 = vtmf1.unmask(mask.clone());
+        let _ = dec0.reveal_share().unwrap();
+        let (di, proof) = dec1.reveal_share().unwrap();
+        dec0.add_share(&fp1, &di, &proof).unwrap();
+        assert!(dec0.is_complete());
+        let r = dec0.decrypt().unwrap();
+        assert_eq!(r, x);
+    }
+
+    #[test]
+    fn vtmf_private_masking_works() {
+        let mut rng = thread_rng();
+        let dist = schnorr::Groups {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let mut kex0 = KeyExchange::new(group.clone(), 2);
+        let pk0 = kex0.generate_key().unwrap();
+        let mut kex1 = KeyExchange::new(group, 2);
+        let pk1 = kex1.generate_key().unwrap();
+        let fp1 = pk1.fingerprint();
+        kex0.update_key(pk1).unwrap();
+        kex1.update_key(pk0).unwrap();
+        let vtmf0 = kex0.finalize().unwrap();
+        let vtmf1 = kex1.finalize().unwrap();
+
+        let m: Vec<_> = (1..8).map(Integer::from).collect();
+        let idx = rng.gen_range(1, 8);
+        let (mask, proof) = vtmf0.mask_private(&m, idx);
+        let ok = vtmf1.verify_private_mask(&m, &mask, &proof);
+        assert!(
+            ok,
+            "mask verification failed\n\tidx = {}\n\tmask = {:?}\n\tproof = {:?}",
+            idx, mask, proof
+        );
+
+        let mut dec0 = vtmf0.unmask(mask.clone());
+        let mut dec1 = vtmf1.unmask(mask.clone());
+        let _ = dec0.reveal_share().unwrap();
+        let (di, proof) = dec1.reveal_share().unwrap();
+        dec0.add_share(&fp1, &di, &proof).unwrap();
+        assert!(dec0.is_complete());
+        let r = dec0.decrypt().unwrap();
+        assert_eq!(r, m[idx]);
     }
 }
