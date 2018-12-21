@@ -1,5 +1,5 @@
 use super::{dlog_eq, DlogEqProof, Mask, Vtmf};
-use crate::elgamal::Fingerprint;
+use crate::{elgamal::Fingerprint, Result};
 use rug::Integer;
 use std::collections::HashSet;
 
@@ -25,9 +25,9 @@ impl<'a> Decryption<'a> {
     }
 
     /// Publishing step of the verifiable decryption protocol
-    pub fn reveal_share(&mut self) -> Result<(SecretShare, DlogEqProof), DecryptionError> {
+    pub fn reveal_share(&mut self) -> Result<(SecretShare, DlogEqProof)> {
         if !self.seen.is_empty() {
-            return Err(DecryptionError::RepeatedReveal);
+            return Err(DecryptionError::RepeatedReveal.into());
         }
 
         let g = self.vtmf.g.generator();
@@ -55,9 +55,9 @@ impl<'a> Decryption<'a> {
         pk_fp: &Fingerprint,
         di: &SecretShare,
         proof: &DlogEqProof,
-    ) -> Result<(), DecryptionError> {
+    ) -> Result<()> {
         if self.seen.is_empty() || self.is_complete() {
-            return Err(DecryptionError::TooManyShares);
+            return Err(DecryptionError::TooManyShares.into());
         }
 
         let g = self.vtmf.g.generator();
@@ -83,7 +83,7 @@ impl<'a> Decryption<'a> {
             self.seen.insert(pk.fingerprint());
             Ok(())
         } else {
-            Err(DecryptionError::ProofFailure)
+            return Err(DecryptionError::ProofFailure.into());
         }
     }
 
@@ -93,9 +93,9 @@ impl<'a> Decryption<'a> {
     }
 
     /// Decrypting step of the verifiable decryption protocol
-    pub fn decrypt(self) -> Result<Integer, DecryptionError> {
+    pub fn decrypt(self) -> Result<Integer> {
         if !self.is_complete() {
-            return Err(DecryptionError::IncompleteSecret);
+            return Err(DecryptionError::IncompleteSecret.into());
         }
 
         let p = self.vtmf.g.modulus();

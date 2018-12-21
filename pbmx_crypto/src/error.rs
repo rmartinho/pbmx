@@ -35,6 +35,18 @@ impl From<std::num::ParseIntError> for Error {
     }
 }
 
+impl From<crate::barnett_smart::KeyExchangeError> for Error {
+    fn from(e: crate::barnett_smart::KeyExchangeError) -> Self {
+        Error::VtmfKeyExchange(e)
+    }
+}
+
+impl From<crate::barnett_smart::DecryptionError> for Error {
+    fn from(e: crate::barnett_smart::DecryptionError) -> Self {
+        Error::VtmfDecryption(e)
+    }
+}
+
 impl From<Error> for std::fmt::Error {
     fn from(_: Error) -> Self {
         std::fmt::Error

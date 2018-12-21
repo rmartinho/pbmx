@@ -1,7 +1,7 @@
 use crate::{
     barnett_smart::Vtmf,
     elgamal::{Fingerprint, Keys, PrivateKey, PublicKey},
-    schnorr,
+    schnorr, Result,
 };
 use rand::{thread_rng, Rng};
 
@@ -42,9 +42,9 @@ impl KeyExchange {
 
     /// Generates a private key for this VTMF and returns the corresponding
     /// public key to be shared.
-    pub fn generate_key(&mut self) -> Result<PublicKey, KeyExchangeError> {
+    pub fn generate_key(&mut self) -> Result<PublicKey> {
         if self.has_private_key() {
-            return Err(KeyExchangeError::RepeatedKeyGeneration);
+            return Err(KeyExchangeError::RepeatedKeyGeneration.into());
         }
 
         let (sk, pk) = thread_rng().sample(&Keys(&self.g));
@@ -56,15 +56,15 @@ impl KeyExchange {
     }
 
     /// Updates the public key with another party's contribution
-    pub fn update_key(&mut self, pk: PublicKey) -> Result<(), KeyExchangeError> {
+    pub fn update_key(&mut self, pk: PublicKey) -> Result<()> {
         if !self.has_private_key() {
-            return Err(KeyExchangeError::NoKeyGenerated);
+            return Err(KeyExchangeError::NoKeyGenerated.into());
         }
         if self.has_all_keys() {
-            return Err(KeyExchangeError::RepeatedKeyGeneration);
+            return Err(KeyExchangeError::RepeatedKeyGeneration.into());
         }
         if self.g != pk.g {
-            return Err(KeyExchangeError::InvalidPublicKey);
+            return Err(KeyExchangeError::InvalidPublicKey.into());
         }
 
         let h = &mut self.pk.as_mut().unwrap().h;
@@ -75,9 +75,9 @@ impl KeyExchange {
     }
 
     /// Finalizes the key exchange protocol and creates a [Vtmf] instance
-    pub fn finalize(self) -> Result<Vtmf, KeyExchangeError> {
+    pub fn finalize(self) -> Result<Vtmf> {
         if !self.has_all_keys() {
-            return Err(KeyExchangeError::IncompleteExchange);
+            return Err(KeyExchangeError::IncompleteExchange.into());
         }
 
         // SAFE: KeyExchange holds the same invariant as Vtmf

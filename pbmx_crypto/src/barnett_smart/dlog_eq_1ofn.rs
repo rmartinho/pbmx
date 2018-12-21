@@ -170,7 +170,7 @@ mod test {
         let vtmf = kex.finalize().unwrap();
 
         let m: Vec<_> = (1..8).map(Integer::from).collect();
-        let idx = rng.gen_range(1, 8);
+        let idx = rng.gen_range(1, 7);
         let r = rng.sample(&Bits(128));
         let x = vtmf.g.element(&r);
         let y = vtmf.fpowm.pow_mod(&r).unwrap() * &m[idx] % vtmf.g.modulus();
