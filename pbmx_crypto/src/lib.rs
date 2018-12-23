@@ -23,6 +23,7 @@ pub mod num;
 pub mod pedersen;
 pub mod perm;
 pub mod schnorr;
+pub mod zkp;
 
 /// Result specialization for PBMX errors
 pub type Result<T> = std::result::Result<T, self::error::Error>;

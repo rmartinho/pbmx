@@ -1,7 +1,7 @@
 //! Pedersen commitment scheme
 
 use crate::{
-    num::{fpowm, integer::Modulo},
+    num::{fpowm, Modulo},
     schnorr,
 };
 use rand::{thread_rng, Rng};

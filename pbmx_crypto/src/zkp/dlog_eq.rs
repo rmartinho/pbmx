@@ -1,27 +1,29 @@
-use super::Vtmf;
+//! Chaum and Pedersen's zero-knowledge proof of equality of discrete logarithms
+
 use crate::{
     hash::Hash,
-    num::{fpowm, integer::Modulo},
+    num::{fpowm, Modulo},
+    schnorr,
 };
 use digest::Digest;
 use rand::{thread_rng, Rng};
 use rug::{integer::Order, Integer};
 use std::cmp::Ordering;
 
-/// Zero-knowledge proof of equality of discrete logarithms
+/// Non-interactive proof result
 pub type Proof = (Integer, Integer);
 
-#[allow(clippy::too_many_arguments)]
+/// Generates a non-interactive zero-knowledge proof that log_g(x) = log_h(y)
 pub fn prove(
-    vtmf: &Vtmf,
+    group: &schnorr::Group,
     x: &Integer,
     y: &Integer,
     g: &Integer,
     h: &Integer,
     alpha: &Integer,
 ) -> Proof {
-    let p = vtmf.g.modulus();
-    let q = vtmf.g.order();
+    let p = group.modulus();
+    let q = group.order();
     let omega = thread_rng().sample(&Modulo(q));
     let a = fpowm::pow_mod(g, &omega, p).unwrap();
     let b = fpowm::pow_mod(h, &omega, p).unwrap();
@@ -31,10 +33,18 @@ pub fn prove(
     (c, r)
 }
 
+/// Verifies a non-interactive zero-knowledge proof that log_g(x) = log_h(y)
 #[allow(clippy::too_many_arguments)]
-pub fn verify(vtmf: &Vtmf, x: &Integer, y: &Integer, g: &Integer, h: &Integer, cr: &Proof) -> bool {
-    let p = vtmf.g.modulus();
-    let q = vtmf.g.order();
+pub fn verify(
+    group: &schnorr::Group,
+    x: &Integer,
+    y: &Integer,
+    g: &Integer,
+    h: &Integer,
+    cr: &Proof,
+) -> bool {
+    let p = group.modulus();
+    let q = group.order();
     let (ref c, ref r) = cr;
 
     if r.cmp_abs(q) != Ordering::Less {
@@ -79,9 +89,7 @@ fn challenge(
 mod test {
     use super::{prove, verify};
     use crate::{
-        barnett_smart::KeyExchange,
-        elgamal::Keys,
-        num::{fpowm, integer::Bits},
+        num::{fpowm, Bits},
         schnorr,
     };
     use rand::{thread_rng, Rng};
@@ -95,24 +103,16 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let (_, pk1) = rng.sample(&Keys(&group));
-        let (_, pk2) = rng.sample(&Keys(&group));
-        let mut kex = KeyExchange::new(group, 3);
-        let _ = kex.generate_key().unwrap();
-        kex.update_key(pk1).unwrap();
-        kex.update_key(pk2).unwrap();
-        let vtmf = kex.finalize().unwrap();
-
-        let g = vtmf.g.generator();
-        let p = vtmf.g.modulus();
-        let h = &vtmf.pk.h;
+        let g = group.element(&rng.sample(&Bits(128)));
+        let h = group.element(&rng.sample(&Bits(128)));
+        let p = group.modulus();
 
         let i = rng.sample(&Bits(128));
-        let x = fpowm::pow_mod(g, &i, p).unwrap();
-        let y = fpowm::pow_mod(h, &i, p).unwrap();
-        let mut proof = prove(&vtmf, &x, &y, g, h, &i);
+        let x = fpowm::pow_mod(&g, &i, p).unwrap();
+        let y = fpowm::pow_mod(&h, &i, p).unwrap();
+        let mut proof = prove(&group, &x, &y, &g, &h, &i);
 
-        let ok = verify(&vtmf, &x, &y, g, h, &proof);
+        let ok = verify(&group, &x, &y, &g, &h, &proof);
         assert!(
             ok,
             "proof isn't valid\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\talpha = {}\n\tproof = {:?}",
@@ -126,7 +126,7 @@ mod test {
 
         // break the proof
         proof.1 += 1;
-        let ok = verify(&vtmf, &x, &y, g, h, &proof);
+        let ok = verify(&group, &x, &y, &g, &h, &proof);
         assert!(
             !ok,
             "invalid proof was accepted\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\talpha = {}\n\tproof = {:?}",

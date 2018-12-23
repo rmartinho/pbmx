@@ -1,6 +1,6 @@
 //! ElGamal encryption scheme
 
-use crate::{error::Error, hash::Hash, num::integer::Modulo, schnorr};
+use crate::{error::Error, hash::Hash, num::Modulo, schnorr};
 use digest::Digest;
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::Order, Integer};

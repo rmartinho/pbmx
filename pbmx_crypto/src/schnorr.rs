@@ -1,10 +1,6 @@
 //! Schnorr groups
 
-use crate::num::{
-    fpowm,
-    integer::{BitsExact, Modulo},
-    prime::Primes,
-};
+use crate::num::{fpowm, BitsExact, Modulo, Primes};
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::IsPrime, Assign, Integer};
 use serde::{de, Deserialize, Deserializer};
@@ -211,7 +207,7 @@ const MILLER_RABIN_ITERATIONS: u32 = 64;
 #[cfg(test)]
 mod test {
     use super::{Group, Groups, MILLER_RABIN_ITERATIONS};
-    use crate::num::integer::Bits;
+    use crate::num::Bits;
     use rand::{thread_rng, Rng};
     use rug::{integer::IsPrime, Integer};
     use std::str::FromStr;

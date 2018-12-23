@@ -1,10 +1,10 @@
-//! Numeric utilities for PBMX
+//! Numeric utilities
 
-/// Big integer utilities
-pub mod integer;
+mod integer;
+pub use self::integer::*;
 
-/// Prime numbers
-pub mod prime;
+mod prime;
+pub use self::prime::*;
 
 /// Fast exponentiation table
 pub(crate) mod fpowm;

@@ -1,19 +1,23 @@
-use super::Vtmf;
+//! Zero-knowledge proof of equality of discrete logarithms
+
 use crate::{
     hash::Hash,
-    num::{fpowm, integer::Modulo},
+    num::{fpowm, Modulo},
+    schnorr,
 };
 use digest::Digest;
 use rand::{thread_rng, Rng};
 use rug::{integer::Order, Integer};
 use std::cmp::Ordering;
 
-/// Zero-knowledge proof of knowledge of 1-of-n discrete logarithms
+/// Non-interactive proof result
 pub type Proof = (Vec<Integer>, Vec<Integer>);
 
+/// Generates a witness hidding non-interactive zero-knowledge proof that an i
+/// exists such that log_g(x) = log_h(y/m_i)
 #[allow(clippy::too_many_arguments)]
 pub fn prove(
-    vtmf: &Vtmf,
+    group: &schnorr::Group,
     x: &Integer,
     y: &Integer,
     g: &Integer,
@@ -24,8 +28,8 @@ pub fn prove(
 ) -> Proof {
     let mut rng = thread_rng();
 
-    let p = vtmf.g.modulus();
-    let q = vtmf.g.order();
+    let p = group.modulus();
+    let q = group.order();
 
     let (vw, t): (Vec<_>, Vec<_>) = m
         .iter()
@@ -58,9 +62,10 @@ pub fn prove(
     (c, r)
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Verifies a witness hidding non-interactive zero-knowledge proof that an i
+/// exists such that log_g(x) = log_h(y/m_i)
 pub fn verify(
-    vtmf: &Vtmf,
+    group: &schnorr::Group,
     x: &Integer,
     y: &Integer,
     g: &Integer,
@@ -68,8 +73,8 @@ pub fn verify(
     m: &[Integer],
     cr: &Proof,
 ) -> bool {
-    let p = vtmf.g.modulus();
-    let q = vtmf.g.order();
+    let p = group.modulus();
+    let q = group.order();
     let (ref c, ref r) = cr;
 
     if r.iter().any(|r| r.cmp_abs(q) != Ordering::Less) {
@@ -125,9 +130,7 @@ fn challenge(
 mod test {
     use super::{prove, verify};
     use crate::{
-        barnett_smart::KeyExchange,
-        elgamal::Keys,
-        num::{fpowm, integer::Bits},
+        num::{fpowm, Bits},
         schnorr,
     };
     use rand::{thread_rng, Rng};
@@ -142,26 +145,18 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let (_, pk1) = rng.sample(&Keys(&group));
-        let (_, pk2) = rng.sample(&Keys(&group));
-        let mut kex = KeyExchange::new(group, 3);
-        let _ = kex.generate_key().unwrap();
-        kex.update_key(pk1).unwrap();
-        kex.update_key(pk2).unwrap();
-        let vtmf = kex.finalize().unwrap();
-
-        let g = vtmf.g.generator();
-        let p = vtmf.g.modulus();
-        let h = &vtmf.pk.h;
+        let g = group.element(&rng.sample(&Bits(128)));
+        let h = group.element(&rng.sample(&Bits(128)));
+        let p = group.modulus();
 
         let m: Vec<_> = (1..8).map(Integer::from).collect();
         let idx = rng.gen_range(1, 7);
         let r = rng.sample(&Bits(128));
-        let x = fpowm::pow_mod(g, &r, p).unwrap();
-        let y = fpowm::pow_mod(h, &r, p).unwrap() * &m[idx] % p;
-        let mut proof = prove(&vtmf, &x, &y, g, h, &m, idx, &r);
+        let x = fpowm::pow_mod(&g, &r, p).unwrap();
+        let y = fpowm::pow_mod(&h, &r, p).unwrap() * &m[idx] % p;
+        let mut proof = prove(&group, &x, &y, &g, &h, &m, idx, &r);
 
-        let ok = verify(&vtmf, &x, &y, g, h, &m, &proof);
+        let ok = verify(&group, &x, &y, &g, &h, &m, &proof);
         assert!(
             ok,
             "proof isn't valid\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\tidx = {}\n\tproof = {:?}",
@@ -170,7 +165,7 @@ mod test {
 
         // break the proof
         proof.1[0] += 1;
-        let ok = verify(&vtmf, &x, &y, g, h, &m, &proof);
+        let ok = verify(&group, &x, &y, &g, &h, &m, &proof);
         assert!(
             !ok,
             "invalid proof was accepted\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\tidx = {}\n\tproof = {:?}",

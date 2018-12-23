@@ -2,8 +2,9 @@
 
 use crate::{
     elgamal::{Fingerprint, PrivateKey, PublicKey},
-    num::{fpowm, integer::Modulo},
+    num::{fpowm, Modulo},
     schnorr,
+    zkp::{dlog_eq, dlog_eq_1ofn},
 };
 use rand::{thread_rng, Rng};
 use rug::Integer;
@@ -16,11 +17,9 @@ pub use self::kex::*;
 mod dec;
 pub use self::dec::*;
 
-mod dlog_eq;
-pub use self::dlog_eq::Proof as DlogEqProof;
+pub use crate::zkp::dlog_eq::Proof as MaskProof;
 
-mod dlog_eq_1ofn;
-pub use self::dlog_eq_1ofn::Proof as DlogEq1OfNProof;
+pub use crate::zkp::dlog_eq_1ofn::Proof as PrivateMaskProof;
 
 /// A verifiable *k*-out-of-*k* threshold masking function
 #[derive(Serialize)]
@@ -83,7 +82,7 @@ impl Vtmf {
     }
 
     /// Applies the verifiable masking protocol
-    pub fn mask(&self, m: &Integer) -> (Mask, DlogEqProof) {
+    pub fn mask(&self, m: &Integer) -> (Mask, MaskProof) {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
@@ -92,23 +91,23 @@ impl Vtmf {
         let r = thread_rng().sample(&Modulo(q));
         let c1 = fpowm::pow_mod(g, &r, p).unwrap();
         let hr = fpowm::pow_mod(h, &r, p).unwrap();
-        let proof = dlog_eq::prove(self, &c1, &hr, g, h, &r);
+        let proof = dlog_eq::prove(&self.g, &c1, &hr, g, h, &r);
         let c2 = hr * m % p;
         ((c1, c2), proof)
     }
 
     /// Verifies the application of the masking protocol
-    pub fn verify_mask(&self, m: &Integer, c: &Mask, proof: &DlogEqProof) -> bool {
+    pub fn verify_mask(&self, m: &Integer, c: &Mask, proof: &MaskProof) -> bool {
         let p = self.g.modulus();
         let g = self.g.generator();
         let h = &self.pk.h;
         let m1 = Integer::from(m.invert_ref(p).unwrap());
         let hr = &c.1 * m1 % p;
-        dlog_eq::verify(self, &c.0, &hr, g, h, proof)
+        dlog_eq::verify(&self.g, &c.0, &hr, g, h, proof)
     }
 
     /// Applies a private masking operation from a given subset
-    pub fn mask_private(&self, m: &[Integer], idx: usize) -> (Mask, DlogEq1OfNProof) {
+    pub fn mask_private(&self, m: &[Integer], idx: usize) -> (Mask, PrivateMaskProof) {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
@@ -119,19 +118,19 @@ impl Vtmf {
         let hr = fpowm::pow_mod(h, &r, p).unwrap();
         let c2 = hr * &m[idx] % p;
 
-        let proof = dlog_eq_1ofn::prove(self, &c1, &c2, g, h, m, idx, &r);
+        let proof = dlog_eq_1ofn::prove(&self.g, &c1, &c2, g, h, m, idx, &r);
         ((c1, c2), proof)
     }
 
     /// Verifies the application of a private masking operation
-    pub fn verify_private_mask(&self, m: &[Integer], c: &Mask, proof: &DlogEq1OfNProof) -> bool {
+    pub fn verify_private_mask(&self, m: &[Integer], c: &Mask, proof: &PrivateMaskProof) -> bool {
         let g = self.g.generator();
         let h = &self.pk.h;
-        dlog_eq_1ofn::verify(self, &c.0, &c.1, g, h, m, proof)
+        dlog_eq_1ofn::verify(&self.g, &c.0, &c.1, g, h, m, proof)
     }
 
     /// Applies the verifiable re-masking protocol
-    pub fn remask(&self, c: &Mask) -> (Mask, DlogEqProof) {
+    pub fn remask(&self, c: &Mask) -> (Mask, MaskProof) {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
@@ -140,7 +139,7 @@ impl Vtmf {
         let r = thread_rng().sample(&Modulo(q));
         let gr = fpowm::pow_mod(g, &r, p).unwrap();
         let hr = fpowm::pow_mod(h, &r, p).unwrap();
-        let proof = dlog_eq::prove(self, &gr, &hr, g, h, &r);
+        let proof = dlog_eq::prove(&self.g, &gr, &hr, g, h, &r);
 
         let c1 = gr * &c.0 % p;
         let c2 = hr * &c.1 % p;
@@ -148,7 +147,7 @@ impl Vtmf {
     }
 
     /// Verifies the application of the re-masking protocol
-    pub fn verify_remask(&self, m: &Mask, c: &Mask, proof: &DlogEqProof) -> bool {
+    pub fn verify_remask(&self, m: &Mask, c: &Mask, proof: &MaskProof) -> bool {
         let p = self.g.modulus();
         let g = self.g.generator();
         let h = &self.pk.h;
@@ -157,7 +156,7 @@ impl Vtmf {
         let gr = &c.0 * c11 % p;
         let c21 = Integer::from(m.1.invert_ref(p).unwrap());
         let hr = &c.1 * c21 % p;
-        dlog_eq::verify(self, &gr, &hr, g, h, proof)
+        dlog_eq::verify(&self.g, &gr, &hr, g, h, proof)
     }
 
     /// Starts an instance of the verifiable decryption protocol
@@ -210,7 +209,7 @@ derive_base64_conversions!(Vtmf);
 #[cfg(test)]
 mod test {
     use super::{KeyExchange, Vtmf};
-    use crate::{elgamal::Keys, num::integer::Bits, schnorr};
+    use crate::{elgamal::Keys, num::Bits, schnorr};
     use rand::{thread_rng, Rng};
     use rug::Integer;
     use std::str::FromStr;
