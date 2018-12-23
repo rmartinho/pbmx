@@ -1,7 +1,7 @@
 //! Pedersen commitment scheme
 
 use crate::{
-    num::{fpowm::FastPowModTable, integer::Modulo},
+    num::{fpowm, integer::Modulo},
     schnorr,
 };
 use rand::{thread_rng, Rng};
@@ -14,28 +14,14 @@ pub struct CommitmentScheme {
     group: schnorr::Group,
     h: Integer,
     g: Vec<Integer>,
-
-    #[serde(skip)]
-    fpowm_g: Vec<FastPowModTable>,
-
-    #[serde(skip)]
-    fpowm_h: FastPowModTable,
 }
 
 impl CommitmentScheme {
     unsafe fn new_unchecked(group: schnorr::Group, h: Integer, g: Vec<Integer>) -> Self {
-        let p = group.modulus();
-        let q = group.order();
-        Self {
-            fpowm_h: FastPowModTable::new(&h, q.significant_bits(), p),
-            fpowm_g: g
-                .iter()
-                .map(|g| FastPowModTable::new(g, q.significant_bits(), p))
-                .collect(),
-            group,
-            h,
-            g,
+        for g in g.iter() {
+            fpowm::precompute(g, group.bits(), group.modulus()).unwrap();
         }
+        Self { group, h, g }
     }
 
     /// Creates a new commitment scheme from the given parameters
@@ -82,13 +68,13 @@ impl CommitmentScheme {
         let p = self.group.modulus();
 
         let gm = self
-            .fpowm_g
+            .g
             .iter()
             .zip(m)
-            .map(|(fpowm, m)| fpowm.pow_mod(m).unwrap())
+            .map(|(g, m)| fpowm::pow_mod(g, m, p).unwrap())
             .fold(Integer::from(1), |acc, gm| acc * gm % p);
 
-        let hr = self.fpowm_h.pow_mod(r).unwrap();
+        let hr = fpowm::pow_mod(&self.h, r, p).unwrap();
         gm * hr % p
     }
 
@@ -242,7 +228,5 @@ mod test {
         assert_eq!(original.group, recovered.group);
         assert_eq!(original.h, recovered.h);
         assert_eq!(original.g, recovered.g);
-        assert_eq!(original.fpowm_h, recovered.fpowm_h);
-        assert_eq!(original.fpowm_g, recovered.fpowm_g);
     }
 }

@@ -1,7 +1,7 @@
 use super::Vtmf;
 use crate::{
     hash::Hash,
-    num::{fpowm::FastPowModTable, integer::Modulo},
+    num::{fpowm, integer::Modulo},
 };
 use digest::Digest;
 use rand::{thread_rng, Rng};
@@ -21,8 +21,6 @@ pub fn prove(
     m: &[Integer],
     idx: usize,
     alpha: &Integer,
-    fpowm_g: Option<&FastPowModTable>,
-    fpowm_h: Option<&FastPowModTable>,
 ) -> Proof {
     let mut rng = thread_rng();
 
@@ -39,16 +37,8 @@ pub fn prove(
             } else {
                 rng.sample(&Modulo(q))
             };
-            let a = if let Some(g) = fpowm_g {
-                g.pow_mod(&v).unwrap()
-            } else {
-                g.pow_mod_ref(&v, p).unwrap().into()
-            };
-            let b = if let Some(h) = fpowm_h {
-                h.pow_mod(&v).unwrap()
-            } else {
-                h.pow_mod_ref(&v, p).unwrap().into()
-            };
+            let a = fpowm::pow_mod(g, &v, p).unwrap();
+            let b = fpowm::pow_mod(h, &v, p).unwrap();
             let t0 = Integer::from(x.pow_mod_ref(&w, p).unwrap()) * &a % p;
             let ydm = y * Integer::from(m.invert_ref(p).unwrap()) % p;
             let t1 = Integer::from(ydm.pow_mod_ref(&w, p).unwrap()) * &b % p;
@@ -77,8 +67,6 @@ pub fn verify(
     h: &Integer,
     m: &[Integer],
     cr: &Proof,
-    fpowm_g: Option<&FastPowModTable>,
-    fpowm_h: Option<&FastPowModTable>,
 ) -> bool {
     let p = vtmf.g.modulus();
     let q = vtmf.g.order();
@@ -91,26 +79,14 @@ pub fn verify(
     let xc = c
         .iter()
         .map(|c| Integer::from(x.pow_mod_ref(c, p).unwrap()));
-    let gr = r.iter().map(|r| {
-        if let Some(g) = fpowm_g {
-            g.pow_mod(&r).unwrap()
-        } else {
-            g.pow_mod_ref(&r, p).unwrap().into()
-        }
-    });
+    let gr = r.iter().map(|r| fpowm::pow_mod(g, &r, p).unwrap());
     let t0 = xc.zip(gr).map(|(xc, gr)| gr * xc % p);
 
     let ydmc = c.iter().zip(m.iter()).map(|(c, m)| {
         let ydm = y * Integer::from(m.invert_ref(p).unwrap()) % p;
         ydm.pow_mod(c, p).unwrap()
     });
-    let hr = r.iter().map(|r| {
-        if let Some(h) = fpowm_h {
-            h.pow_mod(&r).unwrap()
-        } else {
-            h.pow_mod_ref(&r, p).unwrap().into()
-        }
-    });
+    let hr = r.iter().map(|r| fpowm::pow_mod(h, &r, p).unwrap());
     let t1 = ydmc.zip(hr).map(|(ydmc, hr)| hr * ydmc % p);
     let t: Vec<_> = t0.zip(t1).collect();
 
@@ -148,7 +124,12 @@ fn challenge(
 #[cfg(test)]
 mod test {
     use super::{prove, verify};
-    use crate::{barnett_smart::KeyExchange, elgamal::Keys, num::integer::Bits, schnorr};
+    use crate::{
+        barnett_smart::KeyExchange,
+        elgamal::Keys,
+        num::{fpowm, integer::Bits},
+        schnorr,
+    };
     use rand::{thread_rng, Rng};
     use rug::Integer;
 
@@ -169,148 +150,33 @@ mod test {
         kex.update_key(pk2).unwrap();
         let vtmf = kex.finalize().unwrap();
 
+        let g = vtmf.g.generator();
+        let p = vtmf.g.modulus();
+        let h = &vtmf.pk.h;
+
         let m: Vec<_> = (1..8).map(Integer::from).collect();
         let idx = rng.gen_range(1, 7);
         let r = rng.sample(&Bits(128));
-        let x = vtmf.g.element(&r);
-        let y = vtmf.fpowm.pow_mod(&r).unwrap() * &m[idx] % vtmf.g.modulus();
-        let mut proof = prove(
-            &vtmf,
-            &x,
-            &y,
-            vtmf.g.generator(),
-            &vtmf.pk.h,
-            &m,
-            idx,
-            &r,
-            None,
-            None,
-        );
+        let x = fpowm::pow_mod(g, &r, p).unwrap();
+        let y = fpowm::pow_mod(h, &r, p).unwrap() * &m[idx] % p;
+        let mut proof = prove(&vtmf, &x, &y, g, h, &m, idx, &r);
 
-        let ok = verify(
-            &vtmf,
-            &x,
-            &y,
-            vtmf.g.generator(),
-            &vtmf.pk.h,
-            &m,
-            &proof,
-            None,
-            None,
-        );
+        let ok = verify(&vtmf, &x, &y, g, h, &m, &proof);
         assert!(
             ok,
             "proof isn't valid\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\tidx = {}\n\tproof = {:?}",
-            x,
-            y,
-            vtmf.g.generator(),
-            vtmf.pk.h,
-            idx,
-            proof
+            x, y, g, h, idx, proof
         );
 
         // break the proof
         proof.1[0] += 1;
-        let ok = verify(
-            &vtmf,
-            &x,
-            &y,
-            vtmf.g.generator(),
-            &vtmf.pk.h,
-            &m,
-            &proof,
-            None,
-            None,
-        );
+        let ok = verify(&vtmf, &x, &y, g, h, &m, &proof);
         assert!(
             !ok,
             "invalid proof was accepted\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\tidx = {}\n\tproof = {:?}",
             x,
             y,
-            vtmf.g.generator(),
-            vtmf.pk.h,
-            idx,
-            proof
-        );
-    }
-
-    #[test]
-    fn prove_and_verify_agree_with_fpowm() {
-        let mut rng = thread_rng();
-        let dist = schnorr::Groups {
-            field_bits: 2048,
-            group_bits: 1024,
-            iterations: 64,
-        };
-        let group = rng.sample(&dist);
-        let (_, pk1) = rng.sample(&Keys(&group));
-        let (_, pk2) = rng.sample(&Keys(&group));
-        let mut kex = KeyExchange::new(group, 3);
-        let _ = kex.generate_key().unwrap();
-        kex.update_key(pk1).unwrap();
-        kex.update_key(pk2).unwrap();
-        let vtmf = kex.finalize().unwrap();
-
-        let m: Vec<_> = (1..8).map(Integer::from).collect();
-        let idx = rng.gen_range(1, 8);
-        let r = rng.sample(&Bits(128));
-        let x = vtmf.g.element(&r);
-        let y = vtmf.fpowm.pow_mod(&r).unwrap() * &m[idx] % vtmf.g.modulus();
-        let mut proof = prove(
-            &vtmf,
-            &x,
-            &y,
-            vtmf.g.generator(),
-            &vtmf.pk.h,
-            &m,
-            idx,
-            &r,
-            Some(&vtmf.g.fpowm),
-            Some(&vtmf.fpowm),
-        );
-
-        let ok = verify(
-            &vtmf,
-            &x,
-            &y,
-            vtmf.g.generator(),
-            &vtmf.pk.h,
-            &m,
-            &proof,
-            Some(&vtmf.g.fpowm),
-            Some(&vtmf.fpowm),
-        );
-        assert!(
-            ok,
-            "proof isn't valid\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\tidx = {}\n\tproof = {:?}",
-            x,
-            y,
-            vtmf.g.generator(),
-            vtmf.pk.h,
-            idx,
-            proof
-        );
-
-        // break the proof
-        proof.1[0] += 1;
-        let ok = verify(
-            &vtmf,
-            &x,
-            &y,
-            vtmf.g.generator(),
-            &vtmf.pk.h,
-            &m,
-            &proof,
-            Some(&vtmf.g.fpowm),
-            Some(&vtmf.fpowm),
-        );
-        assert!(
-            !ok,
-            "invalid proof was accepted\n\tx = {}\n\ty = {}\n\tg = {}\n\th = {}\n\tidx = {}\n\tproof = {:?}",
-            x,
-            y,
-            vtmf.g.generator(),
-            vtmf.pk.h,
+            g, h,
             idx,
             proof
         );

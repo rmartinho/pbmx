@@ -1,17 +1,48 @@
+use crate::{error::Error, Result};
 use rug::Integer;
-use std::iter;
+use std::{collections::HashMap, iter, sync::Mutex};
 
-/// Precomputed fast modular exponentiation table
+lazy_static! {
+    static ref FPOWM_TABLES: Mutex<HashMap<(Integer, Integer), FastPowModTable>> =
+        Mutex::new(HashMap::new());
+}
+
+/// Precomputes a fast modular exponentiation table
+pub fn precompute(base: &Integer, bits: u32, modulus: &Integer) -> Result<()> {
+    let key = (base.clone(), modulus.clone());
+    match FPOWM_TABLES.lock() {
+        Ok(mut cache) => {
+            cache
+                .entry(key)
+                .or_insert_with(|| FastPowModTable::new(base, bits, modulus));
+            Ok(())
+        }
+        _ => Err(Error::FpowmPrecomputeFailure),
+    }
+}
+
+/// Computes a modular exponentiation using precomputed tables if possible
+pub fn pow_mod(b: &Integer, e: &Integer, m: &Integer) -> Option<Integer> {
+    match FPOWM_TABLES.lock() {
+        Ok(cache) => {
+            let key = (b.clone(), m.clone());
+            match cache.get(&key) {
+                Some(fpowm) => fpowm.pow_mod(e),
+                None => key.0.pow_mod(e, m).ok(),
+            }
+        }
+        _ => None,
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FastPowModTable {
+struct FastPowModTable {
     table: Vec<Integer>,
     modulus: Integer,
 }
 
 impl FastPowModTable {
-    /// Creates a new table supporting exponents with up to the given number of
-    /// bits, for the given modulus and base.
-    pub fn new(base: &Integer, bits: u32, modulus: &Integer) -> FastPowModTable {
+    fn new(base: &Integer, bits: u32, modulus: &Integer) -> FastPowModTable {
         let mut table = Vec::new();
         table.reserve_exact(bits as _);
 
@@ -30,8 +61,7 @@ impl FastPowModTable {
         }
     }
 
-    /// Performs a fast modular exponentiation
-    pub fn pow_mod(&self, exponent: &Integer) -> Option<Integer> {
+    fn pow_mod(&self, exponent: &Integer) -> Option<Integer> {
         let exp_abs = exponent.clone().abs();
         let bits = exp_abs.significant_bits() as _;
 

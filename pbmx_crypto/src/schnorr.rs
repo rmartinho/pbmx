@@ -1,7 +1,7 @@
 //! Schnorr groups
 
 use crate::num::{
-    fpowm::FastPowModTable,
+    fpowm,
     integer::{BitsExact, Modulo},
     prime::Primes,
 };
@@ -18,20 +18,12 @@ pub struct Group {
     q: Integer,
     k: Integer,
     g: Integer,
-
-    #[serde(skip)]
-    pub(super) fpowm: FastPowModTable,
 }
 
 impl Group {
     unsafe fn new_unchecked(p: Integer, q: Integer, k: Integer, g: Integer) -> Self {
-        Self {
-            fpowm: FastPowModTable::new(&g, q.significant_bits(), &p),
-            p,
-            q,
-            k,
-            g,
-        }
+        fpowm::precompute(&g, q.significant_bits(), &p).unwrap();
+        Self { p, q, k, g }
     }
 
     /// Creates a new group from the given parameters
@@ -48,6 +40,11 @@ impl Group {
     /// Gets the order of the group (aka *q*)
     pub fn order(&self) -> &Integer {
         &self.q
+    }
+
+    /// Gets the bit size of the group order (aka *|q|*)
+    pub fn bits(&self) -> u32 {
+        self.q.significant_bits()
     }
 
     /// Gets the factor between the modulus and the order of the group (aka *k*)
@@ -72,7 +69,7 @@ impl Group {
 
     /// Retrieves the i-th element of the group
     pub fn element(&self, i: &Integer) -> Integer {
-        self.fpowm.pow_mod(i).unwrap()
+        fpowm::pow_mod(&self.g, i, &self.p).unwrap()
     }
 
     fn validate(self) -> Option<Self> {
@@ -98,7 +95,7 @@ impl Group {
             return None;
         }
 
-        x = self.fpowm.pow_mod(&self.q).unwrap();
+        x = fpowm::pow_mod(&self.g, &self.q, &self.p).unwrap();
         if x != 1 {
             return None;
         }
@@ -124,7 +121,7 @@ impl Distribution<Integer> for Group {
                 break;
             }
         }
-        self.fpowm.pow_mod(&i).unwrap()
+        self.element(&i)
     }
 }
 
@@ -324,6 +321,5 @@ mod test {
         assert_eq!(original.q, recovered.q);
         assert_eq!(original.k, recovered.k);
         assert_eq!(original.g, recovered.g);
-        assert_eq!(original.fpowm, recovered.fpowm);
     }
 }

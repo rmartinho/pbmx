@@ -13,6 +13,8 @@ pub enum Error {
     VtmfKeyExchange(crate::barnett_smart::KeyExchangeError),
     /// Occurs when VTMF decryption fails
     VtmfDecryption(crate::barnett_smart::DecryptionError),
+    /// Occurs when building a fast modular exponentiation table fails
+    FpowmPrecomputeFailure,
     /// Occurs when trying to create a permutation from a non-permutation vec
     NonPermutation,
 }
