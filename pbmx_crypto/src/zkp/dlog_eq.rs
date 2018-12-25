@@ -11,7 +11,11 @@ use rug::{integer::Order, Integer};
 use std::cmp::Ordering;
 
 /// Non-interactive proof result
-pub type Proof = (Integer, Integer);
+#[derive(Debug)]
+pub struct Proof {
+    c: Integer,
+    r: Integer,
+}
 
 /// Generates a non-interactive zero-knowledge proof that log_g(x) = log_h(y)
 pub fn prove(
@@ -30,7 +34,7 @@ pub fn prove(
 
     let c = challenge(&a, &b, x, y, g, h);
     let r = (&omega - Integer::from(&c * alpha)) % q;
-    (c, r)
+    Proof { c, r }
 }
 
 /// Verifies a non-interactive zero-knowledge proof that log_g(x) = log_h(y)
@@ -41,27 +45,26 @@ pub fn verify(
     y: &Integer,
     g: &Integer,
     h: &Integer,
-    cr: &Proof,
+    proof: &Proof,
 ) -> bool {
     let p = group.modulus();
     let q = group.order();
-    let (ref c, ref r) = cr;
 
-    if r.cmp_abs(q) != Ordering::Less {
+    if proof.r.cmp_abs(q) != Ordering::Less {
         return false;
     }
 
-    let xc = Integer::from(x.pow_mod_ref(c, p).unwrap());
-    let gr = fpowm::pow_mod(g, &r, p).unwrap();
+    let xc = Integer::from(x.pow_mod_ref(&proof.c, p).unwrap());
+    let gr = fpowm::pow_mod(g, &proof.r, p).unwrap();
     let a = gr * xc % p;
 
-    let yc = Integer::from(y.pow_mod_ref(c, p).unwrap());
-    let hr = fpowm::pow_mod(h, &r, p).unwrap();
+    let yc = Integer::from(y.pow_mod_ref(&proof.c, p).unwrap());
+    let hr = fpowm::pow_mod(h, &proof.r, p).unwrap();
     let b = hr * yc % p;
 
     let c1 = challenge(&a, &b, x, y, g, h);
 
-    *c == c1
+    proof.c == c1
 }
 
 fn challenge(
@@ -125,7 +128,7 @@ mod test {
         );
 
         // break the proof
-        proof.1 += 1;
+        proof.c += 1;
         let ok = verify(&group, &x, &y, &g, &h, &proof);
         assert!(
             !ok,

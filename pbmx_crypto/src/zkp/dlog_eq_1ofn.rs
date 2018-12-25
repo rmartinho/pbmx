@@ -11,7 +11,11 @@ use rug::{integer::Order, Integer};
 use std::cmp::Ordering;
 
 /// Non-interactive proof result
-pub type Proof = (Vec<Integer>, Vec<Integer>);
+#[derive(Debug)]
+pub struct Proof {
+    c: Vec<Integer>,
+    r: Vec<Integer>,
+}
 
 /// Generates a witness hidding non-interactive zero-knowledge proof that an i
 /// exists such that log_g(x) = log_h(y/m_i)
@@ -59,7 +63,7 @@ pub fn prove(
     let mut r = v;
     r[idx] = (r[idx].clone() - &c[idx] * alpha) % q;
 
-    (c, r)
+    Proof { c, r }
 }
 
 /// Verifies a witness hidding non-interactive zero-knowledge proof that an i
@@ -71,32 +75,32 @@ pub fn verify(
     g: &Integer,
     h: &Integer,
     m: &[Integer],
-    cr: &Proof,
+    proof: &Proof,
 ) -> bool {
     let p = group.modulus();
     let q = group.order();
-    let (ref c, ref r) = cr;
 
-    if r.iter().any(|r| r.cmp_abs(q) != Ordering::Less) {
+    if proof.r.iter().any(|r| r.cmp_abs(q) != Ordering::Less) {
         return false;
     }
 
-    let xc = c
+    let xc = proof
+        .c
         .iter()
         .map(|c| Integer::from(x.pow_mod_ref(c, p).unwrap()));
-    let gr = r.iter().map(|r| fpowm::pow_mod(g, &r, p).unwrap());
+    let gr = proof.r.iter().map(|r| fpowm::pow_mod(g, &r, p).unwrap());
     let t0 = xc.zip(gr).map(|(xc, gr)| gr * xc % p);
 
-    let ydmc = c.iter().zip(m.iter()).map(|(c, m)| {
+    let ydmc = proof.c.iter().zip(m.iter()).map(|(c, m)| {
         let ydm = y * Integer::from(m.invert_ref(p).unwrap()) % p;
         ydm.pow_mod(c, p).unwrap()
     });
-    let hr = r.iter().map(|r| fpowm::pow_mod(h, &r, p).unwrap());
+    let hr = proof.r.iter().map(|r| fpowm::pow_mod(h, &r, p).unwrap());
     let t1 = ydmc.zip(hr).map(|(ydmc, hr)| hr * ydmc % p);
     let t: Vec<_> = t0.zip(t1).collect();
 
     let c1 = challenge(&t, x, y, g, h, m);
-    let c_sum = c.iter().sum::<Integer>() % q;
+    let c_sum = proof.c.iter().sum::<Integer>() % q;
 
     c_sum == c1
 }
@@ -164,7 +168,7 @@ mod test {
         );
 
         // break the proof
-        proof.1[0] += 1;
+        proof.r[0] += 1;
         let ok = verify(&group, &x, &y, &g, &h, &m, &proof);
         assert!(
             !ok,

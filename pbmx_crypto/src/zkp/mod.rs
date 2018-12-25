@@ -2,3 +2,5 @@
 
 pub mod dlog_eq;
 pub mod dlog_eq_1ofn;
+mod known_shuffle;
+pub mod secret_shuffle;
