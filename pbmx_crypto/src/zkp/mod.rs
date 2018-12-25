@@ -1,6 +1,6 @@
 //! Zero-knowledge proofs
 
 pub mod dlog_eq;
-pub mod dlog_eq_1ofn;
 mod known_shuffle;
+pub mod mask_1ofn;
 pub mod secret_shuffle;

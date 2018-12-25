@@ -4,7 +4,7 @@ use crate::{
     elgamal::{Fingerprint, PrivateKey, PublicKey},
     num::{fpowm, Modulo},
     schnorr,
-    zkp::{dlog_eq, dlog_eq_1ofn},
+    zkp::{dlog_eq, mask_1ofn},
 };
 use rand::{thread_rng, Rng};
 use rug::Integer;
@@ -19,7 +19,7 @@ pub use self::dec::*;
 
 pub use crate::zkp::dlog_eq::Proof as MaskProof;
 
-pub use crate::zkp::dlog_eq_1ofn::Proof as PrivateMaskProof;
+pub use crate::zkp::mask_1ofn::Proof as PrivateMaskProof;
 
 /// A verifiable *k*-out-of-*k* threshold masking function
 #[derive(Serialize)]
@@ -118,7 +118,7 @@ impl Vtmf {
         let hr = fpowm::pow_mod(h, &r, p).unwrap();
         let c2 = hr * &m[idx] % p;
 
-        let proof = dlog_eq_1ofn::prove(&self.g, &c1, &c2, g, h, m, idx, &r);
+        let proof = mask_1ofn::prove(&self.g, &c1, &c2, g, h, m, idx, &r);
         ((c1, c2), proof)
     }
 
@@ -126,7 +126,7 @@ impl Vtmf {
     pub fn verify_private_mask(&self, m: &[Integer], c: &Mask, proof: &PrivateMaskProof) -> bool {
         let g = self.g.generator();
         let h = &self.pk.h;
-        dlog_eq_1ofn::verify(&self.g, &c.0, &c.1, g, h, m, proof)
+        mask_1ofn::verify(&self.g, &c.0, &c.1, g, h, m, proof)
     }
 
     /// Applies the verifiable re-masking protocol

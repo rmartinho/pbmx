@@ -9,7 +9,7 @@ use rug::Integer;
 use serde::{de, Deserialize, Deserializer};
 
 /// The Pedersen commitment scheme
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct CommitmentScheme {
     group: schnorr::Group,
     h: Integer,
@@ -32,6 +32,11 @@ impl CommitmentScheme {
         unsafe { Self::new_unchecked(group, h, g) }.validate()
     }
 
+    /// Gets the group for this commitment scheme
+    pub fn group(&self) -> &schnorr::Group {
+        &self.group
+    }
+
     /// Creates a commitment to a given message.
     ///
     /// The first return value is the commitment, and the second is the
@@ -50,7 +55,7 @@ impl CommitmentScheme {
     }
 
     /// Verifies a commitment to a given message.
-    pub fn open(&self, m: &[Integer], c: &Integer, r: &Integer) -> bool {
+    pub fn open(&self, c: &Integer, m: &[Integer], r: &Integer) -> bool {
         assert!(m.len() == self.g.len());
 
         if r >= self.group.order() {
@@ -61,17 +66,19 @@ impl CommitmentScheme {
         *c == c1
     }
 
-    fn commit_by(&self, m: &[Integer], r: &Integer) -> Integer {
+    /// Creates a commitment to a given message by a given randomizer.
+    pub fn commit_by(&self, m: &[Integer], r: &Integer) -> Integer {
         assert!(m.len() == self.g.len());
         assert!(r < self.group.order());
 
         let p = self.group.modulus();
+        let q = self.group.order();
 
         let gm = self
             .g
             .iter()
             .zip(m)
-            .map(|(g, m)| fpowm::pow_mod(g, m, p).unwrap())
+            .map(|(g, m)| fpowm::pow_mod(g, &Integer::from(m % q), p).unwrap())
             .fold(Integer::from(1), |acc, gm| acc * gm % p);
 
         let hr = fpowm::pow_mod(&self.h, r, p).unwrap();
@@ -166,7 +173,7 @@ mod test {
             com.h,
             com.g
         );
-        let ok = com.open(&m, &c, &r);
+        let ok = com.open(&c, &m, &r);
         assert!(
             ok,
             "opening failed\n\tm = {:?}\n\tc = {}\n\tr = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}",
@@ -204,7 +211,7 @@ mod test {
             com.h,
             com.g
         );
-        let ok = com.open(&m, &c1, &r1);
+        let ok = com.open(&c1, &m, &r1);
         assert!(!ok, "bad opening is not detected\n\tm = {:?}\n\tc = {}\n\tr = {}\n\tgroup = {:?}\n\th = {}\n\tg = {:?}", m, c1, r1, com.group, com.h, com.g);
     }
 

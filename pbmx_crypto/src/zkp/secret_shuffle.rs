@@ -20,7 +20,7 @@ pub struct Proof {
     skc: known_shuffle::Proof,
     c: Integer,
     cd: Integer,
-    ed: Integer,
+    ed: (Integer, Integer),
     fi: Vec<Integer>,
     z: Integer,
 }
@@ -90,7 +90,7 @@ pub fn prove(
         .map(|i| (&l * Integer::from(i + 1) % q + &ti[i]) % q)
         .collect();
 
-    let skc = known_shuffle::prove(group, &com, &l, &m, &pi, &rho);
+    let skc = known_shuffle::prove(&com, &l, &m, &pi, &rho);
 
     Proof {
         com,
@@ -104,7 +104,7 @@ pub fn prove(
 }
 
 /// Verifies a non-interactive zero-knowledge proof of a secret shuffle
-pub fn verify(_group: &schnorr::Group, _h: &Integer, _e: &[Mask]) -> bool {
+pub fn verify(_group: &schnorr::Group, _h: &Integer, _e: &[Mask], _proof: &Proof) -> bool {
     unimplemented!()
 }
 
