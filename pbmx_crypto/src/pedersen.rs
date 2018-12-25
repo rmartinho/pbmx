@@ -37,6 +37,11 @@ impl CommitmentScheme {
         &self.group
     }
 
+    /// Gets the shared_secret (aka *h*) for this commitment scheme
+    pub fn shared_secret(&self) -> &Integer {
+        &self.h
+    }
+
     /// Creates a commitment to a given message.
     ///
     /// The first return value is the commitment, and the second is the
