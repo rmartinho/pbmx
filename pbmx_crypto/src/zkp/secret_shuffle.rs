@@ -3,7 +3,7 @@
 use crate::{
     barnett_smart::Mask,
     hash::{hash_iter, Hash},
-    num::{fpowm, Bits, Modulo},
+    num::{fpowm, Bits},
     pedersen::CommitmentScheme,
     perm::Permutation,
     schnorr,
@@ -53,35 +53,36 @@ pub fn prove(
     let (c, r) = com.commit_to(&p2);
     let (cd, rd) = com.commit_to(&d);
 
-    let re = rng.sample(&Modulo(q));
-    let c1 = fpowm::pow_mod(g, &re, p).unwrap();
-    let c2 = fpowm::pow_mod(h, &re, p).unwrap();
-
     let ed = d
         .iter()
         .zip(ee.iter())
         .map(|(d, (e1, e2))| {
-            let x1 = fpowm::pow_mod(e1, d, p).unwrap() * &c1 % p;
-            let x2 = fpowm::pow_mod(e2, d, p).unwrap() * &c2 % p;
-            (x1, x2)
+            (
+                fpowm::pow_mod(e1, d, p).unwrap(),
+                fpowm::pow_mod(e2, d, p).unwrap(),
+            )
         })
         .fold(
             (Integer::from(1), Integer::from(1)),
-            |(a1, a2), (e1, e2)| (a1 * e1, a2 * e2),
+            |(a1, a2), (e1, e2)| (a1 * e1 % p, a2 * e2 % p),
         );
+    let c1 = fpowm::pow_mod(g, &rd, p).unwrap();
+    let c2 = fpowm::pow_mod(h, &rd, p).unwrap();
+    let ed = (ed.0 * &c1, ed.1 * &c2);
 
     let ti = t_challenge(&c, &cd, &ed, ee);
     let fi: Vec<_> = pi
         .iter()
         .zip(d.iter())
-        .map(|(p, d)| Integer::from(&ti[*p] - d))
+        .map(|(p, d)| Integer::from(&ti[*p] - d) % q)
         .collect();
-    let z = pi
+    let z = (pi
         .iter()
         .zip(ri.iter())
-        .map(|(p, r)| Integer::from(&ti[*p] * r))
+        .map(|(p, r)| Integer::from(&ti[*p] * r) % q)
         .sum::<Integer>()
-        + &rd;
+        + &rd)
+        % q;
 
     let l = l_challenge(&fi, &z, &ti);
     let rho = (&l * r % q + rd) % q;
@@ -111,38 +112,30 @@ pub fn verify(e: &[Mask], ee: &[Mask], proof: &Proof) -> bool {
     let h = proof.com.shared_secret();
     let n = ee.len();
 
-    let t = t_challenge(&proof.c, &proof.cd, &proof.ed, ee);
-    let l = l_challenge(&proof.fi, &proof.z, &t);
+    let ti = t_challenge(&proof.c, &proof.cd, &proof.ed, ee);
+    let l = l_challenge(&proof.fi, &proof.z, &ti);
 
     let cld = fpowm::pow_mod(&proof.c, &l, p).unwrap() * &proof.cd % p;
+    let cldf = cld * proof.com.commit_by(&proof.fi, &Integer::new());
     let m: Vec<_> = (0..n)
-        .map(|i| (Integer::from(i + 1) * &l + &t[i]) % q)
+        .map(|i| (&l * Integer::from(i + 1) % q + &ti[i]) % q)
         .collect();
 
-    println!("a");
-    if !known_shuffle::verify(&proof.com, &l, &cld, &m, &proof.skc) {
+    if !known_shuffle::verify(&proof.com, &l, &cldf, &m, &proof.skc) {
         return false;
     }
 
-    println!("a");
     if !proof.com.group().has_element(&proof.c) {
         return false;
     }
-    println!("a");
     if !proof.com.group().has_element(&proof.cd) {
         return false;
     }
 
-    println!("a");
     if fpowm::pow_mod(&proof.ed.0, q, p).unwrap() != 1 {
         return false;
     }
-    println!("a");
-    if fpowm::pow_mod(&proof.ed.1, q, p).unwrap() != 1 {
-        return false;
-    }
 
-    println!("a");
     if proof
         .fi
         .iter()
@@ -151,14 +144,13 @@ pub fn verify(e: &[Mask], ee: &[Mask], proof: &Proof) -> bool {
         return false;
     }
 
-    println!("a");
     if proof.z <= 0 || proof.z >= *q {
         return false;
     }
 
     let et = e
         .iter()
-        .zip(t.iter())
+        .zip(ti.iter())
         .map(|(e, t)| {
             let mt = &t.as_neg();
             (
@@ -175,22 +167,24 @@ pub fn verify(e: &[Mask], ee: &[Mask], proof: &Proof) -> bool {
         .zip(proof.fi.iter())
         .map(|(ee, f)| {
             (
-                fpowm::pow_mod(&ee.0, f, p).unwrap() * &proof.ed.0,
-                fpowm::pow_mod(&ee.1, f, p).unwrap() * &proof.ed.1,
+                fpowm::pow_mod(&ee.0, f, p).unwrap(),
+                fpowm::pow_mod(&ee.1, f, p).unwrap(),
             )
         })
-        .fold((Integer::from(1), Integer::from(1)), |acc, i| {
-            (acc.0 * i.0 % p, acc.1 * i.1 % p)
-        });
+        .fold(
+            (Integer::from(1), Integer::from(1)),
+            |acc, i: (Integer, Integer)| (acc.0 * i.0 % p, acc.1 * i.1 % p),
+        );
+    let efed = (efe.0 * &proof.ed.0 % p, efe.1 * &proof.ed.1 % p);
+    let etfd = (et.0 * efed.0 % p, et.1 * efed.1 % p);
 
     let epk = (
         fpowm::pow_mod(g, &proof.z, p).unwrap(),
         fpowm::pow_mod(h, &proof.z, p).unwrap(),
     );
-    let etf = (et.0 * efe.0, et.1 * efe.1);
 
-    println!("a");
-    etf == epk
+    println!("\netf {:?}\nepk {:?}", etfd, epk);
+    etfd == epk
 }
 
 fn t_challenge(c: &Integer, cd: &Integer, ed: &(Integer, Integer), e: &[Mask]) -> Vec<Integer> {
@@ -211,13 +205,13 @@ fn t_challenge(c: &Integer, cd: &Integer, ed: &(Integer, Integer), e: &[Mask]) -
         .collect()
 }
 
-fn l_challenge(f: &[Integer], z: &Integer, t: &[Integer]) -> Integer {
+fn l_challenge(fi: &[Integer], z: &Integer, ti: &[Integer]) -> Integer {
     let mut hash = Hash::new();
-    for f in f {
+    for f in fi {
         hash = hash.chain(&f.to_digits(Order::MsfBe));
     }
     hash = hash.chain(&z.to_digits(Order::MsfBe));
-    for t in t {
+    for t in ti {
         hash = hash.chain(&t.to_digits(Order::MsfBe));
     }
     Integer::from_digits(&hash.result(), Order::MsfBe)
@@ -280,27 +274,27 @@ mod test {
         let ok = verify(&mm, &mp, &proof);
         assert!(
             ok,
-            /*    "proof isn't valid\n\tcom = {:#?}\n\tc = {}\n\tm = {:?}\n\tp = {:#?}\n\tr
-             * = {}\n\tproof = {:?}",    com,
-             *    c,
-             *    m,
-             *    pi,
-             *    r,
-             *    proof */
+            "proof isn't valid\n\tgroup = {:#?}\n\th = {}\n\tmm = {:?}\n\tmp = {:?}\n\tpi = {:#?}\n\trp = {:?}\n\tproof = {:?}",
+            group,
+            h,
+            mm,
+            mp,
+            pi,
+            rp,
+            proof
         );
 
         // break the proof
         proof.z += 1;
         let ok = verify(&mm, &mp, &proof);
-        assert!(
-            !ok,
-            /*    "invalid proof was accepted\n\tcom = {:#?}\n\tc = {}\n\tm = {:?}\n\tp =
-             * {:#?}\n\tr = {}\n\tproof = {:?}",    com,
-             *    c,
-             *    m,
-             *    pi,
-             *    r,
-             *    proof */
-        );
+        assert!(!ok,);
+        //"invalid proof was accepted\n\tcom = {:#?}\n\tc = {}\n\tm = {:?}\n\tp =
+        // {:#?}\n\tr = {}\n\tproof = {:?}",
+        // com,
+        // c,
+        // m,
+        // pi,
+        // r,
+        // proof
     }
 }
