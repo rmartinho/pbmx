@@ -1,6 +1,6 @@
 //! ElGamal encryption scheme
 
-use crate::{error::Error, hash::Hash, num::Modulo, schnorr};
+use crate::{error::Error, group::Group, hash::Hash, num::Modulo};
 use digest::Digest;
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::Order, Integer};
@@ -15,7 +15,7 @@ use std::{
 /// This key consists of a secret exponent *x*, together with a Schnorr group.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PrivateKey {
-    pub(super) g: schnorr::Group,
+    pub(super) g: Group,
     pub(super) x: Integer,
 }
 
@@ -25,7 +25,7 @@ pub struct PrivateKey {
 /// *h* = *g*^*x* mod *p* and *x* is secret.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PublicKey {
-    pub(super) g: schnorr::Group,
+    pub(super) g: Group,
     pub(super) h: Integer,
 }
 
@@ -34,7 +34,7 @@ pub struct PublicKey {
 pub struct Fingerprint(pub [u8; FINGERPRINT_SIZE]);
 
 impl PrivateKey {
-    unsafe fn new_unchecked(g: schnorr::Group, x: Integer) -> Self {
+    unsafe fn new_unchecked(g: Group, x: Integer) -> Self {
         Self { g, x }
     }
 
@@ -48,7 +48,7 @@ impl PrivateKey {
 }
 
 impl PublicKey {
-    unsafe fn new_unchecked(g: schnorr::Group, h: Integer) -> Self {
+    unsafe fn new_unchecked(g: Group, h: Integer) -> Self {
         Self { g, h }
     }
 
@@ -102,7 +102,7 @@ impl<'de> Deserialize<'de> for PublicKey {
 
 #[derive(Deserialize)]
 struct KeyRaw {
-    g: schnorr::Group,
+    g: Group,
     i: Integer,
 }
 
@@ -148,7 +148,7 @@ impl FromStr for Fingerprint {
 
 /// A distribution that produces keys from a Schnorr group.
 #[derive(Clone, Debug)]
-pub struct Keys<'a>(pub &'a schnorr::Group);
+pub struct Keys<'a>(pub &'a Group);
 
 impl<'a> Distribution<(PrivateKey, PublicKey)> for Keys<'a> {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> (PrivateKey, PublicKey) {
@@ -174,14 +174,14 @@ const FINGERPRINT_SIZE: usize = 20;
 #[cfg(test)]
 mod test {
     use super::{Fingerprint, Keys, PrivateKey, PublicKey};
-    use crate::schnorr;
+    use crate::group::Groups;
     use rand::{thread_rng, Rng};
     use std::str::FromStr;
 
     #[test]
     fn keys_produces_valid_keys() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -212,7 +212,7 @@ mod test {
     #[test]
     fn public_key_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -233,7 +233,7 @@ mod test {
     #[test]
     fn private_key_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -254,7 +254,7 @@ mod test {
     #[test]
     fn fingerprint_roundtrips_via_string() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

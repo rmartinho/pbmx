@@ -1,9 +1,9 @@
 //! Groth's verifiable shuffle of known content
 
 use crate::{
+    commit::CommitmentScheme,
     hash::Hash,
     num::{fpowm, Modulo},
-    pedersen::CommitmentScheme,
     perm::Permutation,
 };
 use digest::Digest;
@@ -162,7 +162,7 @@ pub fn verify(
         .iter()
         .map(|m| Integer::from(m - &x) % q)
         .fold(Integer::from(1), |acc, i| acc * i % q);
-    ff == e * prod % q
+    ff == (e * prod % q + q) % q
 }
 
 fn x_challenge(m: &[Integer], l: &Integer) -> Integer {
@@ -187,14 +187,14 @@ fn e_challenge(cd: &Integer, cdd: &Integer, cda: &Integer, x: &Integer) -> Integ
 #[cfg(test)]
 mod test {
     use super::{prove, verify};
-    use crate::{num::Bits, pedersen::CommitmentScheme, perm::Shuffles, schnorr};
+    use crate::{commit::CommitmentScheme, group::Groups, num::Bits, perm::Shuffles};
     use rand::{thread_rng, Rng};
     use rug::Integer;
 
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

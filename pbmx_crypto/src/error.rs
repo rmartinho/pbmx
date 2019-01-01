@@ -10,9 +10,9 @@ pub enum Error {
     /// Occurs when deserialization from hex fails
     Hex(Option<std::num::ParseIntError>),
     /// Occurs when VTMF key exchange fails
-    VtmfKeyExchange(crate::barnett_smart::KeyExchangeError),
+    VtmfKeyExchange(crate::vtmf::KeyExchangeError),
     /// Occurs when VTMF decryption fails
-    VtmfDecryption(crate::barnett_smart::DecryptionError),
+    VtmfDecryption(crate::vtmf::DecryptionError),
     /// Occurs when building a fast modular exponentiation table fails
     FpowmPrecomputeFailure,
     /// Occurs when trying to create a permutation from a non-permutation vec
@@ -37,14 +37,14 @@ impl From<std::num::ParseIntError> for Error {
     }
 }
 
-impl From<crate::barnett_smart::KeyExchangeError> for Error {
-    fn from(e: crate::barnett_smart::KeyExchangeError) -> Self {
+impl From<crate::vtmf::KeyExchangeError> for Error {
+    fn from(e: crate::vtmf::KeyExchangeError) -> Self {
         Error::VtmfKeyExchange(e)
     }
 }
 
-impl From<crate::barnett_smart::DecryptionError> for Error {
-    fn from(e: crate::barnett_smart::DecryptionError) -> Self {
+impl From<crate::vtmf::DecryptionError> for Error {
+    fn from(e: crate::vtmf::DecryptionError) -> Self {
         Error::VtmfDecryption(e)
     }
 }

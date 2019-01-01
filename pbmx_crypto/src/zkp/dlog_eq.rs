@@ -1,9 +1,9 @@
 //! Chaum and Pedersen's zero-knowledge proof of equality of discrete logarithms
 
 use crate::{
+    group::Group,
     hash::Hash,
     num::{fpowm, Modulo},
-    schnorr,
 };
 use digest::Digest;
 use rand::{thread_rng, Rng};
@@ -19,7 +19,7 @@ pub struct Proof {
 
 /// Generates a non-interactive zero-knowledge proof that log_g(x) = log_h(y)
 pub fn prove(
-    group: &schnorr::Group,
+    group: &Group,
     x: &Integer,
     y: &Integer,
     g: &Integer,
@@ -40,7 +40,7 @@ pub fn prove(
 /// Verifies a non-interactive zero-knowledge proof that log_g(x) = log_h(y)
 #[allow(clippy::too_many_arguments)]
 pub fn verify(
-    group: &schnorr::Group,
+    group: &Group,
     x: &Integer,
     y: &Integer,
     g: &Integer,
@@ -92,15 +92,15 @@ fn challenge(
 mod test {
     use super::{prove, verify};
     use crate::{
+        group::Groups,
         num::{fpowm, Bits},
-        schnorr,
     };
     use rand::{thread_rng, Rng};
 
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

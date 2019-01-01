@@ -15,14 +15,14 @@ extern crate serde_derive;
 #[macro_use]
 mod macros;
 
-pub mod barnett_smart;
-pub mod elgamal;
+pub mod commit;
 pub mod error;
+pub mod group;
 pub mod hash;
+pub mod keys;
 pub mod num;
-pub mod pedersen;
 pub mod perm;
-pub mod schnorr;
+pub mod vtmf;
 pub mod zkp;
 
 /// Result specialization for PBMX errors

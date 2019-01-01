@@ -1,9 +1,9 @@
 //! Barnett and Smart's verifiable *k*-out-of-*k* Threshold Masking Function
 
 use crate::{
-    elgamal::{Fingerprint, PrivateKey, PublicKey},
+    group::Group,
+    keys::{Fingerprint, PrivateKey, PublicKey},
     num::{fpowm, Modulo},
-    schnorr,
     zkp::{dlog_eq, mask_1ofn},
 };
 use rand::{thread_rng, Rng};
@@ -24,7 +24,7 @@ pub use crate::zkp::mask_1ofn::Proof as PrivateMaskProof;
 /// A verifiable *k*-out-of-*k* threshold masking function
 #[derive(Serialize)]
 pub struct Vtmf {
-    g: schnorr::Group,
+    g: Group,
     n: u32,
     sk: PrivateKey,
     pk: PublicKey,
@@ -38,7 +38,7 @@ pub type Mask = (Integer, Integer);
 
 impl Vtmf {
     unsafe fn new_unchecked(
-        g: schnorr::Group,
+        g: Group,
         n: u32,
         sk: PrivateKey,
         pk: PublicKey,
@@ -190,7 +190,7 @@ impl<'de> Deserialize<'de> for Vtmf {
 
 #[derive(Deserialize)]
 struct VtmfRaw {
-    g: schnorr::Group,
+    g: Group,
     n: u32,
     sk: PrivateKey,
     pk: PublicKey,
@@ -209,7 +209,7 @@ derive_base64_conversions!(Vtmf);
 #[cfg(test)]
 mod test {
     use super::{KeyExchange, Vtmf};
-    use crate::{elgamal::Keys, num::Bits, schnorr};
+    use crate::{group::Groups, keys::Keys, num::Bits};
     use rand::{thread_rng, Rng};
     use rug::Integer;
     use std::str::FromStr;
@@ -217,7 +217,7 @@ mod test {
     #[test]
     fn vtmf_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -247,7 +247,7 @@ mod test {
     #[test]
     fn vtmf_masking_and_unmasking_work() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -292,7 +292,7 @@ mod test {
     #[test]
     fn vtmf_masking_remasking_and_unmasking_work() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -337,7 +337,7 @@ mod test {
     #[test]
     fn vtmf_open_masking_works() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -371,7 +371,7 @@ mod test {
     #[test]
     fn vtmf_private_masking_works() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

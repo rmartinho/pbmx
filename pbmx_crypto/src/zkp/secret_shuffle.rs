@@ -1,17 +1,18 @@
 //! Groth's verifiable secret shuffle of homomorphic encryptions
 
 use crate::{
-    barnett_smart::Mask,
+    commit::CommitmentScheme,
+    group::Group,
     hash::{hash_iter, Hash},
     num::{fpowm, Bits},
-    pedersen::CommitmentScheme,
     perm::Permutation,
-    schnorr,
+    vtmf::Mask,
     zkp::known_shuffle,
 };
 use digest::Digest;
 use rand::{thread_rng, Rng};
 use rug::{integer::Order, Integer};
+use std::cmp::Ordering;
 
 /// Non-interactive proof result
 #[derive(Debug)]
@@ -26,13 +27,7 @@ pub struct Proof {
 }
 
 /// Generates a non-interactive zero-knowledge proof of a secret shuffle
-pub fn prove(
-    group: &schnorr::Group,
-    h: &Integer,
-    ee: &[Mask],
-    pi: &Permutation,
-    ri: &[Integer],
-) -> Proof {
+pub fn prove(group: &Group, h: &Integer, ee: &[Mask], pi: &Permutation, ri: &[Integer]) -> Proof {
     assert!(ee.len() == ri.len());
 
     let g = group.generator();
@@ -122,29 +117,34 @@ pub fn verify(e: &[Mask], ee: &[Mask], proof: &Proof) -> bool {
         .collect();
 
     if !known_shuffle::verify(&proof.com, &l, &cldf, &m, &proof.skc) {
+        println!("skc");
         return false;
     }
 
     if !proof.com.group().has_element(&proof.c) {
+        println!("c");
         return false;
     }
     if !proof.com.group().has_element(&proof.cd) {
+        println!("cd");
         return false;
     }
 
     if !proof.com.group().has_element(&proof.ed.0) {
+        println!("ed0");
         return false;
     }
 
-    if proof
-        .fi
-        .iter()
-        .any(|f| (f.significant_bits() as usize) < Hash::output_size() || f >= q)
-    {
+    let bad_f = |f: &Integer| {
+        (f.significant_bits() as usize) < Hash::output_size() || f.cmp_abs(q) != Ordering::Less
+    };
+    if proof.fi.iter().any(bad_f) {
+        println!("fi");
         return false;
     }
 
-    if proof.z <= 0 || proof.z >= *q {
+    if proof.z.cmp_abs(q) != Ordering::Less {
+        println!("z");
         return false;
     }
 
@@ -220,9 +220,9 @@ fn l_challenge(fi: &[Integer], z: &Integer, ti: &[Integer]) -> Integer {
 mod test {
     use super::{prove, verify};
     use crate::{
+        group::Groups,
         num::{fpowm, Bits, Modulo},
         perm::Shuffles,
-        schnorr,
     };
     use rand::{thread_rng, Rng};
     use rug::Integer;
@@ -230,7 +230,7 @@ mod test {
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
-        let dist = schnorr::Groups {
+        let dist = Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

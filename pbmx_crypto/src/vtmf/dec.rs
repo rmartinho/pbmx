@@ -1,5 +1,5 @@
 use super::{Mask, MaskProof, Vtmf};
-use crate::{elgamal::Fingerprint, zkp::dlog_eq, Result};
+use crate::{keys::Fingerprint, zkp::dlog_eq, Result};
 use rug::Integer;
 use std::collections::HashSet;
 
