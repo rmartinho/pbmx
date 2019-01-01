@@ -32,7 +32,6 @@ pub fn prove(
     pi: &Permutation,
     r: &Integer,
 ) -> Proof {
-    println!("*** proving {:?} {:?} {:?}", m, pi, r);
     let q = com.group().order();
     let n = m.len();
     let mut rng = thread_rng();
@@ -113,7 +112,6 @@ pub fn verify(
     m: &[Integer],
     proof: &Proof,
 ) -> bool {
-    println!("*** verifying {:?} {:?}", c, m);
     let q = com.group().order();
     let p = com.group().modulus();
     let n = m.len();

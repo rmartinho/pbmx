@@ -68,7 +68,7 @@ pub fn prove(
         );
     let c1 = fpowm::pow_mod(g, &rd, p).unwrap();
     let c2 = fpowm::pow_mod(h, &rd, p).unwrap();
-    let ed = (ed.0 * &c1, ed.1 * &c2);
+    let ed = (ed.0 * &c1 % p, ed.1 * &c2 % p);
 
     let ti = t_challenge(&c, &cd, &ed, ee);
     let fi: Vec<_> = pi
@@ -132,7 +132,7 @@ pub fn verify(e: &[Mask], ee: &[Mask], proof: &Proof) -> bool {
         return false;
     }
 
-    if fpowm::pow_mod(&proof.ed.0, q, p).unwrap() != 1 {
+    if !proof.com.group().has_element(&proof.ed.0) {
         return false;
     }
 
@@ -178,13 +178,12 @@ pub fn verify(e: &[Mask], ee: &[Mask], proof: &Proof) -> bool {
     let efed = (efe.0 * &proof.ed.0 % p, efe.1 * &proof.ed.1 % p);
     let etfd = (et.0 * efed.0 % p, et.1 * efed.1 % p);
 
-    let epk = (
+    let ez = (
         fpowm::pow_mod(g, &proof.z, p).unwrap(),
         fpowm::pow_mod(h, &proof.z, p).unwrap(),
     );
 
-    println!("\netf {:?}\nepk {:?}", etfd, epk);
-    etfd == epk
+    etfd == ez
 }
 
 fn t_challenge(c: &Integer, cd: &Integer, ed: &(Integer, Integer), e: &[Mask]) -> Vec<Integer> {
@@ -253,7 +252,7 @@ mod test {
                 )
             })
             .collect();
-        let (mut mp, rp): (Vec<_>, Vec<_>) = mm
+        let (mut mp, mut rp): (Vec<_>, Vec<_>) = mm
             .iter()
             .map(|c| {
                 let r = rng.sample(&Modulo(q));
@@ -268,12 +267,12 @@ mod test {
             .unzip();
         let pi = rng.sample(&Shuffles(8));
         pi.apply_to(&mut mp);
+        pi.apply_to(&mut rp);
 
         let mut proof = prove(&group, &h, &mp, &pi, &rp);
 
         let ok = verify(&mm, &mp, &proof);
-        assert!(
-            ok,
+        assert!(ok,
             "proof isn't valid\n\tgroup = {:#?}\n\th = {}\n\tmm = {:?}\n\tmp = {:?}\n\tpi = {:#?}\n\trp = {:?}\n\tproof = {:?}",
             group,
             h,
@@ -287,14 +286,15 @@ mod test {
         // break the proof
         proof.z += 1;
         let ok = verify(&mm, &mp, &proof);
-        assert!(!ok,);
-        //"invalid proof was accepted\n\tcom = {:#?}\n\tc = {}\n\tm = {:?}\n\tp =
-        // {:#?}\n\tr = {}\n\tproof = {:?}",
-        // com,
-        // c,
-        // m,
-        // pi,
-        // r,
-        // proof
+        assert!(!ok,
+            "invalid proof was accepted\n\tgroup = {:#?}\n\th = {}\n\tmm = {:?}\n\tmp = {:?}\n\tpi = {:#?}\n\trp = {:?}\n\tproof = {:?}",
+            group,
+            h,
+            mm,
+            mp,
+            pi,
+            rp,
+            proof
+        );
     }
 }

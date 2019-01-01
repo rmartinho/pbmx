@@ -59,7 +59,7 @@ impl Group {
             return false;
         }
 
-        let x = Integer::from(e.pow_mod_ref(&self.q, &self.p).unwrap());
+        let x = fpowm::pow_mod(e, &self.q, &self.p).unwrap();
         x == 1
     }
 
