@@ -165,6 +165,15 @@ impl Vtmf {
     pub fn unmask(&self, c: Mask) -> Decryption {
         Decryption::new(self, c)
     }
+
+    /// Undoes a non-secret masking operation
+    pub fn unmask_open(&self, m: &Mask) -> Option<Integer> {
+        if m.0 == 1 {
+            Some(m.1.clone())
+        } else {
+            None
+        }
+    }
 }
 
 impl Vtmf {
@@ -393,7 +402,8 @@ mod test {
         let x = rng.sample(&Bits(128));
         let mask = vtmf0.mask_open(&x);
 
-        assert_eq!((1.into(), x.clone()), mask);
+        let open = vtmf1.unmask_open(&mask);
+        assert_eq!(Some(x.clone()), open);
 
         let mut dec0 = vtmf0.unmask(mask.clone());
         let mut dec1 = vtmf1.unmask(mask.clone());
