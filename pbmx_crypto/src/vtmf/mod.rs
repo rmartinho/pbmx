@@ -4,7 +4,8 @@ use crate::{
     group::Group,
     keys::{Fingerprint, PrivateKey, PublicKey},
     num::{fpowm, Modulo},
-    zkp::{dlog_eq, mask_1ofn},
+    perm::Shuffles,
+    zkp::{dlog_eq, mask_1ofn, secret_shuffle},
 };
 use rand::{thread_rng, Rng};
 use rug::Integer;
@@ -17,9 +18,10 @@ pub use self::kex::*;
 mod dec;
 pub use self::dec::*;
 
-pub use crate::zkp::dlog_eq::Proof as MaskProof;
-
-pub use crate::zkp::mask_1ofn::Proof as PrivateMaskProof;
+pub use crate::zkp::{
+    dlog_eq::Proof as MaskProof, mask_1ofn::Proof as PrivateMaskProof,
+    secret_shuffle::Proof as ShuffleProof,
+};
 
 /// A verifiable *k*-out-of-*k* threshold masking function
 #[derive(Serialize)]
@@ -162,6 +164,41 @@ impl Vtmf {
     /// Starts an instance of the verifiable decryption protocol
     pub fn unmask(&self, c: Mask) -> Decryption {
         Decryption::new(self, c)
+    }
+}
+
+impl Vtmf {
+    /// Applies the mask-shuffle protocol.
+    pub fn mask_shuffle(&self, m: &[Mask]) -> (Vec<Mask>, ShuffleProof) {
+        let p = self.g.modulus();
+        let q = self.g.order();
+        let g = self.g.generator();
+        let h = &self.pk.h;
+
+        let mut rng = thread_rng();
+
+        let remask = |c: &Mask| {
+            let r = rng.sample(&Modulo(q));
+            let gr = fpowm::pow_mod(g, &r, p).unwrap();
+            let hr = fpowm::pow_mod(h, &r, p).unwrap();
+
+            let c1 = gr * &c.0 % p;
+            let c2 = hr * &c.1 % p;
+            ((c1, c2), r)
+        };
+
+        let (mut rm, mut r): (Vec<_>, Vec<_>) = m.iter().map(remask).unzip();
+        let pi = rng.sample(&Shuffles(m.len()));
+        pi.apply_to(&mut rm);
+        pi.apply_to(&mut r);
+
+        let proof = secret_shuffle::prove(&self.g, h, &rm, &pi, &r);
+        (rm, proof)
+    }
+
+    /// Verifies the application of the mask-shuffling protocol
+    pub fn verify_mask_shuffle(&self, m: &[Mask], c: &[Mask], proof: &ShuffleProof) -> bool {
+        secret_shuffle::verify(m, c, proof)
     }
 }
 
@@ -405,5 +442,54 @@ mod test {
         assert!(dec0.is_complete());
         let r = dec0.decrypt().unwrap();
         assert_eq!(r, m[idx]);
+    }
+
+    #[test]
+    fn vtmf_mask_shuffling_works() {
+        let mut rng = thread_rng();
+        let dist = Groups {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let mut kex0 = KeyExchange::new(group.clone(), 2);
+        let pk0 = kex0.generate_key().unwrap();
+        let mut kex1 = KeyExchange::new(group, 2);
+        let pk1 = kex1.generate_key().unwrap();
+        let fp1 = pk1.fingerprint();
+        kex0.update_key(pk1).unwrap();
+        kex1.update_key(pk0).unwrap();
+        let vtmf0 = kex0.finalize().unwrap();
+        let vtmf1 = kex1.finalize().unwrap();
+
+        let m: Vec<_> = (1..8)
+            .map(Integer::from)
+            .map(|i| vtmf0.mask(&i).0)
+            .collect();
+        let (shuffle, proof) = vtmf0.mask_shuffle(&m);
+        let ok = vtmf1.verify_mask_shuffle(&m, &shuffle, &proof);
+        assert!(
+            ok,
+            "shuffle verification failed\n\toriginal = {:?}\n\tshuffle = {:?}\n\tproof = {:?}",
+            m, shuffle, proof
+        );
+
+        let mut open: Vec<_> = shuffle
+            .iter()
+            .map(|s| {
+                let mut dec0 = vtmf0.unmask(s.clone());
+                let mut dec1 = vtmf1.unmask(s.clone());
+                let _ = dec0.reveal_share().unwrap();
+                let (di, proof) = dec1.reveal_share().unwrap();
+                dec0.add_share(&fp1, &di, &proof).unwrap();
+                assert!(dec0.is_complete());
+                dec0.decrypt().unwrap()
+            })
+            .collect();
+        open.sort();
+        for (o, i) in open.into_iter().zip(1..8) {
+            assert_eq!(o, Integer::from(i));
+        }
     }
 }
