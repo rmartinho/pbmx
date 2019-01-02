@@ -4,7 +4,7 @@
 #![warn(missing_docs)]
 #![deny(clippy::correctness)]
 
-//! PBMX toolbox crate
+//! PBMX toolbox cryptographic tools
 
 #[macro_use]
 extern crate lazy_static;
@@ -22,6 +22,7 @@ pub mod hash;
 pub mod keys;
 pub mod num;
 pub mod perm;
+pub mod serde;
 pub mod vtmf;
 pub mod zkp;
 

@@ -1,0 +1,31 @@
+[package]
+name = "pbmx_blocks"
+version = "0.1.0"
+authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
+edition = "2018"
+
+[dependencies.pbmx_crypto]
+path = "../pbmx_crypto"
+
+[dependencies.base64]
+version = "0.10"
+
+[dependencies.bincode]
+version = "1.0"
+
+[dependencies.digest]
+version = "0.8"
+
+[dependencies.ripemd160]
+version = "0.8"
+
+[dependencies.rug]
+version = "1.2"
+default-features = false
+features = ["integer", "serde"]
+
+[dependencies.serde]
+version = "1.0"
+
+[dependencies.serde_derive]
+version = "1.0"

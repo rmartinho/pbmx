@@ -11,7 +11,7 @@ use rug::{integer::Order, Integer};
 use std::cmp::Ordering;
 
 /// Non-interactive proof result
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Proof {
     c: Integer,
     r: Integer,

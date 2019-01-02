@@ -6,6 +6,9 @@ use std::collections::HashSet;
 /// One party's share of a secret
 pub type SecretShare = Integer;
 
+/// Zero-knowledge proof of a secret share
+pub type SecretShareProof = MaskProof;
+
 /// The VTMF decryption protocol
 pub struct Decryption<'a> {
     vtmf: &'a Vtmf,
@@ -25,7 +28,7 @@ impl<'a> Decryption<'a> {
     }
 
     /// Publishing step of the verifiable decryption protocol
-    pub fn reveal_share(&mut self) -> Result<(SecretShare, MaskProof)> {
+    pub fn reveal_share(&mut self) -> Result<(SecretShare, SecretShareProof)> {
         if !self.seen.is_empty() {
             return Err(DecryptionError::RepeatedReveal.into());
         }
@@ -45,7 +48,7 @@ impl<'a> Decryption<'a> {
         &mut self,
         pk_fp: &Fingerprint,
         di: &SecretShare,
-        proof: &MaskProof,
+        proof: &SecretShareProof,
     ) -> Result<()> {
         if self.seen.is_empty() || self.is_complete() {
             return Err(DecryptionError::TooManyShares.into());

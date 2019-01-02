@@ -17,7 +17,8 @@ pub struct HashIter {
     r: HashOutput,
 }
 
-type HashOutput = GenericArray<u8, <Hash as Digest>::OutputSize>;
+/// The output of the hash function
+pub type HashOutput = GenericArray<u8, <Hash as Digest>::OutputSize>;
 
 impl HashIter {
     fn new(mut h: Hash) -> HashIter {
