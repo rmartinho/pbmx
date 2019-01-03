@@ -1,3 +1,4 @@
+/// Derives string conversions via serialization to/from base64
 #[macro_export]
 macro_rules! derive_base64_conversions {
     ($t:ty) => {

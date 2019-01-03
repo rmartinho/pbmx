@@ -7,14 +7,11 @@ use pbmx_crypto::{
     group::Group,
     hash::Hash,
     keys::{Fingerprint, PrivateKey, PublicKey},
-    serde::ToBytes,
+    serde::{serialize_flat_map, ToBytes},
     vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShuffleProof},
 };
 use rug::{integer::Order, Integer};
-use serde::{
-    de::{Deserialize, Deserializer},
-    ser::{Serialize, Serializer},
-};
+use serde::de::{Deserialize, Deserializer};
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
@@ -24,8 +21,8 @@ use std::{
 /// A block in a PBMX chain
 #[derive(Serialize)]
 pub struct Block {
-    acks: Vec<Id>,
-    #[serde(serialize_with = "serialize_payloads_flat")]
+    pub(super) acks: Vec<Id>,
+    #[serde(serialize_with = "serialize_flat_map")]
     payloads: HashMap<Id, Payload>,
     fp: Fingerprint,
     sig: Signature,
@@ -114,14 +111,6 @@ where
     Integer::from_digits(&h.result(), Order::MsfBe)
 }
 
-fn serialize_payloads_flat<S>(map: &HashMap<Id, Payload>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let v: Vec<_> = map.values().collect();
-    v.serialize(serializer)
-}
-
 impl<'de> Deserialize<'de> for Block {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -190,7 +179,7 @@ impl Payload {
 derive_base64_conversions!(Payload);
 
 /// A block or payload ID
-#[derive(PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Id([u8; ID_SIZE]);
 
 const ID_SIZE: usize = 20;

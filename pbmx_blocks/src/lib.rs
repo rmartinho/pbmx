@@ -7,3 +7,4 @@
 extern crate serde_derive;
 
 pub mod block;
+pub mod chain;

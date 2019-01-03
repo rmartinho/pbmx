@@ -5,11 +5,12 @@ use crate::{
     keys::{Fingerprint, PrivateKey, PublicKey},
     num::{fpowm, Modulo},
     perm::Shuffles,
+    serde::serialize_flat_map,
     zkp::{dlog_eq, mask_1ofn, secret_shuffle},
 };
 use rand::{thread_rng, Rng};
 use rug::Integer;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 
 mod kex;
@@ -31,7 +32,7 @@ pub struct Vtmf {
     sk: PrivateKey,
     pk: PublicKey,
     fp: Fingerprint,
-    #[serde(serialize_with = "serialize_key_shares_flat")]
+    #[serde(serialize_with = "serialize_flat_map")]
     pki: HashMap<Fingerprint, PublicKey>,
 }
 
@@ -209,17 +210,6 @@ impl Vtmf {
     pub fn verify_mask_shuffle(&self, m: &[Mask], c: &[Mask], proof: &ShuffleProof) -> bool {
         secret_shuffle::verify(m, c, proof)
     }
-}
-
-fn serialize_key_shares_flat<S>(
-    map: &HashMap<Fingerprint, PublicKey>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let v: Vec<_> = map.values().collect();
-    v.serialize(serializer)
 }
 
 impl<'de> Deserialize<'de> for Vtmf {
