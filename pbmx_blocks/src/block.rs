@@ -19,11 +19,12 @@ use std::{
 };
 
 /// A block in a PBMX chain
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Block {
     pub(super) acks: Vec<Id>,
     #[serde(serialize_with = "serialize_flat_map")]
-    payloads: HashMap<Id, Payload>,
+    pub(super) payloads: HashMap<Id, Payload>,
+    payload_order: Vec<Id>,
     fp: Fingerprint,
     sig: Signature,
 }
@@ -137,7 +138,7 @@ impl BlockRaw {
 derive_base64_conversions!(Block);
 
 /// A PBMX message payload
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Payload {
     /// A game definition payload
     DefineGame(String),
@@ -179,7 +180,7 @@ impl Payload {
 derive_base64_conversions!(Payload);
 
 /// A block or payload ID
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Id([u8; ID_SIZE]);
 
 const ID_SIZE: usize = 20;

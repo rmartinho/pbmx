@@ -3,10 +3,10 @@
 use crate::block::{Block, BlockBuilder, Id, Payload};
 use pbmx_crypto::{derive_base64_conversions, keys::PrivateKey, serde::serialize_flat_map};
 use serde::de::{Deserialize, Deserializer};
-use std::collections::HashMap;
+use std::collections::{hash_map::Values, HashMap};
 
 /// A blockchain
-#[derive(Default, Serialize)]
+#[derive(Default, Debug, Serialize)]
 pub struct Chain {
     #[serde(serialize_with = "serialize_flat_map")]
     blocks: HashMap<Id, Block>,
@@ -66,8 +66,18 @@ impl Chain {
         if block.acks.is_empty() {
             self.roots.push(id);
         }
+        if !self.links.contains_key(&id) {
+            self.heads.push(id);
+        }
         self.blocks.insert(id, block);
-        self.heads.push(id);
+    }
+
+    pub fn blocks(&self) -> impl Iterator<Item = &Block> {
+        BlockIter::new(self)
+    }
+
+    pub fn payloads(&self) -> impl Iterator<Item=&Payload> {
+        PayloadIter::new(self)
     }
 }
 
@@ -92,3 +102,128 @@ impl ChainRaw {
 }
 
 derive_base64_conversions!(Chain);
+
+struct BlockIter<'a> {
+    roots: Vec<Id>,
+    chain: &'a Chain,
+    incoming: HashMap<Id, usize>,
+    current: Option<Id>,
+}
+
+impl<'a> BlockIter<'a> {
+    fn new(chain: &Chain) -> BlockIter {
+        BlockIter {
+            roots: chain.roots.clone(),
+            chain: &chain,
+            incoming: HashMap::new(),
+            current: None,
+        }
+    }
+}
+
+impl<'a> Iterator for BlockIter<'a> {
+    type Item = &'a Block;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let blocks = &self.chain.blocks;
+        loop {
+            match self.current.take() {
+                None => {
+                    let n = self.roots.pop()?;
+                    self.current = Some(n);
+                    return blocks.get(&n);
+                }
+                Some(n) => {
+                    for &m in self.chain.links.get(&n)?.iter() {
+                        let entry = self.incoming.entry(m);
+                        let inc = entry.or_insert_with(|| blocks.get(&m).unwrap().acks.len());
+                        *inc -= 1;
+                        if *inc == 0 {
+                            self.roots.push(m);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct PayloadIter<'a> {
+    blocks: BlockIter<'a>,
+    current: Option<Values<'a, Id, Payload>>,
+}
+
+impl<'a> PayloadIter<'a> {
+    fn new(chain: &Chain) -> PayloadIter {
+        let mut it = BlockIter::new(chain);
+        PayloadIter {
+            current: it.next().map(|b| b.payloads.values()),
+            blocks: it,
+        }
+    }
+}
+
+impl<'a> Iterator for PayloadIter<'a> {
+    type Item = &'a Payload;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.current.take() {
+                None => return None,
+                Some(mut it) => match it.next() {
+                    None => self.current = self.blocks.next().map(|b| b.payloads.values()),
+                    Some(p) => {
+                        self.current = Some(it);
+                        return Some(p);
+                    }
+                },
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Chain;
+    use crate::block::Payload;
+    use pbmx_crypto::{group::Groups, keys::Keys};
+    use rand::{thread_rng, Rng};
+
+    #[test]
+    fn test_it() {
+        let mut rng = thread_rng();
+        let dist = Groups {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let (sk, pk) = rng.sample(&Keys(&group));
+        let mut chain = Chain::new("test".into(), &sk);
+        let mut b0 = chain.build_block();
+        b0.add_payload(Payload::Bytes(vec![0, 1, 2, 3, 4]));
+        b0.add_payload(Payload::Bytes(vec![5, 6, 7, 8, 9]));
+
+        let mut b1 = chain.build_block();
+        b1.add_payload(Payload::Bytes(vec![9, 8, 7, 6, 5]));
+
+
+            println!("----");
+        for b in chain.blocks() {
+            println!("{}", b);
+        }
+        chain.add_block(b0.build(&sk));
+
+            println!("----");
+        for b in chain.blocks() {
+            println!("{}", b);
+        }
+        chain.add_block(b1.build(&sk));
+
+            println!("----");
+        for b in chain.blocks() {
+            println!("{}", b);
+        }
+        println!("{:?}", chain);
+    }
+}
