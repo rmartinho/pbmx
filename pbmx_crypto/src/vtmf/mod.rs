@@ -47,7 +47,7 @@ impl Vtmf {
         fp: Fingerprint,
         pki: Vec<PublicKey>,
     ) -> Self {
-        fpowm::precompute(&pk.h, g.bits(), g.modulus()).unwrap();
+        fpowm::precompute(&pk.element(), g.bits(), g.modulus()).unwrap();
         Self {
             g,
             n,
@@ -59,7 +59,7 @@ impl Vtmf {
     }
 
     fn validate(self) -> Option<Self> {
-        if self.g == self.pk.g && self.g == self.sk.g && self.n > 1 {
+        if self.g == *self.pk.group() && self.g == *self.sk.group() && self.n > 1 {
             Some(self)
         } else {
             let p = self.g.modulus();
@@ -67,8 +67,8 @@ impl Vtmf {
             let h = self
                 .pki
                 .values()
-                .fold(Integer::from(1), |acc, pk| acc * &pk.h % p);
-            if h == self.pk.h {
+                .fold(Integer::from(1), |acc, pk| acc * pk.element() % p);
+            if h == *self.pk.element() {
                 Some(self)
             } else {
                 None
@@ -88,7 +88,7 @@ impl Vtmf {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
-        let h = &self.pk.h;
+        let h = self.pk.element();
 
         let r = thread_rng().sample(&Modulo(q));
         let c1 = fpowm::pow_mod(g, &r, p).unwrap();
@@ -102,7 +102,7 @@ impl Vtmf {
     pub fn verify_mask(&self, m: &Integer, c: &Mask, proof: &MaskProof) -> bool {
         let p = self.g.modulus();
         let g = self.g.generator();
-        let h = &self.pk.h;
+        let h = self.pk.element();
         let m1 = Integer::from(m.invert_ref(p).unwrap());
         let hr = &c.1 * m1 % p;
         dlog_eq::verify(&self.g, &c.0, &hr, g, h, proof)
@@ -113,7 +113,7 @@ impl Vtmf {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
-        let h = &self.pk.h;
+        let h = self.pk.element();
 
         let r = thread_rng().sample(&Modulo(q));
         let c1 = fpowm::pow_mod(g, &r, p).unwrap();
@@ -127,7 +127,7 @@ impl Vtmf {
     /// Verifies the application of a private masking operation
     pub fn verify_private_mask(&self, m: &[Integer], c: &Mask, proof: &PrivateMaskProof) -> bool {
         let g = self.g.generator();
-        let h = &self.pk.h;
+        let h = self.pk.element();
         mask_1ofn::verify(&self.g, &c.0, &c.1, g, h, m, proof)
     }
 
@@ -136,7 +136,7 @@ impl Vtmf {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
-        let h = &self.pk.h;
+        let h = self.pk.element();
 
         let r = thread_rng().sample(&Modulo(q));
         let gr = fpowm::pow_mod(g, &r, p).unwrap();
@@ -152,7 +152,7 @@ impl Vtmf {
     pub fn verify_remask(&self, m: &Mask, c: &Mask, proof: &MaskProof) -> bool {
         let p = self.g.modulus();
         let g = self.g.generator();
-        let h = &self.pk.h;
+        let h = self.pk.element();
 
         let c11 = Integer::from(m.0.invert_ref(p).unwrap());
         let gr = &c.0 * c11 % p;
@@ -182,7 +182,7 @@ impl Vtmf {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
-        let h = &self.pk.h;
+        let h = self.pk.element();
 
         let mut rng = thread_rng();
 

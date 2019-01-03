@@ -35,10 +35,11 @@ impl<'a> Decryption<'a> {
 
         let g = self.vtmf.g.generator();
         let p = self.vtmf.g.modulus();
+        let x = self.vtmf.sk.exponent();
 
-        let hi = self.vtmf.g.element(&self.vtmf.sk.x);
-        self.d = Integer::from(self.c.0.pow_mod_ref(&self.vtmf.sk.x, p).unwrap());
-        let proof = dlog_eq::prove(&self.vtmf.g, &self.d, &hi, &self.c.0, g, &self.vtmf.sk.x);
+        let hi = self.vtmf.g.element(x);
+        self.d = Integer::from(self.c.0.pow_mod_ref(x, p).unwrap());
+        let proof = dlog_eq::prove(&self.vtmf.g, &self.d, &hi, &self.c.0, g, x);
         self.seen.insert(self.vtmf.fp.clone());
         Ok((self.d.clone(), proof))
     }
@@ -61,8 +62,9 @@ impl<'a> Decryption<'a> {
             .pki
             .get(pk_fp)
             .ok_or(DecryptionError::UnknownKeyShare)?;
+        let h = pk.element();
 
-        if dlog_eq::verify(&self.vtmf.g, di, &pk.h, &self.c.0, g, proof) {
+        if dlog_eq::verify(&self.vtmf.g, di, h, &self.c.0, g, proof) {
             self.d *= di;
             self.d %= p;
             self.seen.insert(pk.fingerprint());

@@ -64,13 +64,11 @@ impl KeyExchange {
         if self.has_all_keys() {
             return Err(KeyExchangeError::RepeatedKeyGeneration.into());
         }
-        if self.g != pk.g {
+        if self.g != *pk.group() {
             return Err(KeyExchangeError::InvalidPublicKey.into());
         }
 
-        let h = &mut self.pk.as_mut().unwrap().h;
-        *h *= &pk.h;
-        *h %= self.g.modulus();
+        self.pk.as_mut().unwrap().combine(&pk);
         self.pki.push(pk);
         Ok(())
     }

@@ -1,8 +1,13 @@
 //! ElGamal encryption scheme
 
-use crate::{error::Error, group::Group, hash::Hash, num::Modulo};
+use crate::{
+    error::Error,
+    group::Group,
+    hash::Hash,
+    num::{fpowm, Coprimes, Modulo},
+};
 use digest::Digest;
-use rand::{distributions::Distribution, Rng};
+use rand::{distributions::Distribution, thread_rng, Rng};
 use rug::{integer::Order, Integer};
 use serde::{de, Deserialize, Deserializer};
 use std::{
@@ -15,8 +20,8 @@ use std::{
 /// This key consists of a secret exponent *x*, together with a Schnorr group.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PrivateKey {
-    pub(super) g: Group,
-    pub(super) x: Integer,
+    g: Group,
+    x: Integer,
 }
 
 /// A public key
@@ -25,13 +30,111 @@ pub struct PrivateKey {
 /// *h* = *g*^*x* mod *p* and *x* is secret.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PublicKey {
-    pub(super) g: Group,
-    pub(super) h: Integer,
+    g: Group,
+    h: Integer,
 }
 
 /// A public key fingerprint
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Fingerprint(pub [u8; FINGERPRINT_SIZE]);
+
+impl PrivateKey {
+    /// Gets this key's group
+    pub fn group(&self) -> &Group {
+        &self.g
+    }
+
+    /// Gets this key's secret value
+    pub fn exponent(&self) -> &Integer {
+        &self.x
+    }
+
+    /// Decrypts a given ciphertext
+    pub fn decrypt(&self, c: &(Integer, Integer)) -> Option<Integer> {
+        let p = self.g.modulus();
+        let c0x = Integer::from(c.0.pow_mod_ref(&self.x, p)?);
+        let c0mx = c0x.invert(&p).ok()?;
+
+        Some(&c.1 * c0mx % p)
+    }
+
+    /// Signs a given plaintext
+    pub fn sign(&self, m: &Integer) -> (Integer, Integer) {
+        let p = self.g.modulus();
+        let g = self.g.generator();
+        let pm1 = p.clone() - 1;
+
+        loop {
+            let k = thread_rng().sample(&Coprimes(&pm1));
+            let r = fpowm::pow_mod(g, &k, p).unwrap();
+            let xr = Integer::from(&self.x * &r);
+            let k1 = Integer::from(k.invert_ref(p).unwrap());
+            let s = (m - xr) * k1 % &pm1;
+            if s != 0 {
+                return (r, s);
+            }
+        }
+    }
+}
+
+impl PublicKey {
+    /// Gets this key's group
+    pub fn group(&self) -> &Group {
+        &self.g
+    }
+
+    /// Gets this key's public value
+    pub fn element(&self) -> &Integer {
+        &self.h
+    }
+
+    /// Combines this public key with another one to form a shared key
+    pub fn combine(&mut self, pk: &PublicKey) {
+        assert!(pk.g == self.g);
+        self.h *= &pk.h;
+        self.h %= self.g.modulus();
+    }
+
+    /// Encrypts a given plaintext
+    pub fn encrypt(&self, m: &Integer) -> (Integer, Integer) {
+        let c = (1.into(), m.clone());
+        self.reencrypt(&c)
+    }
+
+    /// Re-encrypts a given ciphertext
+    pub fn reencrypt(&self, c: &(Integer, Integer)) -> (Integer, Integer) {
+        let p = self.g.modulus();
+        let q = self.g.order();
+        let g = self.g.generator();
+
+        let r = thread_rng().sample(&Modulo(q));
+        let gr = fpowm::pow_mod(g, &r, p).unwrap();
+        let hr = fpowm::pow_mod(&self.h, &r, p).unwrap();
+        let c1 = gr * &c.0 % p;
+        let c2 = hr * &c.1 % p;
+        (c1, c2)
+    }
+
+    /// Verifies a given signature
+    pub fn verify(&self, m: &Integer, sig: &(Integer, Integer)) -> bool {
+        let p = self.g.modulus();
+        let g = self.g.generator();
+        let pm1 = p.clone() - 1;
+        let (ref r, ref s) = sig;
+
+        if *r < 0 || *r >= *p {
+            return false;
+        }
+        if *s < 0 || *s >= pm1 {
+            return false;
+        }
+        let gm = fpowm::pow_mod(g, m, p).unwrap();
+        let hr = fpowm::pow_mod(&self.h, r, p).unwrap();
+        let rs = Integer::from(r.pow_mod_ref(s, p).unwrap());
+
+        gm == hr * rs % p
+    }
+}
 
 impl PrivateKey {
     unsafe fn new_unchecked(g: Group, x: Integer) -> Self {
