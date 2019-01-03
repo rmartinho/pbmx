@@ -49,6 +49,19 @@ impl PrivateKey {
         &self.x
     }
 
+    /// Gets a public key that corresponds with this key
+    pub fn public_key(&self) -> PublicKey {
+        PublicKey {
+            g: self.g.clone(),
+            h: self.g.element(&self.x),
+        }
+    }
+
+    /// Gets the public key fingerprint
+    pub fn fingerprint(&self) -> Fingerprint {
+        self.public_key().fingerprint()
+    }
+
     /// Decrypts a given ciphertext
     pub fn decrypt(&self, c: &(Integer, Integer)) -> Option<Integer> {
         let p = self.g.modulus();
@@ -68,8 +81,9 @@ impl PrivateKey {
             let k = thread_rng().sample(&Coprimes(&pm1));
             let r = fpowm::pow_mod(g, &k, p).unwrap();
             let xr = Integer::from(&self.x * &r);
-            let k1 = Integer::from(k.invert_ref(p).unwrap());
+            let k1 = Integer::from(k.invert_ref(&pm1).unwrap());
             let s = (m - xr) * k1 % &pm1;
+            let s = (s + &pm1) % &pm1;
             if s != 0 {
                 return (r, s);
             }
@@ -128,6 +142,7 @@ impl PublicKey {
         if *s < 0 || *s >= pm1 {
             return false;
         }
+
         let gm = fpowm::pow_mod(g, m, p).unwrap();
         let hr = fpowm::pow_mod(&self.h, r, p).unwrap();
         let rs = Integer::from(r.pow_mod_ref(s, p).unwrap());
@@ -257,18 +272,13 @@ impl<'a> Distribution<(PrivateKey, PublicKey)> for Keys<'a> {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> (PrivateKey, PublicKey) {
         let x = rng.sample(&Modulo(self.0.order()));
 
-        let h = self.0.element(&x);
+        let sk = PrivateKey {
+            g: self.0.clone(),
+            x,
+        };
+        let pk = sk.public_key();
 
-        (
-            PrivateKey {
-                g: self.0.clone(),
-                x,
-            },
-            PublicKey {
-                g: self.0.clone(),
-                h,
-            },
-        )
+        (sk, pk)
     }
 }
 

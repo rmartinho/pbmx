@@ -3,24 +3,60 @@
 use digest::Digest;
 use pbmx_crypto::{
     derive_base64_conversions,
+    error::Error,
     group::Group,
     hash::Hash,
-    keys::{PrivateKey, PublicKey},
+    keys::{Fingerprint, PrivateKey, PublicKey},
     serde::ToBytes,
     vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShuffleProof},
 };
-use rug::Integer;
-use std::collections::HashMap;
+use rug::{integer::Order, Integer};
+use serde::{
+    de::{Deserialize, Deserializer},
+    ser::{Serialize, Serializer},
+};
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+    str::{self, FromStr},
+};
 
 /// A block in a PBMX chain
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 pub struct Block {
     acks: Vec<Id>,
+    #[serde(serialize_with = "serialize_payloads_flat")]
     payloads: HashMap<Id, Payload>,
+    fp: Fingerprint,
     sig: Signature,
 }
 
-/// A builder for a block
+impl Block {
+    fn new(acks: Vec<Id>, payloads: Vec<Payload>, fp: Fingerprint, sig: Signature) -> Block {
+        Block {
+            acks,
+            sig,
+            fp,
+            payloads: payloads.into_iter().map(|p| (p.id(), p)).collect(),
+        }
+    }
+
+    /// Gets this block's ID
+    pub fn id(&self) -> Id {
+        Id::of(self).unwrap()
+    }
+
+    /// Checks whether this block's signature is valid
+    pub fn valid(&self, pk: &PublicKey) -> bool {
+        assert!(pk.fingerprint() == self.fp);
+
+        let m = block_signature_hash(self.acks.iter(), self.payloads.values(), &self.fp);
+        pk.verify(&m, &self.sig)
+    }
+}
+
+/// A builder for blocks
+#[derive(Default)]
 pub struct BlockBuilder {
     acks: Vec<Id>,
     payloads: Vec<Payload>,
@@ -29,10 +65,7 @@ pub struct BlockBuilder {
 impl BlockBuilder {
     /// Creates a new, empty, block builder
     pub fn new() -> BlockBuilder {
-        BlockBuilder {
-            acks: Vec::new(),
-            payloads: Vec::new(),
-        }
+        BlockBuilder::default()
     }
 
     /// Adds an acknowledgement to a previous block
@@ -48,12 +81,67 @@ impl BlockBuilder {
     }
 
     /// Builds the block, consuming the builder
-    pub fn build(self, pk: &PrivateKey) -> Block {
+    pub fn build(self, sk: &PrivateKey) -> Block {
+        let fp = sk.fingerprint();
+        let m = block_signature_hash(self.acks.iter(), self.payloads.iter(), &fp);
+        let sig = sk.sign(&m);
         Block {
             acks: self.acks,
             payloads: self.payloads.into_iter().map(|p| (p.id(), p)).collect(),
-            sig: Signature(Integer::new(), Integer::new()),
+            fp,
+            sig,
         }
+    }
+}
+
+fn block_signature_hash<'a, AckIt, PayloadIt>(
+    acks: AckIt,
+    payloads: PayloadIt,
+    fp: &Fingerprint,
+) -> Integer
+where
+    AckIt: Iterator<Item = &'a Id> + 'a,
+    PayloadIt: Iterator<Item = &'a Payload> + 'a,
+{
+    let mut h = Hash::new();
+    for ack in acks {
+        h = h.chain(&ack.0);
+    }
+    for payload in payloads {
+        h = h.chain(&payload.id().0);
+    }
+    h = h.chain(&fp.0);
+    Integer::from_digits(&h.result(), Order::MsfBe)
+}
+
+fn serialize_payloads_flat<S>(map: &HashMap<Id, Payload>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let v: Vec<_> = map.values().collect();
+    v.serialize(serializer)
+}
+
+impl<'de> Deserialize<'de> for Block {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(BlockRaw::deserialize(deserializer)?.into())
+    }
+}
+
+#[derive(Deserialize)]
+struct BlockRaw {
+    acks: Vec<Id>,
+    payloads: Vec<Payload>,
+    fp: Fingerprint,
+    sig: Signature,
+}
+
+impl BlockRaw {
+    fn into(self) -> Block {
+        Block::new(self.acks, self.payloads, self.fp, self.sig)
     }
 }
 
@@ -77,7 +165,7 @@ pub enum Payload {
     /// A stack private mask proof payload
     ProvePrivateMask(Id, Id, Vec<PrivateMaskProof>),
     /// A stack shuffle proof payload
-    ProveShuffle(Id, Id, ShuffleProof),
+    ProveShuffle(Id, Id, Box<ShuffleProof>),
     // /// A stack shift proof payload
     // ProveShift(Id, Id, ShiftProof),
     /// A secret share payload
@@ -103,7 +191,36 @@ derive_base64_conversions!(Payload);
 
 /// A block or payload ID
 #[derive(PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Id([u8; 20]);
+pub struct Id([u8; ID_SIZE]);
+
+const ID_SIZE: usize = 20;
+
+impl Display for Id {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        for b in self.0.iter() {
+            write!(f, "{:02X}", b)?;
+        }
+        Ok(())
+    }
+}
+
+impl FromStr for Id {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes: Vec<_> = s
+            .as_bytes()
+            .chunks(2)
+            .map(|c| u8::from_str_radix(str::from_utf8(c).unwrap(), 16))
+            .collect::<Result<_, _>>()?;
+        if bytes.len() != ID_SIZE {
+            return Err(Error::Hex(None));
+        }
+        let mut id = Id([0; ID_SIZE]);
+        id.0.copy_from_slice(&bytes);
+        Ok(id)
+    }
+}
 
 impl Id {
     fn of<T>(x: &T) -> Result<Id, T::Error>
@@ -119,5 +236,26 @@ impl Id {
 }
 
 /// A block signature
-#[derive(Serialize, Deserialize)]
-pub struct Signature(Integer, Integer);
+pub type Signature = (Integer, Integer);
+
+#[cfg(test)]
+mod test {
+    use super::BlockBuilder;
+    use pbmx_crypto::{group::Groups, keys::Keys};
+    use rand::{thread_rng, Rng};
+
+    #[test]
+    fn new_block_has_valid_signature() {
+        let mut rng = thread_rng();
+        let dist = Groups {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let (sk, pk) = rng.sample(&Keys(&group));
+        let block = BlockBuilder::new().build(&sk);
+
+        assert!(block.valid(&pk));
+    }
+}

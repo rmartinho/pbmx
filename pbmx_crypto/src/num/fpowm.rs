@@ -79,7 +79,9 @@ impl FastPowModTable {
             }
             Some(r)
         } else {
-            None
+            self.table[0]
+                .pow_mod_ref(exponent, &self.modulus)
+                .map(Integer::from)
         }
     }
 }

@@ -22,7 +22,11 @@ macro_rules! derive_base64_conversions {
         impl ::std::fmt::Display for $t {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 use $crate::serde::ToBytes;
-                write!(f, "{}", ::base64::encode(&self.to_bytes()?))
+                write!(
+                    f,
+                    "{}",
+                    ::base64::encode_config(&self.to_bytes()?, ::base64::URL_SAFE_NO_PAD)
+                )
             }
         }
 
@@ -31,7 +35,7 @@ macro_rules! derive_base64_conversions {
 
             fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
                 use $crate::serde::FromBytes;
-                let bytes = ::base64::decode(s)?;
+                let bytes = ::base64::decode_config(s, ::base64::URL_SAFE_NO_PAD)?;
                 let x = Self::from_bytes(&bytes)?;
                 Ok(x)
             }
