@@ -19,12 +19,11 @@ use std::{
 };
 
 /// A block in a PBMX chain
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Block {
     pub(super) acks: Vec<Id>,
     #[serde(serialize_with = "serialize_flat_map")]
     pub(super) payloads: HashMap<Id, Payload>,
-    payload_order: Vec<Id>,
     fp: Fingerprint,
     sig: Signature,
 }
@@ -138,7 +137,7 @@ impl BlockRaw {
 derive_base64_conversions!(Block);
 
 /// A PBMX message payload
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Payload {
     /// A game definition payload
     DefineGame(String),
@@ -238,8 +237,8 @@ mod test {
     fn new_block_has_valid_signature() {
         let mut rng = thread_rng();
         let dist = Groups {
-            field_bits: 2048,
-            group_bits: 1024,
+            field_bits: 16,
+            group_bits: 8,
             iterations: 64,
         };
         let group = rng.sample(&dist);

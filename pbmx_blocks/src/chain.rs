@@ -3,7 +3,7 @@
 use crate::block::{Block, BlockBuilder, Id, Payload};
 use pbmx_crypto::{derive_base64_conversions, keys::PrivateKey, serde::serialize_flat_map};
 use serde::de::{Deserialize, Deserializer};
-use std::collections::{hash_map::Values, HashMap};
+use std::collections::HashMap;
 
 /// A blockchain
 #[derive(Default, Debug, Serialize)]
@@ -72,12 +72,9 @@ impl Chain {
         self.blocks.insert(id, block);
     }
 
+    /// An iterator over the blocks in this chain
     pub fn blocks(&self) -> impl Iterator<Item = &Block> {
         BlockIter::new(self)
-    }
-
-    pub fn payloads(&self) -> impl Iterator<Item=&Payload> {
-        PayloadIter::new(self)
     }
 }
 
@@ -134,49 +131,17 @@ impl<'a> Iterator for BlockIter<'a> {
                     return blocks.get(&n);
                 }
                 Some(n) => {
-                    for &m in self.chain.links.get(&n)?.iter() {
-                        let entry = self.incoming.entry(m);
-                        let inc = entry.or_insert_with(|| blocks.get(&m).unwrap().acks.len());
-                        *inc -= 1;
-                        if *inc == 0 {
-                            self.roots.push(m);
+                    if let Some(links) = self.chain.links.get(&n) {
+                        for &m in links.iter() {
+                            let entry = self.incoming.entry(m);
+                            let inc = entry.or_insert_with(|| blocks.get(&m).unwrap().acks.len());
+                            *inc -= 1;
+                            if *inc == 0 {
+                                self.roots.push(m);
+                            }
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-struct PayloadIter<'a> {
-    blocks: BlockIter<'a>,
-    current: Option<Values<'a, Id, Payload>>,
-}
-
-impl<'a> PayloadIter<'a> {
-    fn new(chain: &Chain) -> PayloadIter {
-        let mut it = BlockIter::new(chain);
-        PayloadIter {
-            current: it.next().map(|b| b.payloads.values()),
-            blocks: it,
-        }
-    }
-}
-
-impl<'a> Iterator for PayloadIter<'a> {
-    type Item = &'a Payload;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.current.take() {
-                None => return None,
-                Some(mut it) => match it.next() {
-                    None => self.current = self.blocks.next().map(|b| b.payloads.values()),
-                    Some(p) => {
-                        self.current = Some(it);
-                        return Some(p);
-                    }
-                },
             }
         }
     }
@@ -190,7 +155,7 @@ mod test {
     use rand::{thread_rng, Rng};
 
     #[test]
-    fn test_it() {
+    fn chain_block_iteration_works() {
         let mut rng = thread_rng();
         let dist = Groups {
             field_bits: 2048,
@@ -200,30 +165,25 @@ mod test {
         let group = rng.sample(&dist);
         let (sk, pk) = rng.sample(&Keys(&group));
         let mut chain = Chain::new("test".into(), &sk);
+        let gid = chain.roots[0];
         let mut b0 = chain.build_block();
         b0.add_payload(Payload::Bytes(vec![0, 1, 2, 3, 4]));
         b0.add_payload(Payload::Bytes(vec![5, 6, 7, 8, 9]));
+        let b0 = b0.build(&sk);
 
         let mut b1 = chain.build_block();
         b1.add_payload(Payload::Bytes(vec![9, 8, 7, 6, 5]));
+        let b1 = b1.build(&sk);
 
+        chain.add_block(b0.clone());
+        chain.add_block(b1.clone());
 
-            println!("----");
-        for b in chain.blocks() {
-            println!("{}", b);
-        }
-        chain.add_block(b0.build(&sk));
+        let mut b2 = chain.build_block();
+        b2.add_payload(Payload::Bytes(vec![4, 3, 2, 1, 0]));
+        let b2 = b2.build(&sk);
+        chain.add_block(b2.clone());
 
-            println!("----");
-        for b in chain.blocks() {
-            println!("{}", b);
-        }
-        chain.add_block(b1.build(&sk));
-
-            println!("----");
-        for b in chain.blocks() {
-            println!("{}", b);
-        }
-        println!("{:?}", chain);
+        let blocks: Vec<_> = chain.blocks().map(|b| b.id()).collect();
+        assert_eq!(blocks, vec![gid, b1.id(), b0.id(), b2.id()])
     }
 }
