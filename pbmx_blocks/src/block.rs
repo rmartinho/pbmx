@@ -15,6 +15,7 @@ use serde::de::{Deserialize, Deserializer};
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
+    slice,
     str::{self, FromStr},
 };
 
@@ -24,16 +25,24 @@ pub struct Block {
     pub(super) acks: Vec<Id>,
     #[serde(serialize_with = "serialize_flat_map")]
     pub(super) payloads: HashMap<Id, Payload>,
+    payload_order: Vec<Id>,
     fp: Fingerprint,
     sig: Signature,
 }
 
 impl Block {
-    fn new(acks: Vec<Id>, payloads: Vec<Payload>, fp: Fingerprint, sig: Signature) -> Block {
+    fn new(
+        acks: Vec<Id>,
+        payloads: Vec<Payload>,
+        payload_order: Vec<Id>,
+        fp: Fingerprint,
+        sig: Signature,
+    ) -> Block {
         Block {
             acks,
             sig,
             fp,
+            payload_order,
             payloads: payloads.into_iter().map(|p| (p.id(), p)).collect(),
         }
     }
@@ -49,6 +58,28 @@ impl Block {
 
         let m = block_signature_hash(self.acks.iter(), self.payloads.values(), &self.fp);
         pk.verify(&m, &self.sig)
+    }
+
+    /// Gets this block's payloads in order
+    pub fn payloads(&self) -> impl Iterator<Item = &Payload> {
+        PayloadIter {
+            payload_order: self.payload_order.iter(),
+            payloads: &self.payloads,
+        }
+    }
+}
+
+struct PayloadIter<'a> {
+    payload_order: slice::Iter<'a, Id>,
+    payloads: &'a HashMap<Id, Payload>,
+}
+
+impl<'a> Iterator for PayloadIter<'a> {
+    type Item = &'a Payload;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let id = self.payload_order.next()?;
+        self.payloads.get(&id)
     }
 }
 
@@ -84,6 +115,7 @@ impl BlockBuilder {
         let sig = sk.sign(&m);
         Block {
             acks: self.acks,
+            payload_order: self.payloads.iter().map(|p| p.id()).collect(),
             payloads: self.payloads.into_iter().map(|p| (p.id(), p)).collect(),
             fp,
             sig,
@@ -124,20 +156,27 @@ impl<'de> Deserialize<'de> for Block {
 struct BlockRaw {
     acks: Vec<Id>,
     payloads: Vec<Payload>,
+    payload_order: Vec<Id>,
     fp: Fingerprint,
     sig: Signature,
 }
 
 impl BlockRaw {
     fn into(self) -> Block {
-        Block::new(self.acks, self.payloads, self.fp, self.sig)
+        Block::new(
+            self.acks,
+            self.payloads,
+            self.payload_order,
+            self.fp,
+            self.sig,
+        )
     }
 }
 
 derive_base64_conversions!(Block);
 
 /// A PBMX message payload
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Payload {
     /// A game definition payload
     DefineGame(String),
@@ -229,7 +268,7 @@ pub type Signature = (Integer, Integer);
 
 #[cfg(test)]
 mod test {
-    use super::BlockBuilder;
+    use super::{BlockBuilder, Payload};
     use pbmx_crypto::{group::Groups, keys::Keys};
     use rand::{thread_rng, Rng};
 
@@ -246,5 +285,30 @@ mod test {
         let block = BlockBuilder::new().build(&sk);
 
         assert!(block.valid(&pk));
+    }
+
+    #[test]
+    fn block_payload_order_is_preserved() {
+        let mut rng = thread_rng();
+        let dist = Groups {
+            field_bits: 16,
+            group_bits: 8,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let (sk, pk) = rng.sample(&Keys(&group));
+        let mut builder = BlockBuilder::new();
+        builder.add_payload(Payload::Bytes(vec![0]));
+        builder.add_payload(Payload::Bytes(vec![1]));
+        builder.add_payload(Payload::Bytes(vec![2]));
+        builder.add_payload(Payload::Bytes(vec![3]));
+        let block = builder.build(&sk);
+
+        let payloads: Vec<_> = block.payloads().cloned().collect();
+        let expected: Vec<_> = [0u8, 1, 2, 3]
+            .iter()
+            .map(|&i| Payload::Bytes(vec![i]))
+            .collect();
+        assert_eq!(payloads, expected);
     }
 }

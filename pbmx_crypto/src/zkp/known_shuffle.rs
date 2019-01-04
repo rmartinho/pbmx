@@ -12,7 +12,7 @@ use rug::{integer::Order, Integer};
 use std::cmp::Ordering;
 
 /// Non-interactive proof result
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
     cd: Integer,
     cdd: Integer,

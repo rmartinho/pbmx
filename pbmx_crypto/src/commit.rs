@@ -9,7 +9,7 @@ use rug::Integer;
 use serde::{de, Deserialize, Deserializer};
 
 /// The Pedersen commitment scheme
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct CommitmentScheme {
     group: Group,
     h: Integer,
