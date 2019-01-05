@@ -1,6 +1,10 @@
 //! Schnorr groups
 
-use crate::num::{fpowm, BitsExact, Modulo, Primes};
+use crate::{
+    error::Error,
+    num::{fpowm, BitsExact, Modulo, Primes},
+};
+use pbmx_util::derive_base64_conversions;
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::IsPrime, Assign, Integer};
 use serde::{de, Deserialize, Deserializer};
@@ -200,7 +204,7 @@ impl Distribution<Group> for Groups {
     }
 }
 
-derive_base64_conversions!(Group);
+derive_base64_conversions!(Group, Error);
 
 const MILLER_RABIN_ITERATIONS: u32 = 64;
 

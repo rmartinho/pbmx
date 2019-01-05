@@ -1,7 +1,8 @@
 //! PBMX blockchain
 
 use crate::block::{Block, BlockBuilder, Id, Payload};
-use pbmx_crypto::{derive_base64_conversions, keys::PrivateKey, serde::serialize_flat_map};
+use pbmx_crypto::{error::Error, keys::PrivateKey};
+use pbmx_util::{derive_base64_conversions, serde::serialize_flat_map};
 use serde::de::{Deserialize, Deserializer};
 use std::collections::HashMap;
 
@@ -98,7 +99,7 @@ impl ChainRaw {
     }
 }
 
-derive_base64_conversions!(Chain);
+derive_base64_conversions!(Chain, Error);
 
 struct BlockIter<'a> {
     roots: Vec<Id>,
@@ -163,7 +164,7 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let (sk, pk) = rng.sample(&Keys(&group));
+        let (sk, _) = rng.sample(&Keys(&group));
         let mut chain = Chain::new("test".into(), &sk);
         let gid = chain.roots[0];
         let mut b0 = chain.build_block();

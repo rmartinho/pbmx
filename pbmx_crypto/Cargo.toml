@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
 edition = "2018"
 
+[dependencies.pbmx_util]
+path = "../pbmx_util"
+
 [dependencies.base64]
 version = "0.10"
 

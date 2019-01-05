@@ -1,9 +1,11 @@
 //! Pedersen commitment scheme
 
 use crate::{
+    error::Error,
     group::Group,
     num::{fpowm, Modulo},
 };
+use pbmx_util::derive_base64_conversions;
 use rand::{thread_rng, Rng};
 use rug::Integer;
 use serde::{de, Deserialize, Deserializer};
@@ -146,7 +148,7 @@ impl CommitmentSchemeRaw {
 }
 // TODO(#4) macro for deserializing with invariants
 
-derive_base64_conversions!(CommitmentScheme);
+derive_base64_conversions!(CommitmentScheme, Error);
 
 #[cfg(test)]
 mod test {

@@ -2,4 +2,5 @@
 members = [
     "pbmx_crypto",
     "pbmx_blocks",
+    "pbmx_util",
 ]

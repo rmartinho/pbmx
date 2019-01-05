@@ -7,6 +7,7 @@ use crate::{
     num::{fpowm, Coprimes, Modulo},
 };
 use digest::Digest;
+use pbmx_util::derive_base64_conversions;
 use rand::{distributions::Distribution, thread_rng, Rng};
 use rug::{integer::Order, Integer};
 use serde::{de, Deserialize, Deserializer};
@@ -234,8 +235,8 @@ impl KeyRaw {
     }
 }
 
-derive_base64_conversions!(PrivateKey);
-derive_base64_conversions!(PublicKey);
+derive_base64_conversions!(PrivateKey, Error);
+derive_base64_conversions!(PublicKey, Error);
 
 impl Display for Fingerprint {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {

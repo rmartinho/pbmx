@@ -12,9 +12,6 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
 
-#[macro_use]
-mod macros;
-
 pub mod commit;
 pub mod error;
 pub mod group;
@@ -22,7 +19,6 @@ pub mod hash;
 pub mod keys;
 pub mod num;
 pub mod perm;
-pub mod serde;
 pub mod vtmf;
 pub mod zkp;
 

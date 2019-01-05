@@ -7,6 +7,9 @@ edition = "2018"
 [dependencies.pbmx_crypto]
 path = "../pbmx_crypto"
 
+[dependencies.pbmx_util]
+path = "../pbmx_util"
+
 [dependencies.base64]
 version = "0.10"
 

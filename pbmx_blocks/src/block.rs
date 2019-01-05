@@ -2,13 +2,15 @@
 
 use digest::Digest;
 use pbmx_crypto::{
-    derive_base64_conversions,
     error::Error,
     group::Group,
     hash::Hash,
     keys::{Fingerprint, PrivateKey, PublicKey},
-    serde::{serialize_flat_map, ToBytes},
     vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShuffleProof},
+};
+use pbmx_util::{
+    derive_base64_conversions,
+    serde::{serialize_flat_map, ToBytes},
 };
 use rug::{integer::Order, Integer};
 use serde::de::{Deserialize, Deserializer};
@@ -56,7 +58,7 @@ impl Block {
     pub fn valid(&self, pk: &PublicKey) -> bool {
         assert!(pk.fingerprint() == self.fp);
 
-        let m = block_signature_hash(self.acks.iter(), self.payloads.values(), &self.fp);
+        let m = block_signature_hash(self.acks.iter(), self.payloads(), &self.fp);
         pk.verify(&m, &self.sig)
     }
 
@@ -137,6 +139,7 @@ where
         h = h.chain(&ack.0);
     }
     for payload in payloads {
+        println!("hashing {}", payload.id());
         h = h.chain(&payload.id().0);
     }
     h = h.chain(&fp.0);
@@ -173,7 +176,7 @@ impl BlockRaw {
     }
 }
 
-derive_base64_conversions!(Block);
+derive_base64_conversions!(Block, Error);
 
 /// A PBMX message payload
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -215,7 +218,7 @@ impl Payload {
     }
 }
 
-derive_base64_conversions!(Payload);
+derive_base64_conversions!(Payload, Error);
 
 /// A block or payload ID
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -303,6 +306,9 @@ mod test {
         builder.add_payload(Payload::Bytes(vec![2]));
         builder.add_payload(Payload::Bytes(vec![3]));
         let block = builder.build(&sk);
+
+        println!("---");
+        assert!(block.valid(&pk));
 
         let payloads: Vec<_> = block.payloads().cloned().collect();
         let expected: Vec<_> = [0u8, 1, 2, 3]

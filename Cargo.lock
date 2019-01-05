@@ -118,6 +118,7 @@ dependencies = [
  "bincode 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pbmx_crypto 0.1.0",
+ "pbmx_util 0.1.0",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ripemd160 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rug 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -133,11 +134,21 @@ dependencies = [
  "bincode 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pbmx_util 0.1.0",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ripemd160 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rug 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "pbmx_util"
+version = "0.1.0"
+dependencies = [
+ "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bincode 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

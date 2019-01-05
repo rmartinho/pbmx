@@ -1,9 +1,9 @@
 /// Derives string conversions via serialization to/from base64
 #[macro_export]
 macro_rules! derive_base64_conversions {
-    ($t:ty) => {
+    ($t:ty, $e:ty) => {
         impl $crate::serde::ToBytes for $t {
-            type Error = $crate::error::Error;
+            type Error = $e;
 
             fn to_bytes(&self) -> ::std::result::Result<::std::vec::Vec<u8>, Self::Error> {
                 let bytes = ::bincode::config().big_endian().serialize(self)?;
@@ -12,7 +12,7 @@ macro_rules! derive_base64_conversions {
         }
 
         impl $crate::serde::FromBytes for $t {
-            type Error = $crate::error::Error;
+            type Error = $e;
 
             fn from_bytes(bytes: &[u8]) -> ::std::result::Result<Self, Self::Error> {
                 let x = ::bincode::config().big_endian().deserialize(bytes)?;
@@ -32,7 +32,7 @@ macro_rules! derive_base64_conversions {
         }
 
         impl ::std::str::FromStr for $t {
-            type Err = $crate::error::Error;
+            type Err = $e;
 
             fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
                 use $crate::serde::FromBytes;

@@ -1,13 +1,14 @@
 //! Barnett and Smart's verifiable *k*-out-of-*k* Threshold Masking Function
 
 use crate::{
+    error::Error,
     group::Group,
     keys::{Fingerprint, PrivateKey, PublicKey},
     num::{fpowm, Modulo},
     perm::Shuffles,
-    serde::serialize_flat_map,
     zkp::{dlog_eq, mask_1ofn, secret_shuffle},
 };
+use pbmx_util::{derive_base64_conversions, serde::serialize_flat_map};
 use rand::{thread_rng, Rng};
 use rug::Integer;
 use serde::{de, Deserialize, Deserializer};
@@ -240,7 +241,7 @@ impl VtmfRaw {
     }
 }
 
-derive_base64_conversions!(Vtmf);
+derive_base64_conversions!(Vtmf, Error);
 
 #[cfg(test)]
 mod test {
