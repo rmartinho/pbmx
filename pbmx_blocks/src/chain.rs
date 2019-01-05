@@ -1,8 +1,8 @@
 //! PBMX blockchain
 
 use crate::block::{Block, BlockBuilder, Id, Payload};
-use pbmx_crypto::{error::Error, keys::PrivateKey};
-use pbmx_util::{derive_base64_conversions, serde::serialize_flat_map};
+use pbmx_crypto::{keys::PrivateKey, Error};
+use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use serde::de::{Deserialize, Deserializer};
 use std::collections::HashMap;
 
@@ -60,11 +60,11 @@ impl Chain {
         let id = block.id();
         assert!(!self.blocks.contains_key(&id));
 
-        for &ack in block.acks.iter() {
+        for &ack in block.parent_ids().iter() {
             self.heads.retain(|&h| h != ack);
             self.links.entry(ack).or_insert_with(Vec::new).push(id);
         }
-        if block.acks.is_empty() {
+        if block.parent_ids().is_empty() {
             self.roots.push(id);
         }
         if !self.links.contains_key(&id) {
@@ -135,7 +135,7 @@ impl<'a> Iterator for BlockIter<'a> {
                     if let Some(links) = self.chain.links.get(&n) {
                         for &m in links.iter() {
                             let entry = self.incoming.entry(m);
-                            let inc = entry.or_insert_with(|| blocks.get(&m).unwrap().acks.len());
+                            let inc = entry.or_insert_with(|| blocks.get(&m).unwrap().parent_ids().len());
                             *inc -= 1;
                             if *inc == 0 {
                                 self.roots.push(m);

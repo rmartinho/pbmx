@@ -13,7 +13,6 @@ extern crate lazy_static;
 extern crate serde_derive;
 
 pub mod commit;
-pub mod error;
 pub mod group;
 pub mod hash;
 pub mod keys;
@@ -22,5 +21,5 @@ pub mod perm;
 pub mod vtmf;
 pub mod zkp;
 
-/// Result specialization for PBMX errors
-pub type Result<T> = std::result::Result<T, self::error::Error>;
+mod error;
+pub use self::error::{Error, Result};

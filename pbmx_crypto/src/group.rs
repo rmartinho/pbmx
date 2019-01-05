@@ -4,7 +4,7 @@ use crate::{
     error::Error,
     num::{fpowm, BitsExact, Modulo, Primes},
 };
-use pbmx_util::derive_base64_conversions;
+use pbmx_serde::derive_base64_conversions;
 use rand::{distributions::Distribution, Rng};
 use rug::{integer::IsPrime, Assign, Integer};
 use serde::{de, Deserialize, Deserializer};

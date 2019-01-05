@@ -5,7 +5,7 @@ use crate::{
     group::Group,
     num::{fpowm, Modulo},
 };
-use pbmx_util::derive_base64_conversions;
+use pbmx_serde::derive_base64_conversions;
 use rand::{thread_rng, Rng};
 use rug::Integer;
 use serde::{de, Deserialize, Deserializer};

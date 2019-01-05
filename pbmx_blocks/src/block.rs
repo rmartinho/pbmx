@@ -1,17 +1,14 @@
 //! PBMX chain blocks
 
+use crate::error::Error;
 use digest::Digest;
 use pbmx_crypto::{
-    error::Error,
     group::Group,
     hash::Hash,
     keys::{Fingerprint, PrivateKey, PublicKey},
     vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShuffleProof},
 };
-use pbmx_util::{
-    derive_base64_conversions,
-    serde::{serialize_flat_map, ToBytes},
-};
+use pbmx_serde::{derive_base64_conversions, serialize_flat_map, ToBytes};
 use rug::{integer::Order, Integer};
 use serde::de::{Deserialize, Deserializer};
 use std::{
@@ -24,9 +21,9 @@ use std::{
 /// A block in a PBMX chain
 #[derive(Clone, Debug, Serialize)]
 pub struct Block {
-    pub(super) acks: Vec<Id>,
+    acks: Vec<Id>,
     #[serde(serialize_with = "serialize_flat_map")]
-    pub(super) payloads: HashMap<Id, Payload>,
+    payloads: HashMap<Id, Payload>,
     payload_order: Vec<Id>,
     fp: Fingerprint,
     sig: Signature,
@@ -55,11 +52,16 @@ impl Block {
     }
 
     /// Checks whether this block's signature is valid
-    pub fn valid(&self, pk: &PublicKey) -> bool {
+    pub fn is_valid(&self, pk: &PublicKey) -> bool {
         assert!(pk.fingerprint() == self.fp);
 
         let m = block_signature_hash(self.acks.iter(), self.payloads(), &self.fp);
         pk.verify(&m, &self.sig)
+    }
+
+    /// Gets this block's parent IDs
+    pub fn parent_ids(&self) -> &[Id] {
+        &self.acks
     }
 
     /// Gets this block's payloads in order
@@ -139,7 +141,6 @@ where
         h = h.chain(&ack.0);
     }
     for payload in payloads {
-        println!("hashing {}", payload.id());
         h = h.chain(&payload.id().0);
     }
     h = h.chain(&fp.0);
@@ -243,9 +244,10 @@ impl FromStr for Id {
             .as_bytes()
             .chunks(2)
             .map(|c| u8::from_str_radix(str::from_utf8(c).unwrap(), 16))
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, _>>()
+            .map_err(pbmx_serde::Error::from)?;
         if bytes.len() != ID_SIZE {
-            return Err(Error::Hex(None));
+            return Err(pbmx_serde::Error::Hex(None).into());
         }
         let mut id = Id([0; ID_SIZE]);
         id.0.copy_from_slice(&bytes);
@@ -287,7 +289,7 @@ mod test {
         let (sk, pk) = rng.sample(&Keys(&group));
         let block = BlockBuilder::new().build(&sk);
 
-        assert!(block.valid(&pk));
+        assert!(block.is_valid(&pk));
     }
 
     #[test]
@@ -307,8 +309,7 @@ mod test {
         builder.add_payload(Payload::Bytes(vec![3]));
         let block = builder.build(&sk);
 
-        println!("---");
-        assert!(block.valid(&pk));
+        assert!(block.is_valid(&pk));
 
         let payloads: Vec<_> = block.payloads().cloned().collect();
         let expected: Vec<_> = [0u8, 1, 2, 3]

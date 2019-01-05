@@ -7,7 +7,7 @@ use crate::{
     num::{fpowm, Coprimes, Modulo},
 };
 use digest::Digest;
-use pbmx_util::derive_base64_conversions;
+use pbmx_serde::derive_base64_conversions;
 use rand::{distributions::Distribution, thread_rng, Rng};
 use rug::{integer::Order, Integer};
 use serde::{de, Deserialize, Deserializer};
@@ -255,9 +255,10 @@ impl FromStr for Fingerprint {
             .as_bytes()
             .chunks(2)
             .map(|c| u8::from_str_radix(str::from_utf8(c).unwrap(), 16))
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, _>>()
+            .map_err(pbmx_serde::Error::from)?;
         if bytes.len() != FINGERPRINT_SIZE {
-            return Err(Error::Hex(None));
+            return Err(pbmx_serde::Error::Hex(None).into());
         }
         let mut fp = Fingerprint([0; FINGERPRINT_SIZE]);
         fp.0.copy_from_slice(&bytes);

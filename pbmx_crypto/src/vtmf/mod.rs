@@ -8,7 +8,7 @@ use crate::{
     perm::Shuffles,
     zkp::{dlog_eq, mask_1ofn, secret_shuffle},
 };
-use pbmx_util::{derive_base64_conversions, serde::serialize_flat_map};
+use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use rand::{thread_rng, Rng};
 use rug::Integer;
 use serde::{de, Deserialize, Deserializer};

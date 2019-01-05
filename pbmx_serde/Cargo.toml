@@ -1,5 +1,5 @@
 [package]
-name = "pbmx_util"
+name = "pbmx_serde"
 version = "0.1.0"
 authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
 edition = "2018"
