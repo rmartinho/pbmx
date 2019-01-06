@@ -11,6 +11,7 @@ use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use rug::{integer::Order, Integer};
 use serde::de::{Deserialize, Deserializer};
 use std::{collections::HashMap, slice, str};
+use tribool::Tribool;
 
 /// A block in a PBMX chain
 #[derive(Clone, Debug, Serialize)]
@@ -51,11 +52,10 @@ impl Block {
     }
 
     /// Checks whether this block's signature is valid
-    pub fn is_valid(&self, pk: &PublicKey) -> bool {
-        assert!(pk.fingerprint() == self.fp);
-
+    pub fn is_valid(&self, pk: &HashMap<Fingerprint, PublicKey>) -> Tribool {
         let m = block_signature_hash(self.acks.iter(), self.payloads(), &self.fp);
-        pk.verify(&m, &self.sig)
+        pk.get(&self.fp)
+            .map_or(Tribool::Indeterminate, |pk| pk.verify(&m, &self.sig).into())
     }
 
     /// Gets this block's parent IDs
@@ -229,7 +229,7 @@ mod test {
     use super::{Block, BlockBuilder, Payload};
     use pbmx_crypto::{group::Groups, keys::Keys};
     use rand::{thread_rng, Rng};
-    use std::str::FromStr;
+    use std::{collections::HashMap, str::FromStr};
 
     #[test]
     fn new_block_has_valid_signature() {
@@ -241,9 +241,10 @@ mod test {
         };
         let group = rng.sample(&dist);
         let (sk, pk) = rng.sample(&Keys(&group));
+        let ring: HashMap<_, _> = vec![pk].into_iter().map(|k| (k.fingerprint(), k)).collect();
         let block = BlockBuilder::new().build(&sk);
 
-        assert!(block.is_valid(&pk));
+        assert!(block.is_valid(&ring).is_true());
     }
 
     #[test]
@@ -256,6 +257,7 @@ mod test {
         };
         let group = rng.sample(&dist);
         let (sk, pk) = rng.sample(&Keys(&group));
+        let ring: HashMap<_, _> = vec![pk].into_iter().map(|k| (k.fingerprint(), k)).collect();
         let mut builder = BlockBuilder::new();
         builder.add_payload(Payload::Bytes(vec![0]));
         builder.add_payload(Payload::Bytes(vec![1]));
@@ -263,7 +265,7 @@ mod test {
         builder.add_payload(Payload::Bytes(vec![3]));
         let block = builder.build(&sk);
 
-        assert!(block.is_valid(&pk));
+        assert!(block.is_valid(&ring).is_true());
 
         let payloads: Vec<_> = block.payloads().cloned().collect();
         let expected: Vec<_> = [0u8, 1, 2, 3]
@@ -282,7 +284,8 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let (sk, _) = rng.sample(&Keys(&group));
+        let (sk, pk) = rng.sample(&Keys(&group));
+        let ring: HashMap<_, _> = vec![pk].into_iter().map(|k| (k.fingerprint(), k)).collect();
         let mut builder = BlockBuilder::new();
         builder.add_payload(Payload::Bytes(vec![0]));
         builder.add_payload(Payload::Bytes(vec![1]));
@@ -294,6 +297,7 @@ mod test {
         let exported = original.to_string();
 
         let recovered = Block::from_str(&exported).unwrap();
+        assert!(recovered.is_valid(&ring).is_true());
 
         assert_eq!(original.acks, recovered.acks);
         assert_eq!(original.payloads, recovered.payloads);

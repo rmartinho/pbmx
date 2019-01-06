@@ -45,6 +45,41 @@ impl Chain {
         self.heads.len() == 1
     }
 
+    /// Tests whether this chain is incomplete (i.e. there are unknown blocks
+    /// acknowledged)
+    pub fn is_incomplete(&self) -> bool {
+        !self.links.keys().all(|id| self.blocks.contains_key(id))
+    }
+
+    /// Tests whether this chain is valid (i.e. it is complete and all blocks
+    /// are signed by keys published in the chain)
+    pub fn is_valid(&self) -> bool {
+        let known_keys: HashMap<_, _> = self
+            .blocks
+            .values()
+            .flat_map(|b| {
+                b.payloads().filter_map(|p| match p {
+                    Payload::PublishKey(pk) => Some(pk.clone()),
+                    _ => None,
+                })
+            })
+            .map(|k| (k.fingerprint(), k))
+            .collect();
+        for block in self.blocks.values() {
+            for payload in block.payloads() {
+                if let Payload::PublishKey(pk) = payload {
+                    if block.signer() != pk.fingerprint() {
+                        return false;
+                    }
+                }
+            }
+            if !block.is_valid(&known_keys).is_true() {
+                return false;
+            }
+        }
+        true
+    }
+
     /// Starts building a new block that acknowledges all blocks in this chain
     pub fn build_block(&self) -> BlockBuilder {
         let mut builder = BlockBuilder::new();
@@ -74,7 +109,7 @@ impl Chain {
 
     /// An iterator over the blocks in this chain
     pub fn blocks(&self) -> impl Iterator<Item = &Block> {
-        BlockIter::new(self)
+        Blocks::new(self)
     }
 }
 
@@ -100,16 +135,16 @@ impl ChainRaw {
 
 derive_base64_conversions!(Chain, Error);
 
-struct BlockIter<'a> {
+struct Blocks<'a> {
     roots: Vec<Id>,
     chain: &'a Chain,
     incoming: HashMap<Id, usize>,
     current: Option<Id>,
 }
 
-impl<'a> BlockIter<'a> {
-    fn new(chain: &Chain) -> BlockIter {
-        BlockIter {
+impl<'a> Blocks<'a> {
+    fn new(chain: &Chain) -> Blocks {
+        Blocks {
             roots: chain.roots.clone(),
             chain: &chain,
             incoming: HashMap::new(),
@@ -118,7 +153,7 @@ impl<'a> BlockIter<'a> {
     }
 }
 
-impl<'a> Iterator for BlockIter<'a> {
+impl<'a> Iterator for Blocks<'a> {
     type Item = &'a Block;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -170,6 +205,7 @@ mod test {
         let group = rng.sample(&dist);
         let (sk, _) = rng.sample(&Keys(&group));
         let mut chain = Chain::new("test".into(), &sk);
+        assert!(chain.is_valid());
         let gid = chain.roots[0];
         let mut b0 = chain.build_block();
         b0.add_payload(Payload::Bytes(vec![0, 1, 2, 3, 4]));
@@ -181,12 +217,15 @@ mod test {
         let b1 = b1.build(&sk);
 
         chain.add_block(b0.clone());
+        assert!(chain.is_valid());
         chain.add_block(b1.clone());
+        assert!(chain.is_valid());
 
         let mut b2 = chain.build_block();
         b2.add_payload(Payload::Bytes(vec![4, 3, 2, 1, 0]));
         let b2 = b2.build(&sk);
         chain.add_block(b2.clone());
+        assert!(chain.is_valid());
 
         let blocks: Vec<_> = chain.blocks().map(|b| b.id()).collect();
         assert_eq!(blocks, vec![gid, b1.id(), b0.id(), b2.id()])

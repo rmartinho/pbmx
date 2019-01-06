@@ -33,5 +33,8 @@ version = "1.0"
 [dependencies.serde_derive]
 version = "1.0"
 
+[dependencies.tribool]
+version = "0.2"
+
 [dev-dependencies.rand]
 version = "0.6"

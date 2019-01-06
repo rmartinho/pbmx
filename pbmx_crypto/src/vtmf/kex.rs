@@ -1,6 +1,6 @@
 use crate::{
     group::Group,
-    keys::{Fingerprint, Keys, PrivateKey, PublicKey},
+    keys::{Keys, PrivateKey, PublicKey},
     vtmf::Vtmf,
     Result,
 };
@@ -12,7 +12,6 @@ pub struct KeyExchange {
     n: u32,
     sk: Option<PrivateKey>,
     pk: Option<PublicKey>,
-    fp: Option<Fingerprint>,
     pki: Vec<PublicKey>,
 }
 
@@ -26,7 +25,6 @@ impl KeyExchange {
             n: parties,
             sk: None,
             pk: None,
-            fp: None,
             pki: Vec::new(),
         }
     }
@@ -51,7 +49,6 @@ impl KeyExchange {
         let (sk, pk) = thread_rng().sample(&Keys(&self.g));
         self.sk = Some(sk);
         self.pk = Some(pk.clone());
-        self.fp = Some(pk.fingerprint());
         self.pki.push(pk.clone());
         Ok(pk)
     }
@@ -86,7 +83,6 @@ impl KeyExchange {
                 self.n,
                 self.sk.unwrap(),
                 self.pk.unwrap(),
-                self.fp.unwrap(),
                 self.pki,
             ))
         }

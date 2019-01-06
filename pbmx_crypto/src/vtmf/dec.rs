@@ -40,7 +40,7 @@ impl<'a> Decryption<'a> {
         let hi = self.vtmf.g.element(x);
         self.d = Integer::from(self.c.0.pow_mod_ref(x, p).unwrap());
         let proof = dlog_eq::prove(&self.vtmf.g, &self.d, &hi, &self.c.0, g, x);
-        self.seen.insert(self.vtmf.fp.clone());
+        self.seen.insert(self.vtmf.sk.fingerprint());
         Ok((self.d.clone(), proof))
     }
 

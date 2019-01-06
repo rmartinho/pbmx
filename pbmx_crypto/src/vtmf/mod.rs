@@ -32,7 +32,6 @@ pub struct Vtmf {
     n: u32,
     sk: PrivateKey,
     pk: PublicKey,
-    fp: Fingerprint,
     #[serde(serialize_with = "serialize_flat_map")]
     pki: HashMap<Fingerprint, PublicKey>,
 }
@@ -46,7 +45,6 @@ impl Vtmf {
         n: u32,
         sk: PrivateKey,
         pk: PublicKey,
-        fp: Fingerprint,
         pki: Vec<PublicKey>,
     ) -> Self {
         fpowm::precompute(&pk.element(), g.bits(), g.modulus()).unwrap();
@@ -55,7 +53,6 @@ impl Vtmf {
             n,
             sk,
             pk,
-            fp,
             pki: pki.into_iter().map(|k| (k.fingerprint(), k)).collect(),
         }
     }
@@ -231,13 +228,12 @@ struct VtmfRaw {
     n: u32,
     sk: PrivateKey,
     pk: PublicKey,
-    fp: Fingerprint,
     pki: Vec<PublicKey>,
 }
 
 impl VtmfRaw {
     unsafe fn into(self) -> Vtmf {
-        Vtmf::new_unchecked(self.g, self.n, self.sk, self.pk, self.fp, self.pki)
+        Vtmf::new_unchecked(self.g, self.n, self.sk, self.pk, self.pki)
     }
 }
 
@@ -277,7 +273,6 @@ mod test {
         assert_eq!(original.n, recovered.n);
         assert_eq!(original.sk, recovered.sk);
         assert_eq!(original.pk, recovered.pk);
-        assert_eq!(original.fp, recovered.fp);
         assert_eq!(original.pki, recovered.pki);
     }
 
