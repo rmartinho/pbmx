@@ -26,7 +26,6 @@ impl Chain {
         let mut builder = BlockBuilder::new();
         builder
             .add_payload(Payload::DefineGame(desc))
-            .add_payload(Payload::PublishGroup(sk.group().clone()))
             .add_payload(Payload::PublishKey(sk.public_key()));
         let genesis = builder.build(sk);
 
@@ -135,7 +134,8 @@ impl<'a> Iterator for BlockIter<'a> {
                     if let Some(links) = self.chain.links.get(&n) {
                         for &m in links.iter() {
                             let entry = self.incoming.entry(m);
-                            let inc = entry.or_insert_with(|| blocks.get(&m).unwrap().parent_ids().len());
+                            let inc =
+                                entry.or_insert_with(|| blocks.get(&m).unwrap().parent_ids().len());
                             *inc -= 1;
                             if *inc == 0 {
                                 self.roots.push(m);
@@ -151,9 +151,13 @@ impl<'a> Iterator for BlockIter<'a> {
 #[cfg(test)]
 mod test {
     use super::Chain;
-    use crate::block::Payload;
+    use crate::block::{Block, Payload};
     use pbmx_crypto::{group::Groups, keys::Keys};
     use rand::{thread_rng, Rng};
+    use std::{
+        collections::{BTreeMap, BTreeSet},
+        str::FromStr,
+    };
 
     #[test]
     fn chain_block_iteration_works() {
@@ -186,5 +190,57 @@ mod test {
 
         let blocks: Vec<_> = chain.blocks().map(|b| b.id()).collect();
         assert_eq!(blocks, vec![gid, b1.id(), b0.id(), b2.id()])
+    }
+
+    #[test]
+    fn chain_roundtrips_via_base64() {
+        let mut rng = thread_rng();
+        let dist = Groups {
+            field_bits: 2048,
+            group_bits: 1024,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let (sk, _) = rng.sample(&Keys(&group));
+        let mut chain = Chain::new("test".into(), &sk);
+        let mut b0 = chain.build_block();
+        b0.add_payload(Payload::Bytes(vec![0, 1, 2, 3, 4]));
+        b0.add_payload(Payload::Bytes(vec![5, 6, 7, 8, 9]));
+        let b0 = b0.build(&sk);
+
+        let mut b1 = chain.build_block();
+        b1.add_payload(Payload::Bytes(vec![9, 8, 7, 6, 5]));
+        let b1 = b1.build(&sk);
+
+        chain.add_block(b0.clone());
+        chain.add_block(b1.clone());
+
+        let mut b2 = chain.build_block();
+        b2.add_payload(Payload::Bytes(vec![4, 3, 2, 1, 0]));
+        let b2 = b2.build(&sk);
+        chain.add_block(b2.clone());
+        let original = chain;
+        println!("chain = {}", original);
+
+        let exported = original.to_string();
+
+        let recovered = Chain::from_str(&exported).unwrap();
+
+        assert_eq!(original.heads, recovered.heads);
+        assert_eq!(original.roots, recovered.roots);
+        let original_ids: BTreeSet<_> = original.blocks.values().map(Block::id).collect();
+        let recovered_ids: BTreeSet<_> = recovered.blocks.values().map(Block::id).collect();
+        assert_eq!(original_ids, recovered_ids);
+        let original_links: BTreeMap<_, BTreeSet<_>> = original
+            .links
+            .into_iter()
+            .map(|(k, v)| (k, v.into_iter().collect()))
+            .collect();
+        let recovered_links: BTreeMap<_, BTreeSet<_>> = recovered
+            .links
+            .into_iter()
+            .map(|(k, v)| (k, v.into_iter().collect()))
+            .collect();
+        assert_eq!(original_links, recovered_links);
     }
 }

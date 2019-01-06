@@ -3,20 +3,14 @@
 use crate::error::Error;
 use digest::Digest;
 use pbmx_crypto::{
-    group::Group,
     hash::Hash,
     keys::{Fingerprint, PrivateKey, PublicKey},
     vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShuffleProof},
 };
-use pbmx_serde::{derive_base64_conversions, serialize_flat_map, ToBytes};
+use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use rug::{integer::Order, Integer};
 use serde::de::{Deserialize, Deserializer};
-use std::{
-    collections::HashMap,
-    fmt::{self, Display, Formatter},
-    slice,
-    str::{self, FromStr},
-};
+use std::{collections::HashMap, slice, str};
 
 /// A block in a PBMX chain
 #[derive(Clone, Debug, Serialize)]
@@ -30,7 +24,7 @@ pub struct Block {
 }
 
 impl Block {
-    fn new(
+    fn new_unchecked(
         acks: Vec<Id>,
         payloads: Vec<Payload>,
         payload_order: Vec<Id>,
@@ -49,6 +43,11 @@ impl Block {
     /// Gets this block's ID
     pub fn id(&self) -> Id {
         Id::of(self).unwrap()
+    }
+
+    /// Gets the fingerprint of the block's signing key
+    pub fn signer(&self) -> Fingerprint {
+        self.fp
     }
 
     /// Checks whether this block's signature is valid
@@ -138,12 +137,12 @@ where
 {
     let mut h = Hash::new();
     for ack in acks {
-        h = h.chain(&ack.0);
+        h = h.chain(&ack);
     }
     for payload in payloads {
-        h = h.chain(&payload.id().0);
+        h = h.chain(&payload.id());
     }
-    h = h.chain(&fp.0);
+    h = h.chain(&fp);
     Integer::from_digits(&h.result(), Order::MsfBe)
 }
 
@@ -167,7 +166,7 @@ struct BlockRaw {
 
 impl BlockRaw {
     fn into(self) -> Block {
-        Block::new(
+        Block::new_unchecked(
             self.acks,
             self.payloads,
             self.payload_order,
@@ -184,8 +183,6 @@ derive_base64_conversions!(Block, Error);
 pub enum Payload {
     /// A game definition payload
     DefineGame(String),
-    /// A group payload
-    PublishGroup(Group),
     /// A public key payload
     PublishKey(PublicKey),
     /// A stack payload
@@ -222,60 +219,17 @@ impl Payload {
 derive_base64_conversions!(Payload, Error);
 
 /// A block or payload ID
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Id([u8; ID_SIZE]);
-
-const ID_SIZE: usize = 20;
-
-impl Display for Id {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        for b in self.0.iter() {
-            write!(f, "{:02X}", b)?;
-        }
-        Ok(())
-    }
-}
-
-impl FromStr for Id {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bytes: Vec<_> = s
-            .as_bytes()
-            .chunks(2)
-            .map(|c| u8::from_str_radix(str::from_utf8(c).unwrap(), 16))
-            .collect::<Result<_, _>>()
-            .map_err(pbmx_serde::Error::from)?;
-        if bytes.len() != ID_SIZE {
-            return Err(pbmx_serde::Error::Hex(None).into());
-        }
-        let mut id = Id([0; ID_SIZE]);
-        id.0.copy_from_slice(&bytes);
-        Ok(id)
-    }
-}
-
-impl Id {
-    fn of<T>(x: &T) -> Result<Id, T::Error>
-    where
-        T: ToBytes,
-    {
-        let bytes = x.to_bytes()?;
-        let hashed = Hash::new().chain(bytes).result();
-        let mut array = [0u8; 20];
-        array.copy_from_slice(&hashed);
-        Ok(Id(array))
-    }
-}
+pub type Id = Fingerprint;
 
 /// A block signature
 pub type Signature = (Integer, Integer);
 
 #[cfg(test)]
 mod test {
-    use super::{BlockBuilder, Payload};
+    use super::{Block, BlockBuilder, Payload};
     use pbmx_crypto::{group::Groups, keys::Keys};
     use rand::{thread_rng, Rng};
+    use std::str::FromStr;
 
     #[test]
     fn new_block_has_valid_signature() {
@@ -317,5 +271,34 @@ mod test {
             .map(|&i| Payload::Bytes(vec![i]))
             .collect();
         assert_eq!(payloads, expected);
+    }
+
+    #[test]
+    fn block_roundtrips_via_base64() {
+        let mut rng = thread_rng();
+        let dist = Groups {
+            field_bits: 16,
+            group_bits: 8,
+            iterations: 64,
+        };
+        let group = rng.sample(&dist);
+        let (sk, _) = rng.sample(&Keys(&group));
+        let mut builder = BlockBuilder::new();
+        builder.add_payload(Payload::Bytes(vec![0]));
+        builder.add_payload(Payload::Bytes(vec![1]));
+        builder.add_payload(Payload::Bytes(vec![2]));
+        builder.add_payload(Payload::Bytes(vec![3]));
+        let original = builder.build(&sk);
+        println!("block = {}", original);
+
+        let exported = original.to_string();
+
+        let recovered = Block::from_str(&exported).unwrap();
+
+        assert_eq!(original.acks, recovered.acks);
+        assert_eq!(original.payloads, recovered.payloads);
+        assert_eq!(original.payload_order, recovered.payload_order);
+        assert_eq!(original.fp, recovered.fp);
+        assert_eq!(original.sig, recovered.sig);
     }
 }

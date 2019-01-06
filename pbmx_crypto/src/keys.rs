@@ -7,12 +7,12 @@ use crate::{
     num::{fpowm, Coprimes, Modulo},
 };
 use digest::Digest;
-use pbmx_serde::derive_base64_conversions;
+use pbmx_serde::{derive_base64_conversions, ToBytes};
 use rand::{distributions::Distribution, thread_rng, Rng};
-use rug::{integer::Order, Integer};
+use rug::Integer;
 use serde::{de, Deserialize, Deserializer};
 use std::{
-    fmt::{self, Display, Formatter},
+    fmt::{self, Debug, Display, Formatter},
     str::{self, FromStr},
 };
 
@@ -36,8 +36,8 @@ pub struct PublicKey {
 }
 
 /// A public key fingerprint
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Fingerprint(pub [u8; FINGERPRINT_SIZE]);
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
 
 impl PrivateKey {
     /// Gets this key's group
@@ -103,6 +103,11 @@ impl PublicKey {
         &self.h
     }
 
+    /// Gets this key's fingerprint
+    pub fn fingerprint(&self) -> Fingerprint {
+        Fingerprint::of(self).unwrap()
+    }
+
     /// Combines this public key with another one to form a shared key
     pub fn combine(&mut self, pk: &PublicKey) {
         assert!(pk.g == self.g);
@@ -152,6 +157,27 @@ impl PublicKey {
     }
 }
 
+impl Fingerprint {
+    /// Gets the fingerprint of some object
+    pub fn of<T>(x: &T) -> Result<Fingerprint, T::Error>
+    where
+        T: ToBytes,
+    {
+        debug_assert!(Hash::output_size() >= FINGERPRINT_SIZE);
+        let bytes = x.to_bytes()?;
+        let hashed = Hash::new().chain(bytes).result();
+        let mut array = [0u8; FINGERPRINT_SIZE];
+        array.copy_from_slice(&hashed);
+        Ok(Fingerprint(array))
+    }
+}
+
+impl AsRef<[u8]> for Fingerprint {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 impl PrivateKey {
     unsafe fn new_unchecked(g: Group, x: Integer) -> Self {
         Self { g, x }
@@ -169,21 +195,6 @@ impl PrivateKey {
 impl PublicKey {
     unsafe fn new_unchecked(g: Group, h: Integer) -> Self {
         Self { g, h }
-    }
-
-    /// Gets this key's fingerprint
-    pub fn fingerprint(&self) -> Fingerprint {
-        assert!(Hash::output_size() >= FINGERPRINT_SIZE);
-
-        let digest = Hash::new()
-            .chain(&self.g.generator().to_digits(Order::MsfBe))
-            .chain(&self.g.modulus().to_digits(Order::MsfBe))
-            .chain(&self.g.order().to_digits(Order::MsfBe))
-            .chain(&self.h.to_digits(Order::MsfBe))
-            .result();
-        let mut fp = Fingerprint([0; FINGERPRINT_SIZE]);
-        fp.0.copy_from_slice(&digest);
-        fp
     }
 
     fn validate(self) -> Option<Self> {
@@ -244,6 +255,12 @@ impl Display for Fingerprint {
             write!(f, "{:02X}", b)?;
         }
         Ok(())
+    }
+}
+
+impl Debug for Fingerprint {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        (self as &Display).fmt(f)
     }
 }
 
