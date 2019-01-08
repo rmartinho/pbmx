@@ -3,6 +3,7 @@
 use crate::error::Error;
 use digest::Digest;
 use pbmx_crypto::{
+    group::Group,
     hash::Hash,
     keys::{Fingerprint, PrivateKey, PublicKey},
     vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShuffleProof},
@@ -182,7 +183,7 @@ derive_base64_conversions!(Block, Error);
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Payload {
     /// A game definition payload
-    DefineGame(String),
+    DefineGame(String, Group),
     /// A public key payload
     PublishKey(PublicKey),
     /// A stack payload

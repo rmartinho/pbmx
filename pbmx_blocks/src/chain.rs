@@ -25,7 +25,7 @@ impl Chain {
     pub fn new(desc: String, sk: &PrivateKey) -> Chain {
         let mut builder = BlockBuilder::new();
         builder
-            .add_payload(Payload::DefineGame(desc))
+            .add_payload(Payload::DefineGame(desc, sk.group().clone()))
             .add_payload(Payload::PublishKey(sk.public_key()));
         let genesis = builder.build(sk);
 
@@ -38,6 +38,11 @@ impl Chain {
             chain.add_block(b);
         }
         chain
+    }
+
+    /// Gets the number of blocks in the chain
+    pub fn count(&self) -> usize {
+        self.blocks.len()
     }
 
     /// Tests whether this chain is fully merged (i.e. there is only one head)

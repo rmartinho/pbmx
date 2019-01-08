@@ -251,7 +251,19 @@ derive_base64_conversions!(PublicKey, Error);
 
 impl Display for Fingerprint {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        for b in self.0.iter() {
+        let it = if let Some(mut w) = f.width() {
+            if w % 2 == 1 {
+                w += 1;
+            }
+            if w >= 40 {
+                w = 40;
+            }
+            w /= 2;
+            self.0.iter().skip(20 - w)
+        } else {
+            self.0.iter().skip(0)
+        };
+        for b in it {
             write!(f, "{:02X}", b)?;
         }
         Ok(())
