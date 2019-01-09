@@ -135,17 +135,15 @@ fn save_secrets(sk: &Option<PrivateKey>) -> Result<()> {
 fn ensure_private_key_exists(state: &mut State) {
     let mut rng = thread_rng();
 
-    if state.private_key.is_none() || state.group.is_none() {
-        println!(": Generating private key...");
-    }
-
     if state.group.is_none() {
+        println!(": Generating Schnorr group...");
+
         let group = rng.sample(&Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
         });
-        println!("+ Group(2048:1024)");
+        println!("+ Group \u{2124}q, |q| = {}", group.order().significant_bits());
         state
             .block
             .add_payload(Payload::PublishGroup(group.clone()));

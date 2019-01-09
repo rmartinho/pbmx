@@ -81,6 +81,11 @@ impl Vtmf {
     pub fn group(&self) -> &Group {
         &self.g
     }
+
+    /// Gets the number of parties in this VTMF
+    pub fn parties(&self) -> u32 {
+        self.n
+    }
 }
 
 impl Vtmf {

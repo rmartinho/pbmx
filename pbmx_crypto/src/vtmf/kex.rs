@@ -29,6 +29,11 @@ impl KeyExchange {
         }
     }
 
+    /// Gets the number of parties in this [KeyExchange].
+    pub fn parties(&self) -> u32 {
+        self.n
+    }
+
     /// Gets the group for this [KeyExchange].
     pub fn group(&self) -> &Group {
         &self.g

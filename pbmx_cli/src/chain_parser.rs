@@ -30,11 +30,19 @@ impl ParsedChain {
         }
     }
 
+    pub fn parties(&self) -> Option<u32> {
+        match self {
+            ParsedChain::ExchangingKeys(_, kex) => Some(kex.parties()),
+            ParsedChain::KeysExchanged(_, vtmf) => Some(vtmf.parties()),
+            ParsedChain::Empty => None,
+        }
+    }
+
     pub fn print_out(&self) {
         if let ParsedChain::Empty = self {
             return;
         }
-        println!("# Game: {}", self.name().unwrap());
+        println!("# Game: {} {}p", self.name().unwrap(), self.parties().unwrap());
     }
 }
 
@@ -61,16 +69,13 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
         for payload in block.payloads() {
             match payload {
                 DefineGame(g, n) => {
-                    println!("dg {}", n);
                     state.set_name(g.clone())?;
                     state.set_parties(*n)?;
                 }
                 PublishGroup(g) => {
-                    println!("pg");
                     state.set_group(g.clone())?;
                 }
                 PublishKey(pk) => {
-                    println!("pk");
                     state.add_key(pk.clone())?;
                 }
                 _ => {}
@@ -108,6 +113,8 @@ impl ParseState {
             let mut kex = KeyExchange::new(g, n);
             if let Some(sk) = &self.private_key {
                 kex.use_private_key(sk.clone())?;
+            } else {
+                kex.generate_key()?;
             }
             self.kex = Some(kex);
         }
@@ -123,6 +130,8 @@ impl ParseState {
             let mut kex = KeyExchange::new(g, self.parties);
             if let Some(sk) = &self.private_key {
                 kex.use_private_key(sk.clone())?;
+            } else {
+                kex.generate_key()?;
             }
             self.kex = Some(kex);
         } else {
