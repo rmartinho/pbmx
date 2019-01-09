@@ -1,7 +1,7 @@
 //! PBMX blockchain
 
-use crate::block::{Block, BlockBuilder, Id, Payload};
-use pbmx_crypto::{keys::PrivateKey, Error};
+use crate::block::{Block, BlockBuilder, Id};
+use pbmx_crypto::Error;
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use serde::de::{Deserialize, Deserializer};
 use std::collections::HashMap;
@@ -21,15 +21,9 @@ pub struct Chain {
 }
 
 impl Chain {
-    /// Creates a new chain with a genesis block describing a game
-    pub fn new(desc: String, sk: &PrivateKey) -> Chain {
-        let mut builder = BlockBuilder::new();
-        builder
-            .add_payload(Payload::DefineGame(desc, sk.group().clone()))
-            .add_payload(Payload::PublishKey(sk.public_key()));
-        let genesis = builder.build(sk);
-
-        Chain::from_blocks(vec![genesis])
+    /// Creates a new empty chain
+    pub fn new() -> Chain {
+        Chain::default()
     }
 
     fn from_blocks(blocks: Vec<Block>) -> Chain {
@@ -50,39 +44,15 @@ impl Chain {
         self.heads.len() == 1
     }
 
+    /// Tests whether this chain is fully merged (i.e. there is only one head)
+    pub fn is_empty(&self) -> bool {
+        self.count() == 0
+    }
+
     /// Tests whether this chain is incomplete (i.e. there are unknown blocks
     /// acknowledged)
     pub fn is_incomplete(&self) -> bool {
         !self.links.keys().all(|id| self.blocks.contains_key(id))
-    }
-
-    /// Tests whether this chain is valid (i.e. it is complete and all blocks
-    /// are signed by keys published in the chain)
-    pub fn is_valid(&self) -> bool {
-        let known_keys: HashMap<_, _> = self
-            .blocks
-            .values()
-            .flat_map(|b| {
-                b.payloads().filter_map(|p| match p {
-                    Payload::PublishKey(pk) => Some(pk.clone()),
-                    _ => None,
-                })
-            })
-            .map(|k| (k.fingerprint(), k))
-            .collect();
-        for block in self.blocks.values() {
-            for payload in block.payloads() {
-                if let Payload::PublishKey(pk) = payload {
-                    if block.signer() != pk.fingerprint() {
-                        return false;
-                    }
-                }
-            }
-            if !block.is_valid(&known_keys).is_true() {
-                return false;
-            }
-        }
-        true
     }
 
     /// Starts building a new block that acknowledges all blocks in this chain
@@ -208,9 +178,13 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let (sk, _) = rng.sample(&Keys(&group));
-        let mut chain = Chain::new("test".into(), &sk);
-        assert!(chain.is_valid());
+        let (sk, pk) = rng.sample(&Keys(&group));
+        let mut chain = Chain::new();
+        let mut gen = chain.build_block();
+        gen.add_payload(Payload::DefineGame("test".into(), 1));
+        gen.add_payload(Payload::PublishGroup(group));
+        gen.add_payload(Payload::PublishKey(pk));
+        chain.add_block(gen.build(&sk));
         let gid = chain.roots[0];
         let mut b0 = chain.build_block();
         b0.add_payload(Payload::Bytes(vec![0, 1, 2, 3, 4]));
@@ -222,15 +196,12 @@ mod test {
         let b1 = b1.build(&sk);
 
         chain.add_block(b0.clone());
-        assert!(chain.is_valid());
         chain.add_block(b1.clone());
-        assert!(chain.is_valid());
 
         let mut b2 = chain.build_block();
         b2.add_payload(Payload::Bytes(vec![4, 3, 2, 1, 0]));
         let b2 = b2.build(&sk);
         chain.add_block(b2.clone());
-        assert!(chain.is_valid());
 
         let blocks: Vec<_> = chain.blocks().map(|b| b.id()).collect();
         assert_eq!(blocks, vec![gid, b1.id(), b0.id(), b2.id()])
@@ -245,8 +216,13 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let (sk, _) = rng.sample(&Keys(&group));
-        let mut chain = Chain::new("test".into(), &sk);
+        let (sk, pk) = rng.sample(&Keys(&group));
+        let mut chain = Chain::new();
+        let mut gen = chain.build_block();
+        gen.add_payload(Payload::DefineGame("test".into(), 1));
+        gen.add_payload(Payload::PublishGroup(group));
+        gen.add_payload(Payload::PublishKey(pk));
+        chain.add_block(gen.build(&sk));
         let mut b0 = chain.build_block();
         b0.add_payload(Payload::Bytes(vec![0, 1, 2, 3, 4]));
         b0.add_payload(Payload::Bytes(vec![5, 6, 7, 8, 9]));

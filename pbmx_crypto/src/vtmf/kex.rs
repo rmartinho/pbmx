@@ -29,6 +29,11 @@ impl KeyExchange {
         }
     }
 
+    /// Gets the group for this [KeyExchange].
+    pub fn group(&self) -> &Group {
+        &self.g
+    }
+
     /// Tests whether the private key for this VTMF has been generated.
     pub fn has_private_key(&self) -> bool {
         !self.pki.is_empty()
@@ -37,6 +42,23 @@ impl KeyExchange {
     /// Tests whether the keys for this VTMF have been exchanged.
     pub fn has_all_keys(&self) -> bool {
         self.pki.len() == self.n as usize
+    }
+
+    /// Uses a given private key for this VTMF and returns the corresponding
+    /// public key to be shared.
+    pub fn use_private_key(&mut self, sk: PrivateKey) -> Result<PublicKey> {
+        if self.has_private_key() {
+            return Err(KeyExchangeError::RepeatedKeyGeneration.into());
+        }
+        if self.g != *sk.group() {
+            return Err(KeyExchangeError::InvalidPrivateKey.into());
+        }
+
+        let pk = sk.public_key();
+        self.sk = Some(sk);
+        self.pk = Some(pk.clone());
+        self.pki.push(pk.clone());
+        Ok(pk)
     }
 
     /// Generates a private key for this VTMF and returns the corresponding
@@ -100,6 +122,8 @@ pub enum KeyExchangeError {
     RepeatedKeyGeneration,
     /// Occurs when a key exchange is attempted with a key from the wrong group
     InvalidPublicKey,
+    /// Occurs when a key exchange is attempted with a key from the wrong group
+    InvalidPrivateKey,
     /// Occurs when attempting to finalize the exchange before it is complete
     IncompleteExchange,
 }

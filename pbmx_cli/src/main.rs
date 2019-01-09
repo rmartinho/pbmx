@@ -10,62 +10,41 @@ use pbmx_blocks::{
 };
 use pbmx_crypto::{
     group::{Group, Groups},
-    keys::{Fingerprint, Keys, PrivateKey, PublicKey},
+    keys::{Keys, PrivateKey},
 };
 use pbmx_serde::{FromBytes, ToBytes};
 use rand::{thread_rng, Rng};
 use rustyline::{error::ReadlineError, Editor};
-use std::{collections::HashMap, ffi::OsStr, fs, mem, path::Path};
+use std::{ffi::OsStr, fs, mem, path::Path};
 
+mod chain_parser;
+use self::chain_parser::ParsedChain;
 mod error;
-
-struct ParsedChain {
-    game: Option<String>,
-    group: Option<Group>,
-    keys: HashMap<Fingerprint, PublicKey>,
-}
-
-struct Secrets {
-    sk: Option<PrivateKey>,
-}
 
 struct State {
     block: BlockBuilder,
     chain: ParsedChain,
     group: Option<Group>,
-    secrets: Secrets,
+    private_key: Option<PrivateKey>,
 }
 
 fn main() {
     let chain = read_chain().unwrap();
-    if !chain.is_valid() {
-        println!("- Broken chain");
-        return;
-    }
     println!("# Blocks: {}", chain.count());
 
-    let secrets = read_secrets().unwrap();
-    if let Some(sk) = &secrets.sk {
+    let sk = read_secrets().unwrap();
+    if let Some(sk) = &sk {
         println!("# Private key: {:16}", sk.fingerprint());
     }
 
-    let parsed_chain = parse_chain(&chain);
-    if let Some(game) = &parsed_chain.game {
-        println!("# Game: {}", game);
-    }
-    if parsed_chain.keys.len() > 0 {
-        print!("# Players: ");
-        for k in parsed_chain.keys.keys() {
-            print!("{:16} ", k);
-        }
-        println!();
-    }
+    let parsed_chain = chain_parser::parse_chain(&chain, &sk).unwrap();
+    parsed_chain.print_out();
 
     let mut state = State {
         block: chain.build_block(),
-        group: parsed_chain.group.clone(),
+        group: parsed_chain.group(),
         chain: parsed_chain,
-        secrets,
+        private_key: sk,
     };
     let mut rl = Editor::<()>::new();
     loop {
@@ -108,7 +87,7 @@ fn main() {
             }
         }
     }
-    save_secrets(&state.secrets).unwrap();
+    save_secrets(&state.private_key).unwrap();
 }
 
 fn read_chain() -> Result<Chain> {
@@ -129,28 +108,7 @@ fn read_chain() -> Result<Chain> {
     Ok(chain)
 }
 
-fn parse_chain(chain: &Chain) -> ParsedChain {
-    let mut game = None;
-    let mut group = None;
-    let mut keys = HashMap::new();
-    for block in chain.blocks() {
-        for payload in block.payloads() {
-            match payload {
-                Payload::DefineGame(n, g) => {
-                    game = Some(n.clone());
-                    group = Some(g.clone());
-                }
-                Payload::PublishKey(pk) => {
-                    keys.insert(pk.fingerprint(), pk.clone());
-                }
-                _ => {}
-            };
-        }
-    }
-    ParsedChain { game, group, keys }
-}
-
-fn read_secrets() -> Result<Secrets> {
+fn read_secrets() -> Result<Option<PrivateKey>> {
     let mut sk = None;
     for entry in fs::read_dir(Path::new("secrets"))? {
         let entry = entry?;
@@ -158,18 +116,18 @@ fn read_secrets() -> Result<Secrets> {
             continue;
         }
         if let Some(fname) = entry.path().file_name() {
-            if fname != OsStr::new("sk.pbmx") {
+            if fname != OsStr::new("me.sk") {
                 continue;
             }
             sk = Some(PrivateKey::from_bytes(&fs::read(&entry.path())?)?);
         }
     }
-    Ok(Secrets { sk })
+    Ok(sk)
 }
 
-fn save_secrets(secrets: &Secrets) -> Result<()> {
-    if let Some(sk) = &secrets.sk {
-        fs::write(Path::new("secrets/sk.pbmx"), sk.to_bytes()?)?;
+fn save_secrets(sk: &Option<PrivateKey>) -> Result<()> {
+    if let Some(sk) = &sk {
+        fs::write(Path::new("secrets/me.sk"), sk.to_bytes()?)?;
     }
     Ok(())
 }
@@ -177,21 +135,26 @@ fn save_secrets(secrets: &Secrets) -> Result<()> {
 fn ensure_private_key_exists(state: &mut State) {
     let mut rng = thread_rng();
 
-    if state.secrets.sk.is_none() || state.group.is_none() {
+    if state.private_key.is_none() || state.group.is_none() {
         println!(": Generating private key...");
     }
 
     if state.group.is_none() {
-        state.group = Some(rng.sample(&Groups {
+        let group = rng.sample(&Groups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
-        }));
+        });
+        println!("+ Group(2048:1024)");
+        state
+            .block
+            .add_payload(Payload::PublishGroup(group.clone()));
+        state.group = Some(group);
     }
 
-    if state.secrets.sk.is_none() {
+    if state.private_key.is_none() {
         let (sk, pk) = rng.sample(&Keys(state.group.as_ref().unwrap()));
-        state.secrets.sk = Some(sk);
+        state.private_key = Some(sk);
         println!("+ Publish key {:16}", pk.fingerprint());
         state.block.add_payload(Payload::PublishKey(pk));
     }
@@ -204,7 +167,7 @@ fn do_issue(state: &mut State, words: &[&str]) -> Result<()> {
     }
     ensure_private_key_exists(state);
     let builder = mem::replace(&mut state.block, BlockBuilder::new());
-    let block = builder.build(state.secrets.sk.as_ref().unwrap());
+    let block = builder.build(state.private_key.as_ref().unwrap());
     fs::write(
         Path::new(&format!("blocks/{}.pbmx", block.id())),
         block.to_bytes()?,
@@ -214,15 +177,15 @@ fn do_issue(state: &mut State, words: &[&str]) -> Result<()> {
 }
 
 fn do_start(state: &mut State, words: &[&str]) {
-    if words.len() != 2 {
-        println!("- Usage: start <game>");
+    if words.len() != 3 {
+        println!("- Usage: start <game> <parties>");
         return;
     }
     let game = words[1].to_string();
+    let parties = str::parse(words[2]).unwrap();
+    println!("+ Start game '{}' {}p", game, parties);
+    state.block.add_payload(Payload::DefineGame(game, parties));
     ensure_private_key_exists(state);
-    println!("+ Start game '{}'", game);
-    let group = state.secrets.sk.as_ref().unwrap().group().clone();
-    state.block.add_payload(Payload::DefineGame(game, group));
 }
 
 fn do_join(_state: &mut State, words: &[&str]) {

@@ -7,6 +7,7 @@ pub enum Error {
     Chain(pbmx_blocks::Error),
     Io(std::io::Error),
     BadCommand,
+    BadGenesis,
 }
 
 impl From<pbmx_serde::Error> for Error {

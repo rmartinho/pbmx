@@ -77,6 +77,13 @@ impl Vtmf {
 }
 
 impl Vtmf {
+    /// Gets the group for this VTMF
+    pub fn group(&self) -> &Group {
+        &self.g
+    }
+}
+
+impl Vtmf {
     /// Applies a non-secret masking operation
     pub fn mask_open(&self, m: &Integer) -> Mask {
         (1.into(), m.into())
