@@ -66,9 +66,9 @@ fn main() {
                     //"reveal" => do_reveal(&mut state, &words),
                     //"gen" => do_gen(&mut state, &words),
                     //"rand" => do_rand(&mut state, &words),
-                    //"msg" => do_msg(&mut state, &words),
-                    //"bin" => do_bin(&mut state, &words),
-                    //"file" => do_file(&mut state, &words),
+                    "msg" => do_msg(&mut state, &words),
+                    "bin" => do_bin(&mut state, &words),
+                    "file" => do_file(&mut state, &words),
                     "issue" => {
                         if let Ok(()) = do_issue(&mut state, &words) {
                             break;
@@ -143,7 +143,10 @@ fn ensure_private_key_exists(state: &mut State) {
             group_bits: 1024,
             iterations: 64,
         });
-        println!("+ Group \u{2124}q, |q| = {}", group.order().significant_bits());
+        println!(
+            "+ Group \u{2124}q, |q| = {}",
+            group.order().significant_bits()
+        );
         state
             .block
             .add_payload(Payload::PublishGroup(group.clone()));
@@ -192,4 +195,39 @@ fn do_join(_state: &mut State, words: &[&str]) {
         return;
     }
     println!("+ Join game");
+}
+
+fn do_msg(state: &mut State, words: &[&str]) {
+    if words.len() < 2 {
+        println!("- Usage: msg <text>...");
+        return;
+    }
+    let mut bytes = Vec::new();
+    bytes.extend(words[1].as_bytes());
+    for w in &words[2..] {
+        bytes.extend(&[b' ']);
+        bytes.extend(w.as_bytes());
+    }
+    println!("+ Message: {} bytes", bytes.len());
+    state.block.add_payload(Payload::Bytes(bytes));
+}
+
+fn do_bin(state: &mut State, words: &[&str]) {
+    if words.len() != 2 {
+        println!("- Usage: bin <base64>");
+        return;
+    }
+    let bytes = base64::decode(words[1]).unwrap();
+    println!("+ Message: {} bytes", bytes.len());
+    state.block.add_payload(Payload::Bytes(bytes));
+}
+
+fn do_file(state: &mut State, words: &[&str]) {
+    if words.len() != 2 {
+        println!("- Usage: file <path>");
+        return;
+    }
+    let bytes = fs::read(Path::new(words[1])).unwrap();
+    println!("+ Message: {} bytes", bytes.len());
+    state.block.add_payload(Payload::Bytes(bytes));
 }

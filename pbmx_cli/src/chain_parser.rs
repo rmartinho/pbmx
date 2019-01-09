@@ -42,7 +42,11 @@ impl ParsedChain {
         if let ParsedChain::Empty = self {
             return;
         }
-        println!("# Game: {} {}p", self.name().unwrap(), self.parties().unwrap());
+        println!(
+            "# Game: {} {}p",
+            self.name().unwrap(),
+            self.parties().unwrap()
+        );
     }
 }
 

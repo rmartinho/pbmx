@@ -13,6 +13,9 @@ path = "../pbmx_crypto"
 [dependencies.pbmx_serde]
 path = "../pbmx_serde"
 
+[dependencies.base64]
+version = "0.10"
+
 [dependencies.clap]
 version = "2.32"
 
