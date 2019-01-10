@@ -63,7 +63,7 @@ fn main() {
                     "stack" => do_stack(&mut state, &words),
                     //"pstack" => do_pstack(&mut state, &words),
                     //"name" => do_name(&mut state, &words),
-                    //"shuffle" => do_shuffle(&mut state, &words),
+                    "shuffle" => do_shuffle(&mut state, &words),
                     ////"shift" => do_shift(&mut state, &words),
                     //"take" => do_take(&mut state, &words),
                     //"pile" => do_pile(&mut state, &words),
@@ -223,6 +223,29 @@ fn do_stack(state: &mut State, words: &[&str]) {
         state.stacks.len(),
         state.stacks[state.stacks.len() - 1].0
     );
+}
+
+fn do_shuffle(state: &mut State, words: &[&str]) {
+    if words.len() != 2 {
+        println!("- Usage: shuffle <stack>");
+        return;
+    }
+    let vtmf = state.chain.vtmf().unwrap();
+    let idx: usize = str::parse(words[1]).unwrap();
+    let id1 = state.stacks[idx - 1].0;
+    let stack = &state.stacks[idx - 1].1;
+    let (shuffled, proof) = vtmf.mask_shuffle(stack);
+
+    let payload = CreateStack(shuffled.clone());
+    state.stacks.push((payload.id(), shuffled));
+    state.block.add_payload(payload);
+    let id2 = state.stacks[state.stacks.len() - 1].0;
+    println!("+ Shuffle {} => {} [{:16}]", idx, state.stacks.len(), id2);
+
+    state
+        .block
+        .add_payload(ProveShuffle(id1, id2, Box::new(proof)));
+    println!("+ Prove shuffle [{:16}]\u{1F500}[{:16}]", id1, id2);
 }
 
 fn do_msg(state: &mut State, words: &[&str]) {

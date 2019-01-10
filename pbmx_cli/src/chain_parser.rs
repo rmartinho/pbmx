@@ -14,7 +14,7 @@ pub enum ParsedChain {
     KeysExchanged(String, Vtmf, Vec<(Id, Vec<Mask>)>),
 }
 
-const EMPTY: [(Id, Vec<Mask>); 0] = [];
+const NO_STACKS: [(Id, Vec<Mask>); 0] = [];
 
 impl ParsedChain {
     pub fn name(&self) -> Option<&str> {
@@ -51,7 +51,7 @@ impl ParsedChain {
     pub fn stacks(&self) -> &[(Id, Vec<Mask>)] {
         match self {
             ParsedChain::KeysExchanged(_, _, stacks) => &stacks,
-            _ => &EMPTY,
+            _ => &NO_STACKS,
         }
     }
 
@@ -224,6 +224,9 @@ impl<'a> Display for StackDisplay<'a> {
                 }
                 last_encrypted += 1;
             }
+        }
+        if last_encrypted > 0 {
+            write!(f, "{}", last_encrypted)?;
         }
         write!(f, "]")?;
         Ok(())
