@@ -5,12 +5,13 @@
 
 use crate::error::{Error, Result};
 use pbmx_blocks::{
-    block::{Block, BlockBuilder, Payload},
+    block::{Block, BlockBuilder, Id, Payload::*},
     chain::Chain,
 };
 use pbmx_crypto::{
     group::{Group, Groups},
     keys::{Keys, PrivateKey},
+    vtmf::Mask,
 };
 use pbmx_serde::{FromBytes, ToBytes};
 use rand::{thread_rng, Rng};
@@ -20,12 +21,14 @@ use std::{ffi::OsStr, fs, mem, path::Path};
 mod chain_parser;
 use self::chain_parser::ParsedChain;
 mod error;
+mod index_spec;
 
 struct State {
     block: BlockBuilder,
     chain: ParsedChain,
     group: Option<Group>,
     private_key: Option<PrivateKey>,
+    stacks: Vec<(Id, Vec<Mask>)>,
 }
 
 fn main() {
@@ -42,7 +45,8 @@ fn main() {
 
     let mut state = State {
         block: chain.build_block(),
-        group: parsed_chain.group(),
+        group: parsed_chain.group().cloned(),
+        stacks: parsed_chain.stacks().into(),
         chain: parsed_chain,
         private_key: sk,
     };
@@ -52,11 +56,11 @@ fn main() {
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
-                let words: Vec<_> = line.split(' ').collect();;
+                let words: Vec<_> = line.split(' ').filter(|s| !s.is_empty()).collect();;
                 match words[0] {
                     "start" => do_start(&mut state, &words),
                     "join" => do_join(&mut state, &words),
-                    //"stack" => do_stack(&mut state, &words),
+                    "stack" => do_stack(&mut state, &words),
                     //"pstack" => do_pstack(&mut state, &words),
                     //"name" => do_name(&mut state, &words),
                     //"shuffle" => do_shuffle(&mut state, &words),
@@ -147,9 +151,7 @@ fn ensure_private_key_exists(state: &mut State) {
             "+ Group \u{2124}q, |q| = {}",
             group.order().significant_bits()
         );
-        state
-            .block
-            .add_payload(Payload::PublishGroup(group.clone()));
+        state.block.add_payload(PublishGroup(group.clone()));
         state.group = Some(group);
     }
 
@@ -157,7 +159,7 @@ fn ensure_private_key_exists(state: &mut State) {
         let (sk, pk) = rng.sample(&Keys(state.group.as_ref().unwrap()));
         state.private_key = Some(sk);
         println!("+ Publish key {:16}", pk.fingerprint());
-        state.block.add_payload(Payload::PublishKey(pk));
+        state.block.add_payload(PublishKey(pk));
     }
 }
 
@@ -170,10 +172,11 @@ fn do_issue(state: &mut State, words: &[&str]) -> Result<()> {
     let builder = mem::replace(&mut state.block, BlockBuilder::new());
     let block = builder.build(state.private_key.as_ref().unwrap());
     fs::write(
-        Path::new(&format!("blocks/{}.pbmx", block.id())),
+        Path::new(&format!("blocks/{:16}.pbmx", block.id())),
         block.to_bytes()?,
     )?;
     println!("* Issued block {:16}", block.id());
+    eprintln!("{:?}", block);
     Ok(())
 }
 
@@ -185,16 +188,41 @@ fn do_start(state: &mut State, words: &[&str]) {
     let game = words[1].to_string();
     let parties = str::parse(words[2]).unwrap();
     println!("+ Start game '{}' {}p", game, parties);
-    state.block.add_payload(Payload::DefineGame(game, parties));
+    state.block.add_payload(DefineGame(game, parties));
     ensure_private_key_exists(state);
 }
 
-fn do_join(_state: &mut State, words: &[&str]) {
+fn do_join(state: &mut State, words: &[&str]) {
     if words.len() != 1 {
         println!("- Usage: join");
         return;
     }
+    ensure_private_key_exists(state);
     println!("+ Join game");
+}
+
+fn do_stack(state: &mut State, words: &[&str]) {
+    if words.len() != 2 {
+        println!("- Usage: stack <tokens>");
+        return;
+    }
+    let vtmf = state.chain.vtmf();
+    if vtmf.is_none() {
+        println!("- Exchanging keys first");
+        return;
+    }
+    let vtmf = state.chain.vtmf().unwrap();
+    let stack: Vec<_> = index_spec::parse_index_spec(words[1])
+        .map(|t| vtmf.mask_open(&t.into()))
+        .collect();
+    let payload = CreateStack(stack.clone());
+    state.stacks.push((payload.id(), stack));
+    state.block.add_payload(payload);
+    println!(
+        "+ Stack {} [{:16}]",
+        state.stacks.len(),
+        state.stacks[state.stacks.len() - 1].0
+    );
 }
 
 fn do_msg(state: &mut State, words: &[&str]) {
@@ -209,7 +237,7 @@ fn do_msg(state: &mut State, words: &[&str]) {
         bytes.extend(w.as_bytes());
     }
     println!("+ Message: {} bytes", bytes.len());
-    state.block.add_payload(Payload::Bytes(bytes));
+    state.block.add_payload(Bytes(bytes));
 }
 
 fn do_bin(state: &mut State, words: &[&str]) {
@@ -219,7 +247,7 @@ fn do_bin(state: &mut State, words: &[&str]) {
     }
     let bytes = base64::decode(words[1]).unwrap();
     println!("+ Message: {} bytes", bytes.len());
-    state.block.add_payload(Payload::Bytes(bytes));
+    state.block.add_payload(Bytes(bytes));
 }
 
 fn do_file(state: &mut State, words: &[&str]) {
@@ -229,5 +257,5 @@ fn do_file(state: &mut State, words: &[&str]) {
     }
     let bytes = fs::read(Path::new(words[1])).unwrap();
     println!("+ Message: {} bytes", bytes.len());
-    state.block.add_payload(Payload::Bytes(bytes));
+    state.block.add_payload(Bytes(bytes));
 }

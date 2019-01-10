@@ -1,40 +1,56 @@
 use crate::error::{Error, Result};
-use pbmx_blocks::chain::Chain;
+use pbmx_blocks::{block::Id, chain::Chain};
 use pbmx_crypto::{
     group::Group,
     keys::{PrivateKey, PublicKey},
-    vtmf::{KeyExchange, Vtmf},
+    vtmf::{KeyExchange, Mask, Vtmf},
 };
 
 #[allow(clippy::large_enum_variant)]
 pub enum ParsedChain {
     Empty,
     ExchangingKeys(String, KeyExchange),
-    KeysExchanged(String, Vtmf),
+    KeysExchanged(String, Vtmf, Vec<(Id, Vec<Mask>)>),
 }
+
+const EMPTY: [(Id, Vec<Mask>); 0] = [];
 
 impl ParsedChain {
     pub fn name(&self) -> Option<&str> {
         match self {
             ParsedChain::ExchangingKeys(n, _) => Some(n),
-            ParsedChain::KeysExchanged(n, _) => Some(n),
-            ParsedChain::Empty => None,
+            ParsedChain::KeysExchanged(n, ..) => Some(n),
+            _ => None,
         }
     }
 
-    pub fn group(&self) -> Option<Group> {
+    pub fn group(&self) -> Option<&Group> {
         match self {
-            ParsedChain::ExchangingKeys(_, kex) => Some(kex.group().clone()),
-            ParsedChain::KeysExchanged(_, vtmf) => Some(vtmf.group().clone()),
-            ParsedChain::Empty => None,
+            ParsedChain::ExchangingKeys(_, kex) => Some(kex.group()),
+            ParsedChain::KeysExchanged(_, vtmf, _) => Some(vtmf.group()),
+            _ => None,
         }
     }
 
     pub fn parties(&self) -> Option<u32> {
         match self {
             ParsedChain::ExchangingKeys(_, kex) => Some(kex.parties()),
-            ParsedChain::KeysExchanged(_, vtmf) => Some(vtmf.parties()),
-            ParsedChain::Empty => None,
+            ParsedChain::KeysExchanged(_, vtmf, _) => Some(vtmf.parties()),
+            _ => None,
+        }
+    }
+
+    pub fn vtmf(&self) -> Option<&Vtmf> {
+        match self {
+            ParsedChain::KeysExchanged(_, vtmf, _) => Some(vtmf),
+            _ => None,
+        }
+    }
+
+    pub fn stacks(&self) -> &[(Id, Vec<Mask>)] {
+        match self {
+            ParsedChain::KeysExchanged(_, _, stacks) => &stacks,
+            _ => &EMPTY,
         }
     }
 
@@ -47,6 +63,9 @@ impl ParsedChain {
             self.name().unwrap(),
             self.parties().unwrap()
         );
+        for (i, (id, _)) in self.stacks().iter().enumerate() {
+            println!("# Stack {} [{:16}]", i + 1, id);
+        }
     }
 }
 
@@ -58,6 +77,7 @@ struct ParseState {
     private_key: Option<PrivateKey>,
     kex: Option<KeyExchange>,
     vtmf: Option<Vtmf>,
+    stacks: Vec<(Id, Vec<Mask>)>,
 }
 
 pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<ParsedChain> {
@@ -82,6 +102,9 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
                 PublishKey(pk) => {
                     state.add_key(pk.clone())?;
                 }
+                CreateStack(s) => {
+                    state.add_stack(payload.id(), s.clone())?;
+                }
                 _ => {}
             }
         }
@@ -93,7 +116,11 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
     if let Some(kex) = state.kex.take() {
         Ok(ParsedChain::ExchangingKeys(state.name, kex))
     } else {
-        Ok(ParsedChain::KeysExchanged(state.name, state.vtmf.unwrap()))
+        Ok(ParsedChain::KeysExchanged(
+            state.name,
+            state.vtmf.unwrap(),
+            state.stacks,
+        ))
     }
 }
 
@@ -157,6 +184,11 @@ impl ParseState {
         if rkex.has_all_keys() {
             self.vtmf = Some(self.kex.take().unwrap().finalize()?);
         }
+        Ok(())
+    }
+
+    fn add_stack(&mut self, id: Id, stack: Vec<Mask>) -> Result<()> {
+        self.stacks.push((id, stack));
         Ok(())
     }
 }
