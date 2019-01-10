@@ -5,13 +5,16 @@ use pbmx_crypto::{
     keys::{PrivateKey, PublicKey},
     vtmf::{KeyExchange, Mask, Vtmf},
 };
-use std::fmt::{self, Display, Formatter};
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+};
 
 #[allow(clippy::large_enum_variant)]
 pub enum ParsedChain {
     Empty,
     ExchangingKeys(String, KeyExchange),
-    KeysExchanged(String, Vtmf, Vec<(Id, Vec<Mask>)>),
+    KeysExchanged(String, Vtmf, Vec<(Id, Vec<Mask>)>, HashMap<String, Id>),
 }
 
 const NO_STACKS: [(Id, Vec<Mask>); 0] = [];
@@ -28,7 +31,7 @@ impl ParsedChain {
     pub fn group(&self) -> Option<&Group> {
         match self {
             ParsedChain::ExchangingKeys(_, kex) => Some(kex.group()),
-            ParsedChain::KeysExchanged(_, vtmf, _) => Some(vtmf.group()),
+            ParsedChain::KeysExchanged(_, vtmf, ..) => Some(vtmf.group()),
             _ => None,
         }
     }
@@ -36,22 +39,29 @@ impl ParsedChain {
     pub fn parties(&self) -> Option<u32> {
         match self {
             ParsedChain::ExchangingKeys(_, kex) => Some(kex.parties()),
-            ParsedChain::KeysExchanged(_, vtmf, _) => Some(vtmf.parties()),
+            ParsedChain::KeysExchanged(_, vtmf, ..) => Some(vtmf.parties()),
             _ => None,
         }
     }
 
     pub fn vtmf(&self) -> Option<&Vtmf> {
         match self {
-            ParsedChain::KeysExchanged(_, vtmf, _) => Some(vtmf),
+            ParsedChain::KeysExchanged(_, vtmf, ..) => Some(vtmf),
             _ => None,
         }
     }
 
     pub fn stacks(&self) -> &[(Id, Vec<Mask>)] {
         match self {
-            ParsedChain::KeysExchanged(_, _, stacks) => &stacks,
+            ParsedChain::KeysExchanged(_, _, stacks, _) => &stacks,
             _ => &NO_STACKS,
+        }
+    }
+
+    pub fn stack_names(&self) -> Option<&HashMap<String, Id>> {
+        match self {
+            ParsedChain::KeysExchanged(_, _, _, names) => Some(&names),
+            _ => None,
         }
     }
 
@@ -64,8 +74,16 @@ impl ParsedChain {
             self.name().unwrap(),
             self.parties().unwrap()
         );
-        for (i, (id, s)) in self.stacks().iter().enumerate() {
-            println!("# Stack {} [{:16}]:\n\t{}", i + 1, id, StackDisplay(s));
+        if let Some(names) = self.stack_names() {
+            for (n, id) in names.iter() {
+                let (i, s) = self
+                    .stacks()
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, (id1, s))| if id1 == id { Some((i, s)) } else { None })
+                    .unwrap();
+                println!("# Stack {} #{} [{:16}]:\n\t{}", n, i, id, StackDisplay(s));
+            }
         }
     }
 }
@@ -79,6 +97,7 @@ struct ParseState {
     kex: Option<KeyExchange>,
     vtmf: Option<Vtmf>,
     stacks: Vec<(Id, Vec<Mask>)>,
+    stack_names: HashMap<String, Id>,
 }
 
 pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<ParsedChain> {
@@ -106,6 +125,9 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
                 CreateStack(s) => {
                     state.add_stack(payload.id(), s.clone())?;
                 }
+                NameStack(id, n) => {
+                    state.name_stack(*id, n)?;
+                }
                 _ => {}
             }
         }
@@ -121,6 +143,7 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
             state.name,
             state.vtmf.unwrap(),
             state.stacks,
+            state.stack_names,
         ))
     }
 }
@@ -190,6 +213,14 @@ impl ParseState {
 
     fn add_stack(&mut self, id: Id, stack: Vec<Mask>) -> Result<()> {
         self.stacks.push((id, stack));
+        Ok(())
+    }
+
+    fn name_stack(&mut self, id: Id, name: &str) -> Result<()> {
+        self.stack_names
+            .entry(name.into())
+            .and_modify(|e| *e = id)
+            .or_insert(id);
         Ok(())
     }
 }

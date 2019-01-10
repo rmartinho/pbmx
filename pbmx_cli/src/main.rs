@@ -16,7 +16,7 @@ use pbmx_crypto::{
 use pbmx_serde::{FromBytes, ToBytes};
 use rand::{thread_rng, Rng};
 use rustyline::{error::ReadlineError, Editor};
-use std::{ffi::OsStr, fs, mem, path::Path};
+use std::{collections::HashMap, ffi::OsStr, fs, mem, path::Path};
 
 mod chain_parser;
 use self::chain_parser::ParsedChain;
@@ -29,6 +29,7 @@ struct State {
     group: Option<Group>,
     private_key: Option<PrivateKey>,
     stacks: Vec<(Id, Vec<Mask>)>,
+    stack_names: HashMap<String, Id>,
 }
 
 fn main() {
@@ -47,6 +48,7 @@ fn main() {
         block: chain.build_block(),
         group: parsed_chain.group().cloned(),
         stacks: parsed_chain.stacks().into(),
+        stack_names: parsed_chain.stack_names().cloned().unwrap_or_default(),
         chain: parsed_chain,
         private_key: sk,
     };
@@ -62,7 +64,7 @@ fn main() {
                     "join" => do_join(&mut state, &words),
                     "stack" => do_stack(&mut state, &words),
                     //"pstack" => do_pstack(&mut state, &words),
-                    //"name" => do_name(&mut state, &words),
+                    "name" => do_name(&mut state, &words),
                     "shuffle" => do_shuffle(&mut state, &words),
                     ////"shift" => do_shift(&mut state, &words),
                     //"take" => do_take(&mut state, &words),
@@ -223,6 +225,23 @@ fn do_stack(state: &mut State, words: &[&str]) {
         state.stacks.len(),
         state.stacks[state.stacks.len() - 1].0
     );
+}
+
+fn do_name(state: &mut State, words: &[&str]) {
+    if words.len() != 3 {
+        println!("- Usage: name <stack> <name>");
+        return;
+    }
+    let idx: usize = str::parse(words[1]).unwrap();
+    let name = words[2];
+    let id = state.stacks[idx - 1].0;
+    state
+        .stack_names
+        .entry(name.into())
+        .and_modify(|e| *e = id)
+        .or_insert(id);
+    state.block.add_payload(NameStack(id, name.into()));
+    println!("+ Name {:16} {}", id, name);
 }
 
 fn do_shuffle(state: &mut State, words: &[&str]) {

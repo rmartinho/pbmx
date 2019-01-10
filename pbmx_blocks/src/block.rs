@@ -191,7 +191,7 @@ pub enum Payload {
     /// A stack payload
     CreateStack(Vec<Mask>),
     /// A stack name payload
-    NameStack(String, Id),
+    NameStack(Id, String),
     /// A stack mask proof payload
     ProveMask(Id, Id, Vec<MaskProof>),
     /// A stack private mask proof payload
