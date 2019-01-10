@@ -5,6 +5,7 @@ use pbmx_crypto::{
     keys::{PrivateKey, PublicKey},
     vtmf::{KeyExchange, Mask, Vtmf},
 };
+use std::fmt::{self, Display, Formatter};
 
 #[allow(clippy::large_enum_variant)]
 pub enum ParsedChain {
@@ -63,8 +64,8 @@ impl ParsedChain {
             self.name().unwrap(),
             self.parties().unwrap()
         );
-        for (i, (id, _)) in self.stacks().iter().enumerate() {
-            println!("# Stack {} [{:16}]", i + 1, id);
+        for (i, (id, s)) in self.stacks().iter().enumerate() {
+            println!("# Stack {} [{:16}]:\n\t{}", i + 1, id, StackDisplay(s));
         }
     }
 }
@@ -189,6 +190,42 @@ impl ParseState {
 
     fn add_stack(&mut self, id: Id, stack: Vec<Mask>) -> Result<()> {
         self.stacks.push((id, stack));
+        Ok(())
+    }
+}
+
+struct StackDisplay<'a>(&'a Vec<Mask>);
+
+impl<'a> Display for StackDisplay<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut last_encrypted = 0;
+        write!(f, "[")?;
+        let mut comma = false;
+        for (c1, c2) in self.0.iter() {
+            if *c1 == 1 {
+                if last_encrypted > 0 {
+                    write!(f, "{}", last_encrypted)?;
+                    last_encrypted = 0;
+                }
+                if comma {
+                    write!(f, ",")?;
+                } else {
+                    comma = true;
+                }
+                write!(f, "{}", c2)?;
+            } else {
+                if last_encrypted == 0 {
+                    if comma {
+                        write!(f, ",")?;
+                    } else {
+                        comma = true;
+                    }
+                    write!(f, "?")?;
+                }
+                last_encrypted += 1;
+            }
+        }
+        write!(f, "]")?;
         Ok(())
     }
 }
