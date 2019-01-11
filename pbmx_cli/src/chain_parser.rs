@@ -1,23 +1,21 @@
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    stacks::{Stack, StackMap},
+};
 use pbmx_blocks::{block::Id, chain::Chain};
 use pbmx_crypto::{
     group::Group,
     keys::{PrivateKey, PublicKey},
     vtmf::{KeyExchange, Mask, Vtmf},
 };
-use std::{
-    collections::HashMap,
-    fmt::{self, Display, Formatter},
-};
+use std::collections::HashMap;
 
 #[allow(clippy::large_enum_variant)]
 pub enum ParsedChain {
     Empty,
     ExchangingKeys(String, KeyExchange),
-    KeysExchanged(String, Vtmf, Vec<(Id, Vec<Mask>)>, HashMap<String, Id>),
+    KeysExchanged(String, Vtmf, StackMap),
 }
-
-const NO_STACKS: [(Id, Vec<Mask>); 0] = [];
 
 impl ParsedChain {
     pub fn name(&self) -> Option<&str> {
@@ -51,16 +49,9 @@ impl ParsedChain {
         }
     }
 
-    pub fn stacks(&self) -> &[(Id, Vec<Mask>)] {
+    pub fn stacks(&self) -> Option<&StackMap> {
         match self {
-            ParsedChain::KeysExchanged(_, _, stacks, _) => &stacks,
-            _ => &NO_STACKS,
-        }
-    }
-
-    pub fn stack_names(&self) -> Option<&HashMap<String, Id>> {
-        match self {
-            ParsedChain::KeysExchanged(_, _, _, names) => Some(&names),
+            ParsedChain::KeysExchanged(_, _, stacks) => Some(stacks),
             _ => None,
         }
     }
@@ -74,15 +65,9 @@ impl ParsedChain {
             self.name().unwrap(),
             self.parties().unwrap()
         );
-        if let Some(names) = self.stack_names() {
-            for (n, id) in names.iter() {
-                let (i, s) = self
-                    .stacks()
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, (id1, s))| if id1 == id { Some((i, s)) } else { None })
-                    .unwrap();
-                println!("# Stack {} #{} [{:16}]:\n\t{}", n, i, id, StackDisplay(s));
+        if let Some(stacks) = self.stacks() {
+            for (n, s) in stacks.named_stacks() {
+                println!("# Stack {} [{:16}]:\n\t{}", n, s.id(), s);
             }
         }
     }
@@ -96,7 +81,7 @@ struct ParseState {
     private_key: Option<PrivateKey>,
     kex: Option<KeyExchange>,
     vtmf: Option<Vtmf>,
-    stacks: Vec<(Id, Vec<Mask>)>,
+    stacks: Vec<Stack>,
     stack_names: HashMap<String, Id>,
 }
 
@@ -123,7 +108,7 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
                     state.add_key(pk.clone())?;
                 }
                 CreateStack(s) => {
-                    state.add_stack(payload.id(), s.clone())?;
+                    state.add_stack(s.clone())?;
                 }
                 NameStack(id, n) => {
                     state.name_stack(*id, n)?;
@@ -139,11 +124,17 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
     if let Some(kex) = state.kex.take() {
         Ok(ParsedChain::ExchangingKeys(state.name, kex))
     } else {
+        let mut stack_map = StackMap::new();
+        for stack in state.stacks.iter() {
+            stack_map.insert(stack.clone());
+        }
+        for (name, id) in state.stack_names.iter() {
+            stack_map.set_name_id(id, name.clone());
+        }
         Ok(ParsedChain::KeysExchanged(
             state.name,
             state.vtmf.unwrap(),
-            state.stacks,
-            state.stack_names,
+            stack_map,
         ))
     }
 }
@@ -211,8 +202,8 @@ impl ParseState {
         Ok(())
     }
 
-    fn add_stack(&mut self, id: Id, stack: Vec<Mask>) -> Result<()> {
-        self.stacks.push((id, stack));
+    fn add_stack(&mut self, stack: Vec<Mask>) -> Result<()> {
+        self.stacks.push(stack.into());
         Ok(())
     }
 
@@ -221,45 +212,6 @@ impl ParseState {
             .entry(name.into())
             .and_modify(|e| *e = id)
             .or_insert(id);
-        Ok(())
-    }
-}
-
-struct StackDisplay<'a>(&'a Vec<Mask>);
-
-impl<'a> Display for StackDisplay<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut last_encrypted = 0;
-        write!(f, "[")?;
-        let mut comma = false;
-        for (c1, c2) in self.0.iter() {
-            if *c1 == 1 {
-                if last_encrypted > 0 {
-                    write!(f, "{}", last_encrypted)?;
-                    last_encrypted = 0;
-                }
-                if comma {
-                    write!(f, ",")?;
-                } else {
-                    comma = true;
-                }
-                write!(f, "{}", c2)?;
-            } else {
-                if last_encrypted == 0 {
-                    if comma {
-                        write!(f, ",")?;
-                    } else {
-                        comma = true;
-                    }
-                    write!(f, "?")?;
-                }
-                last_encrypted += 1;
-            }
-        }
-        if last_encrypted > 0 {
-            write!(f, "{}", last_encrypted)?;
-        }
-        write!(f, "]")?;
         Ok(())
     }
 }

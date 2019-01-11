@@ -3,33 +3,35 @@
 
 //! PBMX CLI tool
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    stacks::{Stack, StackMap},
+};
 use pbmx_blocks::{
-    block::{Block, BlockBuilder, Id, Payload::*},
+    block::{Block, BlockBuilder, Payload::*},
     chain::Chain,
 };
 use pbmx_crypto::{
     group::{Group, Groups},
     keys::{Keys, PrivateKey},
-    vtmf::Mask,
 };
 use pbmx_serde::{FromBytes, ToBytes};
 use rand::{thread_rng, Rng};
 use rustyline::{error::ReadlineError, Editor};
-use std::{collections::HashMap, ffi::OsStr, fs, mem, path::Path};
+use std::{ffi::OsStr, fs, mem, path::Path};
 
 mod chain_parser;
-use self::chain_parser::ParsedChain;
 mod error;
+use self::chain_parser::ParsedChain;
 mod index_spec;
+mod stacks;
 
 struct State {
     block: BlockBuilder,
     chain: ParsedChain,
     group: Option<Group>,
     private_key: Option<PrivateKey>,
-    stacks: Vec<(Id, Vec<Mask>)>,
-    stack_names: HashMap<String, Id>,
+    stacks: StackMap,
 }
 
 fn main() {
@@ -47,8 +49,7 @@ fn main() {
     let mut state = State {
         block: chain.build_block(),
         group: parsed_chain.group().cloned(),
-        stacks: parsed_chain.stacks().into(),
-        stack_names: parsed_chain.stack_names().cloned().unwrap_or_default(),
+        stacks: parsed_chain.stacks().cloned().unwrap_or(StackMap::new()),
         chain: parsed_chain,
         private_key: sk,
     };
@@ -218,13 +219,11 @@ fn do_stack(state: &mut State, words: &[&str]) {
         .map(|t| vtmf.mask_open(&t.into()))
         .collect();
     let payload = CreateStack(stack.clone());
-    state.stacks.push((payload.id(), stack));
+    let stack: Stack = stack.into();
+    let id = stack.id();
+    state.stacks.insert(stack);
     state.block.add_payload(payload);
-    println!(
-        "+ Stack {} [{:16}]",
-        state.stacks.len(),
-        state.stacks[state.stacks.len() - 1].0
-    );
+    println!("+ Stack {} [{:16}]", state.stacks.len(), id);
 }
 
 fn do_name(state: &mut State, words: &[&str]) {
@@ -232,14 +231,9 @@ fn do_name(state: &mut State, words: &[&str]) {
         println!("- Usage: name <stack> <name>");
         return;
     }
-    let idx: usize = str::parse(words[1]).unwrap();
+    let id = state.stacks.get_by_str(words[1]).unwrap().id();
     let name = words[2];
-    let id = state.stacks[idx - 1].0;
-    state
-        .stack_names
-        .entry(name.into())
-        .and_modify(|e| *e = id)
-        .or_insert(id);
+    state.stacks.set_name_id(&id, name.into());
     state.block.add_payload(NameStack(id, name.into()));
     println!("+ Name {:16} {}", id, name);
 }
@@ -250,16 +244,16 @@ fn do_shuffle(state: &mut State, words: &[&str]) {
         return;
     }
     let vtmf = state.chain.vtmf().unwrap();
-    let idx: usize = str::parse(words[1]).unwrap();
-    let id1 = state.stacks[idx - 1].0;
-    let stack = &state.stacks[idx - 1].1;
+    let id1 = state.stacks.get_by_str(words[1]).unwrap().id();
+    let stack = state.stacks.get_by_str(words[1]).unwrap().tokens();
     let (shuffled, proof) = vtmf.mask_shuffle(stack);
 
     let payload = CreateStack(shuffled.clone());
-    state.stacks.push((payload.id(), shuffled));
+    let shuffled: Stack = shuffled.into();
+    let id2 = shuffled.id();
+    state.stacks.insert(shuffled);
     state.block.add_payload(payload);
-    let id2 = state.stacks[state.stacks.len() - 1].0;
-    println!("+ Shuffle {} => {} [{:16}]", idx, state.stacks.len(), id2);
+    println!("+ Shuffle {} => {} [{:16}]", words[1], state.stacks.len(), id2);
 
     state
         .block
