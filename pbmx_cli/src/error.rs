@@ -8,6 +8,7 @@ pub enum Error {
     Io(std::io::Error),
     BadCommand,
     BadGenesis,
+    InvalidProof,
 }
 
 impl From<pbmx_serde::Error> for Error {

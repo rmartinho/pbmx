@@ -6,7 +6,7 @@ use pbmx_blocks::{block::Id, chain::Chain};
 use pbmx_crypto::{
     group::Group,
     keys::{PrivateKey, PublicKey},
-    vtmf::{KeyExchange, Mask, Vtmf},
+    vtmf::{ShuffleProof, KeyExchange, Mask, Vtmf},
 };
 use std::collections::HashMap;
 
@@ -113,12 +113,14 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
                 NameStack(id, n) => {
                     state.name_stack(*id, n)?;
                 }
+                ProveShuffle(id1, id2, p) => {
+                    state.verify_shuffle(id1, id2, p).unwrap();
+                }
                 _ => {}
             }
         }
     }
     if state.kex.is_none() && state.vtmf.is_none() {
-        println!("aaa");
         return Err(Error::BadGenesis);
     }
     if let Some(kex) = state.kex.take() {
@@ -142,7 +144,6 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
 impl ParseState {
     fn set_name(&mut self, s: String) -> Result<()> {
         if !self.name.is_empty() {
-            println!("qux");
             return Err(Error::BadGenesis);
         }
         self.name = s;
@@ -151,7 +152,6 @@ impl ParseState {
 
     fn set_parties(&mut self, n: u32) -> Result<()> {
         if self.parties > 0 {
-            println!("foo");
             return Err(Error::BadGenesis);
         }
         self.parties = n;
@@ -169,7 +169,6 @@ impl ParseState {
 
     fn set_group(&mut self, g: Group) -> Result<()> {
         if self.group.is_some() || self.kex.is_some() {
-            println!("bar");
             return Err(Error::BadGenesis);
         }
         if self.parties > 0 {
@@ -191,7 +190,6 @@ impl ParseState {
             return Ok(());
         }
         if self.kex.is_none() {
-            println!("kux");
             return Err(Error::BadGenesis);
         }
         let rkex = self.kex.as_mut().unwrap();
@@ -212,6 +210,22 @@ impl ParseState {
             .entry(name.into())
             .and_modify(|e| *e = id)
             .or_insert(id);
+        Ok(())
+    }
+
+    fn verify_shuffle(&mut self, id1: &Id, id2: &Id, proof: &ShuffleProof) -> Result<()> {
+        if self.vtmf.is_none() {
+            return Err(Error::BadGenesis);
+        }
+
+        let vtmf = self.vtmf.as_ref().unwrap();
+
+        let s1 = self.stacks.iter().find(|s| s.id() == *id1).unwrap();
+        let s2 = self.stacks.iter().find(|s| s.id() == *id2).unwrap();
+        if !vtmf.verify_mask_shuffle(s1.tokens(), s2.tokens(), proof) {
+            return Err(Error::InvalidProof);
+        }
+        println!("[{:16}]\u{1F500}[{:16}]", id1, id2);
         Ok(())
     }
 }
