@@ -258,7 +258,7 @@ fn do_shuffle(state: &mut State, words: &[&str]) {
     state
         .block
         .add_payload(ProveShuffle(id1, id2, Box::new(proof)));
-    println!("+ Prove shuffle [{:16}]\u{1F500}[{:16}]", id1, id2);
+    println!("+ Prove shuffle [{:16}] => [{:16}]", id1, id2);
 }
 
 fn do_msg(state: &mut State, words: &[&str]) {

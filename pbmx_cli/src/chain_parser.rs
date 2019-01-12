@@ -225,7 +225,6 @@ impl ParseState {
         if !vtmf.verify_mask_shuffle(s1.tokens(), s2.tokens(), proof) {
             return Err(Error::InvalidProof);
         }
-        println!("[{:16}]\u{1F500}[{:16}]", id1, id2);
         Ok(())
     }
 }
