@@ -47,11 +47,17 @@ session-unique index. This can e.g. be used to denoted the deck or each player's
 hand when dealing. Stack names are unique, and can be reassigned to new stacks,
 akin to git branches.
 
-    > shuffle <stack>
+    > mask <stack>
 
-Shuffles a stack, identified by its ID, session-unique index, or name. When
-shuffling a stack by name, the name is reassigned to the resulting stack. The
-shuffled stack's ID and session-unique index are printed.
+(Re-)masks a stack. This is useful for certain less common scenarios, like
+revealing a stack to a subset of players.
+
+    > shuffle <stack> [<indices>]
+
+Shuffles a stack, identified by its ID, session-unique index, or name. The
+shuffle is either random, or according to the given indices. When shuffling a
+stack by name, the name is reassigned to the resulting stack. The shuffled
+stack's ID and session-unique index are printed.
 
     > cut <stack> [<n>]
 

@@ -61,12 +61,12 @@ fn main() {
                 rl.add_history_entry(line.as_ref());
                 let words: Vec<_> = line.split(' ').filter(|s| !s.is_empty()).collect();;
                 match words[0] {
-                    "start" => do_start(&mut state, &words),
-                    "join" => do_join(&mut state, &words),
-                    "stack" => do_stack(&mut state, &words),
+                    //"start" => do_start(&mut state, &words),
+                    //"join" => do_join(&mut state, &words),
+                    //"stack" => do_stack(&mut state, &words),
                     //"pstack" => do_pstack(&mut state, &words),
-                    "name" => do_name(&mut state, &words),
-                    "shuffle" => do_shuffle(&mut state, &words),
+                    //"name" => do_name(&mut state, &words),
+                    //"shuffle" => do_shuffle(&mut state, &words),
                     ////"shift" => do_shift(&mut state, &words),
                     //"take" => do_take(&mut state, &words),
                     //"pile" => do_pile(&mut state, &words),
@@ -142,22 +142,6 @@ fn save_secrets(sk: &Option<PrivateKey>) -> Result<()> {
 fn ensure_private_key_exists(state: &mut State) {
     let mut rng = thread_rng();
 
-    if state.group.is_none() {
-        println!(": Generating Schnorr group...");
-
-        let group = rng.sample(&Groups {
-            field_bits: 2048,
-            group_bits: 1024,
-            iterations: 64,
-        });
-        println!(
-            "+ Group \u{2124}q, |q| = {}",
-            group.order().significant_bits()
-        );
-        state.block.add_payload(PublishGroup(group.clone()));
-        state.group = Some(group);
-    }
-
     if state.private_key.is_none() {
         let (sk, pk) = rng.sample(&Keys(state.group.as_ref().unwrap()));
         state.private_key = Some(sk);
@@ -188,10 +172,20 @@ fn do_start(state: &mut State, words: &[&str]) {
         println!("- Usage: start <game> <parties>");
         return;
     }
+
+    println!(": Generating Schnorr group...");
+
+    let group = thread_rng().sample(&Groups {
+        field_bits: 2048,
+        group_bits: 1024,
+        iterations: 64,
+    });
+    state.group = Some(group.clone());
+
     let game = words[1].to_string();
     let parties = str::parse(words[2]).unwrap();
     println!("+ Start game '{}' {}p", game, parties);
-    state.block.add_payload(DefineGame(game, parties));
+    state.block.add_payload(DefineGame(game, parties, group));
     ensure_private_key_exists(state);
 }
 
@@ -202,63 +196,6 @@ fn do_join(state: &mut State, words: &[&str]) {
     }
     ensure_private_key_exists(state);
     println!("+ Join game");
-}
-
-fn do_stack(state: &mut State, words: &[&str]) {
-    if words.len() != 2 {
-        println!("- Usage: stack <tokens>");
-        return;
-    }
-    let vtmf = state.chain.vtmf();
-    if vtmf.is_none() {
-        println!("- Exchanging keys first");
-        return;
-    }
-    let vtmf = state.chain.vtmf().unwrap();
-    let stack: Vec<_> = index_spec::parse_index_spec(words[1])
-        .map(|t| vtmf.mask_open(&t.into()))
-        .collect();
-    let payload = CreateStack(stack.clone());
-    let stack: Stack = stack.into();
-    let id = stack.id();
-    state.stacks.insert(stack);
-    state.block.add_payload(payload);
-    println!("+ Stack {} [{:16}]", state.stacks.len(), id);
-}
-
-fn do_name(state: &mut State, words: &[&str]) {
-    if words.len() != 3 {
-        println!("- Usage: name <stack> <name>");
-        return;
-    }
-    let id = state.stacks.get_by_str(words[1]).unwrap().id();
-    let name = words[2];
-    state.stacks.set_name_id(&id, name.into());
-    state.block.add_payload(NameStack(id, name.into()));
-    println!("+ Name {:16} {}", id, name);
-}
-
-fn do_shuffle(state: &mut State, words: &[&str]) {
-    if words.len() != 2 {
-        println!("- Usage: shuffle <stack>");
-        return;
-    }
-    let vtmf = state.chain.vtmf().unwrap();
-    let id1 = state.stacks.get_by_str(words[1]).unwrap().id();
-    let stack = state.stacks.get_by_str(words[1]).unwrap().tokens();
-    let (shuffled, proof) = vtmf.mask_shuffle(stack);
-
-    let payload = CreateStack(shuffled.clone());
-    let shuffled: Stack = shuffled.into();
-    let id2 = shuffled.id();
-    state.stacks.insert(shuffled);
-    state.block.add_payload(payload);
-    println!("+ Shuffle {} => {} [{:16}]", words[1], state.stacks.len(), id2);
-
-    state
-        .block
-        .add_payload(ProveShuffle(id1, id2, Box::new(proof)));
-    println!("+ Prove shuffle [{:16}] => [{:16}]", id1, id2);
 }
 
 fn do_msg(state: &mut State, words: &[&str]) {

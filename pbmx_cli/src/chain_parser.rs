@@ -6,7 +6,7 @@ use pbmx_blocks::{block::Id, chain::Chain};
 use pbmx_crypto::{
     group::Group,
     keys::{PrivateKey, PublicKey},
-    vtmf::{ShuffleProof, KeyExchange, Mask, Vtmf},
+    vtmf::{KeyExchange, Mask, ShuffleProof, Vtmf},
 };
 use std::collections::HashMap;
 
@@ -97,24 +97,16 @@ pub fn parse_chain(chain: &Chain, private_key: &Option<PrivateKey>) -> Result<Pa
     for block in chain.blocks() {
         for payload in block.payloads() {
             match payload {
-                DefineGame(g, n) => {
-                    state.set_name(g.clone())?;
+                DefineGame(d, n, g) => {
+                    state.set_name(d.clone())?;
                     state.set_parties(*n)?;
-                }
-                PublishGroup(g) => {
                     state.set_group(g.clone())?;
                 }
                 PublishKey(pk) => {
                     state.add_key(pk.clone())?;
                 }
-                CreateStack(s) => {
-                    state.add_stack(s.clone())?;
-                }
                 NameStack(id, n) => {
                     state.name_stack(*id, n)?;
-                }
-                ProveShuffle(id1, id2, p) => {
-                    state.verify_shuffle(id1, id2, p).unwrap();
                 }
                 _ => {}
             }

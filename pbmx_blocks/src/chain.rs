@@ -181,8 +181,7 @@ mod test {
         let (sk, pk) = rng.sample(&Keys(&group));
         let mut chain = Chain::new();
         let mut gen = chain.build_block();
-        gen.add_payload(Payload::DefineGame("test".into(), 1));
-        gen.add_payload(Payload::PublishGroup(group));
+        gen.add_payload(Payload::DefineGame("test".into(), 1, group));
         gen.add_payload(Payload::PublishKey(pk));
         chain.add_block(gen.build(&sk));
         let gid = chain.roots[0];
@@ -219,8 +218,7 @@ mod test {
         let (sk, pk) = rng.sample(&Keys(&group));
         let mut chain = Chain::new();
         let mut gen = chain.build_block();
-        gen.add_payload(Payload::DefineGame("test".into(), 1));
-        gen.add_payload(Payload::PublishGroup(group));
+        gen.add_payload(Payload::DefineGame("test".into(), 1, group));
         gen.add_payload(Payload::PublishKey(pk));
         chain.add_block(gen.build(&sk));
         let mut b0 = chain.build_block();

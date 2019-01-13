@@ -183,30 +183,26 @@ derive_base64_conversions!(Block, Error);
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Payload {
     /// A game definition payload
-    DefineGame(String, u32),
-    /// A group payload
-    PublishGroup(Group),
+    DefineGame(String, u32, Group),
     /// A public key payload
     PublishKey(PublicKey),
-    /// A stack payload
-    CreateStack(Vec<Mask>),
+    /// An open stack payload
+    OpenStack(Vec<Mask>),
+    /// A private stack payload
+    PrivateStack(Id, Vec<Mask>, Vec<PrivateMaskProof>),
     /// A stack name payload
     NameStack(Id, String),
-    /// A stack mask proof payload
-    ProveMask(Id, Id, Vec<MaskProof>),
-    /// A stack private mask proof payload
-    ProvePrivateMask(Id, Id, Vec<PrivateMaskProof>),
-    /// A stack shuffle proof payload
-    ProveShuffle(Id, Id, Box<ShuffleProof>),
-    // /// A stack shift proof payload
-    // ProveShift(Id, Id, ShiftProof),
+    /// A stack mask payload
+    MaskStack(Id, Vec<Mask>, Vec<MaskProof>),
+    /// A stack shuffle payload
+    ShuffleStack(Id, Vec<Mask>, ShuffleProof),
+    // /// A stack shift payload
+    // ShiftStack(Id, Vec<Mask>, ShiftProof),
     /// A secret share payload
-    PublishShares(Id, Vec<SecretShare>),
-    /// A secret share proof payload
-    ProveShares(Id, Vec<SecretShareProof>),
-    /// A random generation start payload
-    GenerateRandom(Integer),
-    /// A random generation share payload
+    PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
+    /// A random bound payload
+    StartRandom(Integer),
+    /// A random share payload
     RandomShare(Id, Mask),
     /// Raw byte payload
     Bytes(Vec<u8>),

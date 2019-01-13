@@ -5,7 +5,7 @@ use crate::{
     group::Group,
     keys::{Fingerprint, PrivateKey, PublicKey},
     num::{fpowm, Modulo},
-    perm::Shuffles,
+    perm::Permutation,
     zkp::{dlog_eq, mask_1ofn, secret_shuffle},
 };
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
@@ -188,8 +188,8 @@ impl Vtmf {
 }
 
 impl Vtmf {
-    /// Applies the mask-shuffle protocol.
-    pub fn mask_shuffle(&self, m: &[Mask]) -> (Vec<Mask>, ShuffleProof) {
+    /// Applies the mask-shuffle protocol for a given permutation
+    pub fn mask_shuffle(&self, m: &[Mask], pi: &Permutation) -> (Vec<Mask>, ShuffleProof) {
         let p = self.g.modulus();
         let q = self.g.order();
         let g = self.g.generator();
@@ -208,7 +208,6 @@ impl Vtmf {
         };
 
         let (mut rm, mut r): (Vec<_>, Vec<_>) = m.iter().map(remask).unzip();
-        let pi = rng.sample(&Shuffles(m.len()));
         pi.apply_to(&mut rm);
         pi.apply_to(&mut r);
 
@@ -254,7 +253,7 @@ derive_base64_conversions!(Vtmf, Error);
 #[cfg(test)]
 mod test {
     use super::{KeyExchange, Vtmf};
-    use crate::{group::Groups, keys::Keys, num::Bits};
+    use crate::{group::Groups, keys::Keys, num::Bits, perm::Shuffles};
     use rand::{thread_rng, Rng};
     use rug::Integer;
     use std::str::FromStr;
@@ -475,7 +474,8 @@ mod test {
             .map(Integer::from)
             .map(|i| vtmf0.mask(&i).0)
             .collect();
-        let (shuffle, proof) = vtmf0.mask_shuffle(&m);
+        let pi = thread_rng().sample(&Shuffles(m.len()));
+        let (shuffle, proof) = vtmf0.mask_shuffle(&m, &pi);
         let ok = vtmf1.verify_mask_shuffle(&m, &shuffle, &proof);
         assert!(
             ok,
