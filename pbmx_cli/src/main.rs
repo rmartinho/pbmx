@@ -5,7 +5,7 @@
 
 use crate::{
     error::{Error, Result},
-    stacks::{Stack, StackMap},
+    stacks::StackMap,
 };
 use pbmx_blocks::{
     block::{Block, BlockBuilder, Payload::*},
@@ -23,6 +23,7 @@ use std::{ffi::OsStr, fs, mem, path::Path};
 mod chain_parser;
 mod error;
 use self::chain_parser::ParsedChain;
+mod command;
 mod index_spec;
 mod stacks;
 
@@ -49,7 +50,7 @@ fn main() {
     let mut state = State {
         block: chain.build_block(),
         group: parsed_chain.group().cloned(),
-        stacks: parsed_chain.stacks().cloned().unwrap_or(StackMap::new()),
+        stacks: parsed_chain.stacks().cloned().unwrap_or_default(),
         chain: parsed_chain,
         private_key: sk,
     };

@@ -35,7 +35,7 @@ comma-separated list of token numbers, or of token ranges, denoted with a dash.
 E.g. `stack 1-4,6` creates a stack with tokens 1, 2, 3, 4, and 6. The stack
 contents, its ID, and a session-unique index are printed.
 
-    > dstack <tokens>
+    > stackdown <tokens>
 
 Creates a face-down stack with the given tokens. The token specification is as
 for the `stack` command.
@@ -90,7 +90,7 @@ this, the result is a face-up stack. When revealing a stack by name, the name is
 reassigned to the resulting stack. The ID and session-unique index of the
 resulting stack is printed.
 
-    > rng <bound> [<decription>]
+    > rng <bound> [<description>]
     > rng <id>
 
 Starts generation of a shared random number in the range [0, bound). A
