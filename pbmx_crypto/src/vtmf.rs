@@ -22,7 +22,6 @@ pub use crate::zkp::{
 /// A verifiable *k*-out-of-*k* threshold masking function
 #[derive(Serialize)]
 pub struct Vtmf {
-    g: Group,
     sk: PrivateKey,
     pk: PublicKey,
     #[serde(serialize_with = "serialize_flat_map")]
@@ -42,9 +41,8 @@ impl Vtmf {
     /// Creates a new VTMF with the given private key
     pub fn new(sk: PrivateKey) -> Self {
         let pk = sk.public_key();
-        let group = sk.group().clone();
         // SAFE: we know all the values are consistent
-        unsafe { Self::new_unchecked(group, sk, pk.clone(), vec![pk]) }
+        unsafe { Self::new_unchecked(sk, pk.clone(), vec![pk]) }
     }
 
     /// Add a public key to the VTMF
@@ -60,12 +58,11 @@ impl Vtmf {
     }
 
     fn precompute(&self) {
-        fpowm::precompute(&self.pk.element(), self.g.bits(), self.g.modulus()).unwrap();
+        fpowm::precompute(&self.pk.element(), self.group().bits(), self.group().modulus()).unwrap();
     }
 
-    unsafe fn new_unchecked(g: Group, sk: PrivateKey, pk: PublicKey, pki: Vec<PublicKey>) -> Self {
+    unsafe fn new_unchecked(sk: PrivateKey, pk: PublicKey, pki: Vec<PublicKey>) -> Self {
         let vtmf = Self {
-            g,
             sk,
             pk,
             pki: pki.into_iter().map(|k| (k.fingerprint(), k)).collect(),
@@ -75,10 +72,10 @@ impl Vtmf {
     }
 
     fn validate(self) -> Option<Self> {
-        if self.g == *self.pk.group() && self.g == *self.sk.group() {
+        if self.group() == self.pk.group() {
             Some(self)
         } else {
-            let p = self.g.modulus();
+            let p = self.group().modulus();
 
             let h = self
                 .pki
@@ -96,7 +93,7 @@ impl Vtmf {
 impl Vtmf {
     /// Gets the group for this VTMF
     pub fn group(&self) -> &Group {
-        &self.g
+        self.sk.group()
     }
 
     /// Gets the number of parties in this VTMF
@@ -113,34 +110,34 @@ impl Vtmf {
 
     /// Applies the verifiable masking protocol
     pub fn mask(&self, m: &Integer) -> (Mask, MaskProof) {
-        let p = self.g.modulus();
-        let q = self.g.order();
-        let g = self.g.generator();
+        let p = self.group().modulus();
+        let q = self.group().order();
+        let g = self.group().generator();
         let h = self.pk.element();
 
         let r = thread_rng().sample(&Modulo(q));
         let c1 = fpowm::pow_mod(g, &r, p).unwrap();
         let hr = fpowm::pow_mod(h, &r, p).unwrap();
-        let proof = dlog_eq::prove(&self.g, &c1, &hr, g, h, &r);
+        let proof = dlog_eq::prove(self.group(), &c1, &hr, g, h, &r);
         let c2 = hr * m % p;
         ((c1, c2), proof)
     }
 
     /// Verifies the application of the masking protocol
     pub fn verify_mask(&self, m: &Integer, c: &Mask, proof: &MaskProof) -> bool {
-        let p = self.g.modulus();
-        let g = self.g.generator();
+        let p = self.group().modulus();
+        let g = self.group().generator();
         let h = self.pk.element();
         let m1 = Integer::from(m.invert_ref(p).unwrap());
         let hr = &c.1 * m1 % p;
-        dlog_eq::verify(&self.g, &c.0, &hr, g, h, proof)
+        dlog_eq::verify(self.group(), &c.0, &hr, g, h, proof)
     }
 
     /// Applies a private masking operation from a given subset
     pub fn mask_private(&self, m: &[Integer], idx: usize) -> (Mask, PrivateMaskProof) {
-        let p = self.g.modulus();
-        let q = self.g.order();
-        let g = self.g.generator();
+        let p = self.group().modulus();
+        let q = self.group().order();
+        let g = self.group().generator();
         let h = self.pk.element();
 
         let r = thread_rng().sample(&Modulo(q));
@@ -148,28 +145,28 @@ impl Vtmf {
         let hr = fpowm::pow_mod(h, &r, p).unwrap();
         let c2 = hr * &m[idx] % p;
 
-        let proof = mask_1ofn::prove(&self.g, &c1, &c2, g, h, m, idx, &r);
+        let proof = mask_1ofn::prove(self.group(), &c1, &c2, g, h, m, idx, &r);
         ((c1, c2), proof)
     }
 
     /// Verifies the application of a private masking operation
     pub fn verify_private_mask(&self, m: &[Integer], c: &Mask, proof: &PrivateMaskProof) -> bool {
-        let g = self.g.generator();
+        let g = self.group().generator();
         let h = self.pk.element();
-        mask_1ofn::verify(&self.g, &c.0, &c.1, g, h, m, proof)
+        mask_1ofn::verify(self.group(), &c.0, &c.1, g, h, m, proof)
     }
 
     /// Applies the verifiable re-masking protocol
     pub fn remask(&self, c: &Mask) -> (Mask, MaskProof) {
-        let p = self.g.modulus();
-        let q = self.g.order();
-        let g = self.g.generator();
+        let p = self.group().modulus();
+        let q = self.group().order();
+        let g = self.group().generator();
         let h = self.pk.element();
 
         let r = thread_rng().sample(&Modulo(q));
         let gr = fpowm::pow_mod(g, &r, p).unwrap();
         let hr = fpowm::pow_mod(h, &r, p).unwrap();
-        let proof = dlog_eq::prove(&self.g, &gr, &hr, g, h, &r);
+        let proof = dlog_eq::prove(self.group(), &gr, &hr, g, h, &r);
 
         let c1 = gr * &c.0 % p;
         let c2 = hr * &c.1 % p;
@@ -178,28 +175,28 @@ impl Vtmf {
 
     /// Verifies the application of the re-masking protocol
     pub fn verify_remask(&self, m: &Mask, c: &Mask, proof: &MaskProof) -> bool {
-        let p = self.g.modulus();
-        let g = self.g.generator();
+        let p = self.group().modulus();
+        let g = self.group().generator();
         let h = self.pk.element();
 
         let c11 = Integer::from(m.0.invert_ref(p).unwrap());
         let gr = &c.0 * c11 % p;
         let c21 = Integer::from(m.1.invert_ref(p).unwrap());
         let hr = &c.1 * c21 % p;
-        dlog_eq::verify(&self.g, &gr, &hr, g, h, proof)
+        dlog_eq::verify(self.group(), &gr, &hr, g, h, proof)
     }
 }
 
 impl Vtmf {
     /// Obtains one share of a masking operation
     pub fn unmask_share(&self, c: &Mask) -> (SecretShare, SecretShareProof) {
-        let g = self.g.generator();
-        let p = self.g.modulus();
+        let g = self.group().generator();
+        let p = self.group().modulus();
         let x = self.sk.exponent();
 
-        let hi = self.g.element(x);
+        let hi = self.group().element(x);
         let d = Integer::from(c.0.pow_mod_ref(x, p).unwrap());
-        let proof = dlog_eq::prove(&self.g, &d, &hi, &c.0, g, x);
+        let proof = dlog_eq::prove(self.group(), &d, &hi, &c.0, g, x);
 
         (d, proof)
     }
@@ -212,7 +209,7 @@ impl Vtmf {
         d: &SecretShare,
         proof: &SecretShareProof,
     ) -> bool {
-        let g = self.g.generator();
+        let g = self.group().generator();
         let pk = self.pki.get(pk_fp);
         let pk = match pk {
             None => {
@@ -222,12 +219,12 @@ impl Vtmf {
         };
         let h = pk.element();
 
-        dlog_eq::verify(&self.g, d, h, &c.0, g, proof)
+        dlog_eq::verify(self.group(), d, h, &c.0, g, proof)
     }
 
     /// Undoes part of a masking operation
     pub fn unmask(&self, c: Mask, d: SecretShare) -> Mask {
-        let p = self.g.modulus();
+        let p = self.group().modulus();
 
         let d1 = d.invert(&p).unwrap();
         (c.0, c.1 * d1 % p)
@@ -248,9 +245,9 @@ impl Vtmf {
 impl Vtmf {
     /// Applies the mask-shuffle protocol for a given permutation
     pub fn mask_shuffle(&self, m: &[Mask], pi: &Permutation) -> (Vec<Mask>, ShuffleProof) {
-        let p = self.g.modulus();
-        let q = self.g.order();
-        let g = self.g.generator();
+        let p = self.group().modulus();
+        let q = self.group().order();
+        let g = self.group().generator();
         let h = self.pk.element();
 
         let mut rng = thread_rng();
@@ -269,7 +266,7 @@ impl Vtmf {
         pi.apply_to(&mut rm);
         pi.apply_to(&mut r);
 
-        let proof = secret_shuffle::prove(&self.g, h, &rm, &pi, &r);
+        let proof = secret_shuffle::prove(self.group(), h, &rm, &pi, &r);
         (rm, proof)
     }
 
@@ -293,7 +290,6 @@ impl<'de> Deserialize<'de> for Vtmf {
 
 #[derive(Deserialize)]
 struct VtmfRaw {
-    g: Group,
     sk: PrivateKey,
     pk: PublicKey,
     pki: Vec<PublicKey>,
@@ -301,7 +297,7 @@ struct VtmfRaw {
 
 impl VtmfRaw {
     unsafe fn into(self) -> Vtmf {
-        Vtmf::new_unchecked(self.g, self.sk, self.pk, self.pki)
+        Vtmf::new_unchecked(self.sk, self.pk, self.pki)
     }
 }
 
