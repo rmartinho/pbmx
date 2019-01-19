@@ -205,7 +205,7 @@ impl Vtmf {
     }
 
     /// Verifies a secret share of a masking operation
-    pub fn verify_unmask_share(
+    pub fn verify_unmask(
         &self,
         c: &Mask,
         pk_fp: &Fingerprint,
@@ -372,13 +372,13 @@ mod test {
         let (d0, proof0) = vtmf0.unmask_share(&mask);
         let (d1, proof1) = vtmf1.unmask_share(&mask);
 
-        let ok = vtmf0.verify_unmask_share(&mask, &fp1, &d1, &proof1);
+        let ok = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert!(ok, "share verification failed");
         let mask0 = vtmf0.unmask(mask.clone(), d1.clone());
         let r = vtmf0.unmask_private(mask0);
         assert_eq!(r, x);
 
-        let ok = vtmf1.verify_unmask_share(&mask, &fp0, &d0, &proof0);
+        let ok = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert!(ok, "share verification failed");
         let mask1 = vtmf1.unmask(mask.clone(), d0);
         let mask1 = vtmf1.unmask(mask1, d1);
@@ -423,13 +423,13 @@ mod test {
         let (d0, proof0) = vtmf0.unmask_share(&mask);
         let (d1, proof1) = vtmf1.unmask_share(&mask);
 
-        let ok = vtmf0.verify_unmask_share(&mask, &fp1, &d1, &proof1);
+        let ok = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert!(ok, "share verification failed");
         let mask0 = vtmf0.unmask(mask.clone(), d1);
         let r = vtmf0.unmask_private(mask0);
         assert_eq!(r, x);
 
-        let ok = vtmf1.verify_unmask_share(&mask, &fp0, &d0, &proof0);
+        let ok = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert!(ok, "share verification failed");
         let mask1 = vtmf1.unmask(mask.clone(), d0);
         let r = vtmf1.unmask_private(mask1);
@@ -463,13 +463,13 @@ mod test {
         let (d0, proof0) = vtmf0.unmask_share(&mask);
         let (d1, proof1) = vtmf1.unmask_share(&mask);
 
-        let ok = vtmf0.verify_unmask_share(&mask, &fp1, &d1, &proof1);
+        let ok = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert!(ok, "share verification failed");
         let mask0 = vtmf0.unmask(mask.clone(), d1);
         let r = vtmf0.unmask_private(mask0);
         assert_eq!(r, x);
 
-        let ok = vtmf1.verify_unmask_share(&mask, &fp0, &d0, &proof0);
+        let ok = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert!(ok, "share verification failed");
         let mask1 = vtmf1.unmask(mask.clone(), d0);
         let r = vtmf1.unmask_private(mask1);
@@ -504,7 +504,7 @@ mod test {
         );
 
         let (d1, proof1) = vtmf1.unmask_share(&mask);
-        let ok = vtmf0.verify_unmask_share(&mask, &fp1, &d1, &proof1);
+        let ok = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert!(ok, "share verification failed");
         let mask0 = vtmf0.unmask(mask, d1);
         let r = vtmf0.unmask_private(mask0);
@@ -545,7 +545,7 @@ mod test {
             .iter()
             .map(|s| {
                 let (d1, proof1) = vtmf1.unmask_share(&s);
-                let ok = vtmf0.verify_unmask_share(&s, &fp1, &d1, &proof1);
+                let ok = vtmf0.verify_unmask(&s, &fp1, &d1, &proof1);
                 assert!(ok, "share verification failed");
                 let mask0 = vtmf0.unmask(s.clone(), d1);
                 vtmf0.unmask_private(mask0)

@@ -183,7 +183,7 @@ derive_base64_conversions!(Block, Error);
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Payload {
     /// A game definition payload
-    DefineGame(String, u32, Group),
+    DefineGame(String, Group),
     /// A public key payload
     PublishKey(PublicKey),
     /// An open stack payload
