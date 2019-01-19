@@ -187,14 +187,14 @@ fn e_challenge(cd: &Integer, cdd: &Integer, cda: &Integer, x: &Integer) -> Integ
 #[cfg(test)]
 mod test {
     use super::{prove, verify};
-    use crate::{commit::CommitmentScheme, group::Groups, num::Bits, perm::Shuffles};
+    use crate::{commit::CommitmentScheme, num::Bits, perm::Shuffles, schnorr::SchnorrGroups};
     use rand::{thread_rng, Rng};
     use rug::Integer;
 
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

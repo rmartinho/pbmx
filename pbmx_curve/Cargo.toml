@@ -1,0 +1,44 @@
+[package]
+name = "pbmx_curve"
+version = "0.1.0"
+authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
+edition = "2018"
+
+[dependencies.pbmx_serde]
+path = "../pbmx_serde"
+
+[dependencies.base64]
+version = "0.10"
+
+[dependencies.bincode]
+version = "1.0"
+
+[dependencies.curve25519-dalek]
+version = "1.0"
+
+[dependencies.digest]
+version = "0.8"
+
+[dependencies.lazy_static]
+version = "1.2"
+
+[dependencies.merlin]
+version = "1.0"
+
+[dependencies.rand]
+version = "0.6"
+
+[dependencies.serde]
+version = "1.0"
+
+[dependencies.serde_derive]
+version = "1.0"
+
+[dependencies.sha3]
+version = "0.8"
+
+[dependencies.subtle]
+version = "2.0"
+
+[dependencies.zkp]
+version = "0.5"

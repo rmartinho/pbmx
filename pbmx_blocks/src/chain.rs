@@ -162,7 +162,7 @@ impl<'a> Iterator for Blocks<'a> {
 mod test {
     use super::Chain;
     use crate::block::{Block, Payload};
-    use pbmx_crypto::{group::Groups, keys::Keys};
+    use pbmx_crypto::{keys::Keys, schnorr::SchnorrGroups};
     use rand::{thread_rng, Rng};
     use std::{
         collections::{BTreeMap, BTreeSet},
@@ -172,7 +172,7 @@ mod test {
     #[test]
     fn chain_block_iteration_works() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -209,7 +209,7 @@ mod test {
     #[test]
     fn chain_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

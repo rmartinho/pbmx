@@ -2,8 +2,8 @@
 
 use crate::{
     error::Error,
-    group::Group,
     num::{fpowm, Modulo},
+    schnorr::SchnorrGroup,
 };
 use pbmx_serde::derive_base64_conversions;
 use rand::{thread_rng, Rng};
@@ -13,13 +13,13 @@ use serde::{de, Deserialize, Deserializer};
 /// The Pedersen commitment scheme
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct CommitmentScheme {
-    group: Group,
+    group: SchnorrGroup,
     h: Integer,
     g: Vec<Integer>,
 }
 
 impl CommitmentScheme {
-    unsafe fn new_unchecked(group: Group, h: Integer, g: Vec<Integer>) -> Self {
+    unsafe fn new_unchecked(group: SchnorrGroup, h: Integer, g: Vec<Integer>) -> Self {
         for g in g.iter() {
             fpowm::precompute(g, group.bits(), group.modulus()).unwrap();
         }
@@ -27,7 +27,7 @@ impl CommitmentScheme {
     }
 
     /// Creates a new commitment scheme from the given parameters
-    pub fn new(group: Group, h: Integer, n: usize) -> Option<Self> {
+    pub fn new(group: SchnorrGroup, h: Integer, n: usize) -> Option<Self> {
         let mut rng = thread_rng();
         let g = rng.sample_iter(&group).take(n).collect();
         // SAFE: the value is checked before returning
@@ -35,7 +35,7 @@ impl CommitmentScheme {
     }
 
     /// Gets the group for this commitment scheme
-    pub fn group(&self) -> &Group {
+    pub fn group(&self) -> &SchnorrGroup {
         &self.group
     }
 
@@ -136,7 +136,7 @@ impl<'de> Deserialize<'de> for CommitmentScheme {
 
 #[derive(Deserialize)]
 struct CommitmentSchemeRaw {
-    group: Group,
+    group: SchnorrGroup,
     h: Integer,
     g: Vec<Integer>,
 }
@@ -153,7 +153,7 @@ derive_base64_conversions!(CommitmentScheme, Error);
 #[cfg(test)]
 mod test {
     use super::CommitmentScheme;
-    use crate::group::Groups;
+    use crate::schnorr::SchnorrGroups;
     use rand::{thread_rng, Rng};
     use rug::Integer;
     use std::str::FromStr;
@@ -161,7 +161,7 @@ mod test {
     #[test]
     fn pedersen_scheme_commitments_agree_with_validation() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -225,7 +225,7 @@ mod test {
     #[test]
     fn pedersen_scheme_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

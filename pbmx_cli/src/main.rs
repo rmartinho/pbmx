@@ -50,7 +50,7 @@ fn main() {
     let mut state = State {
         block: chain.build_block(),
         group: parsed_chain.group().cloned(),
-        stacks: parsed_chain.stacks().cloned().unwrap_or_default(),
+        stacks: parsed_chain.stacks().clone(),
         chain: parsed_chain,
         private_key: sk,
     };
@@ -169,8 +169,8 @@ fn do_issue(state: &mut State, words: &[&str]) -> Result<()> {
 }
 
 fn do_start(state: &mut State, words: &[&str]) {
-    if words.len() != 3 {
-        println!("- Usage: start <game> <parties>");
+    if words.len() != 2 {
+        println!("- Usage: start <game>");
         return;
     }
 
@@ -184,9 +184,8 @@ fn do_start(state: &mut State, words: &[&str]) {
     state.group = Some(group.clone());
 
     let game = words[1].to_string();
-    let parties = str::parse(words[2]).unwrap();
-    println!("+ Start game '{}' {}p", game, parties);
-    state.block.add_payload(DefineGame(game, parties, group));
+    println!("+ Start game '{}'", game);
+    state.block.add_payload(DefineGame(game, group));
     ensure_private_key_exists(state);
 }
 

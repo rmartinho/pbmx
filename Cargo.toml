@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "pbmx_crypto",
     "pbmx_blocks",
-    "pbmx_serde",
-
     #"pbmx_cli",
+    "pbmx_crypto",
+    "pbmx_curve",
+    "pbmx_serde",
 ]

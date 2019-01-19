@@ -2,9 +2,9 @@
 
 use crate::{
     error::Error,
-    group::Group,
     hash::Hash,
     num::{fpowm, Coprimes, Modulo},
+    schnorr::SchnorrGroup,
 };
 use digest::Digest;
 use pbmx_serde::{derive_base64_conversions, ToBytes};
@@ -21,7 +21,7 @@ use std::{
 /// This key consists of a secret exponent *x*, together with a Schnorr group.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PrivateKey {
-    g: Group,
+    g: SchnorrGroup,
     x: Integer,
 }
 
@@ -31,7 +31,7 @@ pub struct PrivateKey {
 /// *h* = *g*^*x* mod *p* and *x* is secret.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PublicKey {
-    g: Group,
+    g: SchnorrGroup,
     h: Integer,
 }
 
@@ -41,7 +41,7 @@ pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
 
 impl PrivateKey {
     /// Gets this key's group
-    pub fn group(&self) -> &Group {
+    pub fn group(&self) -> &SchnorrGroup {
         &self.g
     }
 
@@ -94,7 +94,7 @@ impl PrivateKey {
 
 impl PublicKey {
     /// Gets this key's group
-    pub fn group(&self) -> &Group {
+    pub fn group(&self) -> &SchnorrGroup {
         &self.g
     }
 
@@ -179,7 +179,7 @@ impl AsRef<[u8]> for Fingerprint {
 }
 
 impl PrivateKey {
-    unsafe fn new_unchecked(g: Group, x: Integer) -> Self {
+    unsafe fn new_unchecked(g: SchnorrGroup, x: Integer) -> Self {
         Self { g, x }
     }
 
@@ -193,7 +193,7 @@ impl PrivateKey {
 }
 
 impl PublicKey {
-    unsafe fn new_unchecked(g: Group, h: Integer) -> Self {
+    unsafe fn new_unchecked(g: SchnorrGroup, h: Integer) -> Self {
         Self { g, h }
     }
 
@@ -232,7 +232,7 @@ impl<'de> Deserialize<'de> for PublicKey {
 
 #[derive(Deserialize)]
 struct KeyRaw {
-    g: Group,
+    g: SchnorrGroup,
     i: Integer,
 }
 
@@ -297,7 +297,7 @@ impl FromStr for Fingerprint {
 
 /// A distribution that produces keys from a Schnorr group.
 #[derive(Clone, Debug)]
-pub struct Keys<'a>(pub &'a Group);
+pub struct Keys<'a>(pub &'a SchnorrGroup);
 
 impl<'a> Distribution<(PrivateKey, PublicKey)> for Keys<'a> {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> (PrivateKey, PublicKey) {
@@ -318,14 +318,14 @@ const FINGERPRINT_SIZE: usize = 20;
 #[cfg(test)]
 mod test {
     use super::{Fingerprint, Keys, PrivateKey, PublicKey};
-    use crate::group::Groups;
+    use crate::schnorr::SchnorrGroups;
     use rand::{thread_rng, Rng};
     use std::str::FromStr;
 
     #[test]
     fn keys_produces_valid_keys() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -356,7 +356,7 @@ mod test {
     #[test]
     fn public_key_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -377,7 +377,7 @@ mod test {
     #[test]
     fn private_key_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -398,7 +398,7 @@ mod test {
     #[test]
     fn fingerprint_roundtrips_via_string() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

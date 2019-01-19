@@ -3,9 +3,9 @@
 use crate::error::Error;
 use digest::Digest;
 use pbmx_crypto::{
-    group::Group,
     hash::Hash,
     keys::{Fingerprint, PrivateKey, PublicKey},
+    schnorr::SchnorrGroup,
     vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShuffleProof},
 };
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
@@ -183,7 +183,7 @@ derive_base64_conversions!(Block, Error);
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Payload {
     /// A game definition payload
-    DefineGame(String, Group),
+    DefineGame(String, SchnorrGroup),
     /// A public key payload
     PublishKey(PublicKey),
     /// An open stack payload
@@ -226,14 +226,14 @@ pub type Signature = (Integer, Integer);
 #[cfg(test)]
 mod test {
     use super::{Block, BlockBuilder, Payload};
-    use pbmx_crypto::{group::Groups, keys::Keys};
+    use pbmx_crypto::{keys::Keys, schnorr::SchnorrGroups};
     use rand::{thread_rng, Rng};
     use std::{collections::HashMap, str::FromStr};
 
     #[test]
     fn new_block_has_valid_signature() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 16,
             group_bits: 8,
             iterations: 64,
@@ -249,7 +249,7 @@ mod test {
     #[test]
     fn block_payload_order_is_preserved() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 16,
             group_bits: 8,
             iterations: 64,
@@ -277,7 +277,7 @@ mod test {
     #[test]
     fn block_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 16,
             group_bits: 8,
             iterations: 64,

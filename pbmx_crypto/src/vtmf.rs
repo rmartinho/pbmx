@@ -2,10 +2,10 @@
 
 use crate::{
     error::Error,
-    group::Group,
     keys::{Fingerprint, PrivateKey, PublicKey},
     num::{fpowm, Modulo},
     perm::Permutation,
+    schnorr::SchnorrGroup,
     zkp::{dlog_eq, mask_1ofn, secret_shuffle},
 };
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
@@ -58,7 +58,12 @@ impl Vtmf {
     }
 
     fn precompute(&self) {
-        fpowm::precompute(&self.pk.element(), self.group().bits(), self.group().modulus()).unwrap();
+        fpowm::precompute(
+            &self.pk.element(),
+            self.group().bits(),
+            self.group().modulus(),
+        )
+        .unwrap();
     }
 
     unsafe fn new_unchecked(sk: PrivateKey, pk: PublicKey, pki: Vec<PublicKey>) -> Self {
@@ -92,7 +97,7 @@ impl Vtmf {
 
 impl Vtmf {
     /// Gets the group for this VTMF
-    pub fn group(&self) -> &Group {
+    pub fn group(&self) -> &SchnorrGroup {
         self.sk.group()
     }
 
@@ -306,7 +311,7 @@ derive_base64_conversions!(Vtmf, Error);
 #[cfg(test)]
 mod test {
     use super::Vtmf;
-    use crate::{group::Groups, keys::Keys, num::Bits, perm::Shuffles};
+    use crate::{keys::Keys, num::Bits, perm::Shuffles, schnorr::SchnorrGroups};
     use rand::{thread_rng, Rng};
     use rug::Integer;
     use std::str::FromStr;
@@ -314,7 +319,7 @@ mod test {
     #[test]
     fn vtmf_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -332,7 +337,6 @@ mod test {
 
         let recovered = Vtmf::from_str(&exported).unwrap();
 
-        assert_eq!(original.g, recovered.g);
         assert_eq!(original.sk, recovered.sk);
         assert_eq!(original.pk, recovered.pk);
         assert_eq!(original.pki, recovered.pki);
@@ -341,7 +345,7 @@ mod test {
     #[test]
     fn vtmf_masking_and_unmasking_work() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -385,7 +389,7 @@ mod test {
     #[test]
     fn vtmf_masking_remasking_and_unmasking_work() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -435,7 +439,7 @@ mod test {
     #[test]
     fn vtmf_open_masking_works() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -475,7 +479,7 @@ mod test {
     #[test]
     fn vtmf_private_masking_works() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
@@ -510,7 +514,7 @@ mod test {
     #[test]
     fn vtmf_mask_shuffling_works() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

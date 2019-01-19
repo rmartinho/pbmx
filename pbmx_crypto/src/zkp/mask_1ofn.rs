@@ -1,9 +1,9 @@
 //! Zero-knowledge proof of equality of discrete logarithms
 
 use crate::{
-    group::Group,
     hash::Hash,
     num::{fpowm, Modulo},
+    schnorr::SchnorrGroup,
 };
 use digest::Digest;
 use rand::{thread_rng, Rng};
@@ -21,7 +21,7 @@ pub struct Proof {
 /// exists such that log_g(x) = log_h(y/m_i)
 #[allow(clippy::too_many_arguments)]
 pub fn prove(
-    group: &Group,
+    group: &SchnorrGroup,
     x: &Integer,
     y: &Integer,
     g: &Integer,
@@ -69,7 +69,7 @@ pub fn prove(
 /// Verifies a witness hidding non-interactive zero-knowledge proof that an i
 /// exists such that log_g(x) = log_h(y/m_i)
 pub fn verify(
-    group: &Group,
+    group: &SchnorrGroup,
     x: &Integer,
     y: &Integer,
     g: &Integer,
@@ -134,8 +134,8 @@ fn challenge(
 mod test {
     use super::{prove, verify};
     use crate::{
-        group::Groups,
         num::{fpowm, Bits},
+        schnorr::SchnorrGroups,
     };
     use rand::{thread_rng, Rng};
     use rug::Integer;
@@ -143,7 +143,7 @@ mod test {
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,

@@ -13,12 +13,11 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
 
+mod hash;
+pub use self::hash::*;
 pub mod commit;
-pub mod hash;
 pub mod keys;
-pub mod num;
 pub mod perm;
-pub mod schnorr;
 pub mod vtmf;
 pub mod zkp;
 

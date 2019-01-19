@@ -2,10 +2,10 @@
 
 use crate::{
     commit::CommitmentScheme,
-    group::Group,
     hash::{hash_iter, Hash},
     num::{fpowm, Bits},
     perm::Permutation,
+    schnorr::SchnorrGroup,
     vtmf::Mask,
     zkp::known_shuffle,
 };
@@ -27,7 +27,13 @@ pub struct Proof {
 }
 
 /// Generates a non-interactive zero-knowledge proof of a secret shuffle
-pub fn prove(group: &Group, h: &Integer, ee: &[Mask], pi: &Permutation, ri: &[Integer]) -> Proof {
+pub fn prove(
+    group: &SchnorrGroup,
+    h: &Integer,
+    ee: &[Mask],
+    pi: &Permutation,
+    ri: &[Integer],
+) -> Proof {
     assert!(ee.len() == ri.len());
 
     let g = group.generator();
@@ -220,9 +226,9 @@ fn l_challenge(fi: &[Integer], z: &Integer, ti: &[Integer]) -> Integer {
 mod test {
     use super::{prove, verify};
     use crate::{
-        group::Groups,
         num::{fpowm, Bits, Modulo},
         perm::Shuffles,
+        schnorr::SchnorrGroups,
     };
     use rand::{thread_rng, Rng};
     use rug::Integer;
@@ -230,7 +236,7 @@ mod test {
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
-        let dist = Groups {
+        let dist = SchnorrGroups {
             field_bits: 2048,
             group_bits: 1024,
             iterations: 64,
