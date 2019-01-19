@@ -14,9 +14,6 @@ use rug::Integer;
 use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 
-mod dec;
-pub use self::dec::*;
-
 pub use crate::zkp::{
     dlog_eq::Proof as MaskProof, mask_1ofn::Proof as PrivateMaskProof,
     secret_shuffle::Proof as ShuffleProof,
@@ -34,6 +31,12 @@ pub struct Vtmf {
 
 /// A masked value
 pub type Mask = (Integer, Integer);
+
+/// One party's share of a secret
+pub type SecretShare = Integer;
+
+/// Zero-knowledge proof of a secret share
+pub type SecretShareProof = MaskProof;
 
 impl Vtmf {
     /// Creates a new VTMF with the given private key
@@ -185,19 +188,60 @@ impl Vtmf {
         let hr = &c.1 * c21 % p;
         dlog_eq::verify(&self.g, &gr, &hr, g, h, proof)
     }
+}
 
-    /// Starts an instance of the verifiable decryption protocol
-    pub fn unmask(&self, c: Mask) -> Decryption {
-        Decryption::new(self, c)
+impl Vtmf {
+    /// Obtains one share of a masking operation
+    pub fn unmask_share(&self, c: &Mask) -> (SecretShare, SecretShareProof) {
+        let g = self.g.generator();
+        let p = self.g.modulus();
+        let x = self.sk.exponent();
+
+        let hi = self.g.element(x);
+        let d = Integer::from(c.0.pow_mod_ref(x, p).unwrap());
+        let proof = dlog_eq::prove(&self.g, &d, &hi, &c.0, g, x);
+
+        (d, proof)
+    }
+
+    /// Verifies a secret share of a masking operation
+    pub fn verify_unmask_share(
+        &self,
+        c: &Mask,
+        pk_fp: &Fingerprint,
+        d: &SecretShare,
+        proof: &SecretShareProof,
+    ) -> bool {
+        let g = self.g.generator();
+        let pk = self.pki.get(pk_fp);
+        let pk = match pk {
+            None => {
+                return false;
+            }
+            Some(pk) => pk,
+        };
+        let h = pk.element();
+
+        dlog_eq::verify(&self.g, d, h, &c.0, g, proof)
+    }
+
+    /// Undoes part of a masking operation
+    pub fn unmask(&self, c: Mask, d: SecretShare) -> Mask {
+        let p = self.g.modulus();
+
+        let d1 = d.invert(&p).unwrap();
+        (c.0, c.1 * d1 % p)
+    }
+
+    /// Privately undoes a masking operation
+    pub fn unmask_private(&self, c: Mask) -> Integer {
+        let d = self.unmask_share(&c).0;
+        self.unmask(c, d).1
     }
 
     /// Undoes a non-secret masking operation
-    pub fn unmask_open(&self, m: &Mask) -> Option<Integer> {
-        if m.0 == 1 {
-            Some(m.1.clone())
-        } else {
-            None
-        }
+    pub fn unmask_open(&self, m: &Mask) -> Integer {
+        m.1.clone()
     }
 }
 
@@ -325,19 +369,20 @@ mod test {
             x, mask, proof
         );
 
-        let mut dec0 = vtmf0.unmask(mask.clone());
-        let mut dec1 = vtmf1.unmask(mask.clone());
-        let (d0, proof0) = dec0.reveal_share().unwrap();
-        let (d1, proof1) = dec1.reveal_share().unwrap();
+        let (d0, proof0) = vtmf0.unmask_share(&mask);
+        let (d1, proof1) = vtmf1.unmask_share(&mask);
 
-        dec0.add_share(&fp1, &d1, &proof1).unwrap();
-        assert!(dec0.is_complete());
-        let r = dec0.decrypt().unwrap();
+        let ok = vtmf0.verify_unmask_share(&mask, &fp1, &d1, &proof1);
+        assert!(ok, "share verification failed");
+        let mask0 = vtmf0.unmask(mask.clone(), d1.clone());
+        let r = vtmf0.unmask_private(mask0);
         assert_eq!(r, x);
 
-        dec1.add_share(&fp0, &d0, &proof0).unwrap();
-        assert!(dec1.is_complete());
-        let r = dec1.decrypt().unwrap();
+        let ok = vtmf1.verify_unmask_share(&mask, &fp0, &d0, &proof0);
+        assert!(ok, "share verification failed");
+        let mask1 = vtmf1.unmask(mask.clone(), d0);
+        let mask1 = vtmf1.unmask(mask1, d1);
+        let r = vtmf1.unmask_open(&mask1);
         assert_eq!(r, x);
     }
 
@@ -354,6 +399,7 @@ mod test {
         let (sk1, pk1) = rng.sample(&Keys(&group));
         let mut vtmf0 = Vtmf::new(sk0);
         let mut vtmf1 = Vtmf::new(sk1);
+        let fp0 = pk0.fingerprint();
         let fp1 = pk1.fingerprint();
         vtmf0.add_key(pk1).unwrap();
         vtmf1.add_key(pk0).unwrap();
@@ -374,13 +420,19 @@ mod test {
             mask, remask, proof
         );
 
-        let mut dec0 = vtmf0.unmask(mask.clone());
-        let mut dec1 = vtmf1.unmask(mask.clone());
-        let _ = dec0.reveal_share().unwrap();
-        let (di, proof) = dec1.reveal_share().unwrap();
-        dec0.add_share(&fp1, &di, &proof).unwrap();
-        assert!(dec0.is_complete());
-        let r = dec0.decrypt().unwrap();
+        let (d0, proof0) = vtmf0.unmask_share(&mask);
+        let (d1, proof1) = vtmf1.unmask_share(&mask);
+
+        let ok = vtmf0.verify_unmask_share(&mask, &fp1, &d1, &proof1);
+        assert!(ok, "share verification failed");
+        let mask0 = vtmf0.unmask(mask.clone(), d1);
+        let r = vtmf0.unmask_private(mask0);
+        assert_eq!(r, x);
+
+        let ok = vtmf1.verify_unmask_share(&mask, &fp0, &d0, &proof0);
+        assert!(ok, "share verification failed");
+        let mask1 = vtmf1.unmask(mask.clone(), d0);
+        let r = vtmf1.unmask_private(mask1);
         assert_eq!(r, x);
     }
 
@@ -397,6 +449,7 @@ mod test {
         let (sk1, pk1) = rng.sample(&Keys(&group));
         let mut vtmf0 = Vtmf::new(sk0);
         let mut vtmf1 = Vtmf::new(sk1);
+        let fp0 = pk0.fingerprint();
         let fp1 = pk1.fingerprint();
         vtmf0.add_key(pk1).unwrap();
         vtmf1.add_key(pk0).unwrap();
@@ -405,15 +458,21 @@ mod test {
         let mask = vtmf0.mask_open(&x);
 
         let open = vtmf1.unmask_open(&mask);
-        assert_eq!(Some(x.clone()), open);
+        assert_eq!(x, open);
 
-        let mut dec0 = vtmf0.unmask(mask.clone());
-        let mut dec1 = vtmf1.unmask(mask.clone());
-        let _ = dec0.reveal_share().unwrap();
-        let (di, proof) = dec1.reveal_share().unwrap();
-        dec0.add_share(&fp1, &di, &proof).unwrap();
-        assert!(dec0.is_complete());
-        let r = dec0.decrypt().unwrap();
+        let (d0, proof0) = vtmf0.unmask_share(&mask);
+        let (d1, proof1) = vtmf1.unmask_share(&mask);
+
+        let ok = vtmf0.verify_unmask_share(&mask, &fp1, &d1, &proof1);
+        assert!(ok, "share verification failed");
+        let mask0 = vtmf0.unmask(mask.clone(), d1);
+        let r = vtmf0.unmask_private(mask0);
+        assert_eq!(r, x);
+
+        let ok = vtmf1.verify_unmask_share(&mask, &fp0, &d0, &proof0);
+        assert!(ok, "share verification failed");
+        let mask1 = vtmf1.unmask(mask.clone(), d0);
+        let r = vtmf1.unmask_private(mask1);
         assert_eq!(r, x);
     }
 
@@ -444,13 +503,11 @@ mod test {
             idx, mask, proof
         );
 
-        let mut dec0 = vtmf0.unmask(mask.clone());
-        let mut dec1 = vtmf1.unmask(mask.clone());
-        let _ = dec0.reveal_share().unwrap();
-        let (di, proof) = dec1.reveal_share().unwrap();
-        dec0.add_share(&fp1, &di, &proof).unwrap();
-        assert!(dec0.is_complete());
-        let r = dec0.decrypt().unwrap();
+        let (d1, proof1) = vtmf1.unmask_share(&mask);
+        let ok = vtmf0.verify_unmask_share(&mask, &fp1, &d1, &proof1);
+        assert!(ok, "share verification failed");
+        let mask0 = vtmf0.unmask(mask, d1);
+        let r = vtmf0.unmask_private(mask0);
         assert_eq!(r, m[idx]);
     }
 
@@ -487,13 +544,11 @@ mod test {
         let mut open: Vec<_> = shuffle
             .iter()
             .map(|s| {
-                let mut dec0 = vtmf0.unmask(s.clone());
-                let mut dec1 = vtmf1.unmask(s.clone());
-                let _ = dec0.reveal_share().unwrap();
-                let (di, proof) = dec1.reveal_share().unwrap();
-                dec0.add_share(&fp1, &di, &proof).unwrap();
-                assert!(dec0.is_complete());
-                dec0.decrypt().unwrap()
+                let (d1, proof1) = vtmf1.unmask_share(&s);
+                let ok = vtmf0.verify_unmask_share(&s, &fp1, &d1, &proof1);
+                assert!(ok, "share verification failed");
+                let mask0 = vtmf0.unmask(s.clone(), d1);
+                vtmf0.unmask_private(mask0)
             })
             .collect();
         open.sort();

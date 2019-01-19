@@ -8,8 +8,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     /// Occurs when serialization or deserialization fails
     Serde(pbmx_serde::Error),
-    /// Occurs when VTMF decryption fails
-    VtmfDecryption(crate::vtmf::DecryptionError),
+    /// Occurs when an unknown public key share is used to unmask
+    UnknownPublicKey,
+    /// Occurs when a proof of a mask share is incorrect
+    InvalidSecretShare,
     /// Occurs when building a fast modular exponentiation table fails
     FpowmPrecomputeFailure,
     /// Occurs when trying to combine a key of the wrong group
@@ -21,12 +23,6 @@ pub enum Error {
 impl From<pbmx_serde::Error> for Error {
     fn from(e: pbmx_serde::Error) -> Self {
         Error::Serde(e)
-    }
-}
-
-impl From<crate::vtmf::DecryptionError> for Error {
-    fn from(e: crate::vtmf::DecryptionError) -> Self {
-        Error::VtmfDecryption(e)
     }
 }
 
