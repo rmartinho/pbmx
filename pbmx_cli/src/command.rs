@@ -9,7 +9,7 @@ pub enum Command {
     Msg(String),
     Bin(String),
     File(String),
-    Start(String, usize),
+    Start(String, u32),
     Join,
     Stack(Vec<u32>),
     StackDown(Vec<u32>),
@@ -101,9 +101,7 @@ fn parse_mask(args: Option<&str>) -> Result<Command, ParseFailure> {
 fn parse_shuffle(args: Option<&str>) -> Result<Command, ParseFailure> {
     parse_one_or_two(args, |a0, a1| {
         let indices = if let Some(a1) = a1 {
-            Some(
-                parse_index_spec(a1)?.collect::<Vec<_>>(),
-            )
+            Some(parse_index_spec(a1)?.collect::<Vec<_>>())
         } else {
             None
         };
@@ -137,9 +135,7 @@ fn parse_pile(args: Option<&str>) -> Result<Command, ParseFailure> {
 }
 
 fn parse_reveal(args: Option<&str>) -> Result<Command, ParseFailure> {
-    parse_one(args, |a| {
-        Some(Command::Reveal(a.into()))
-    })
+    parse_one(args, |a| Some(Command::Reveal(a.into())))
 }
 
 fn parse_rng_bound(args: Option<&str>) -> Result<Command, ParseFailure> {

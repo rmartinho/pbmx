@@ -4,5 +4,5 @@ members = [
     "pbmx_blocks",
     "pbmx_serde",
 
-    "pbmx_cli",
+    #"pbmx_cli",
 ]

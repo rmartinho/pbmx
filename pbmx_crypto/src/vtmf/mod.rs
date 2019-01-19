@@ -14,9 +14,6 @@ use rug::Integer;
 use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 
-mod kex;
-pub use self::kex::*;
-
 mod dec;
 pub use self::dec::*;
 
@@ -29,7 +26,6 @@ pub use crate::zkp::{
 #[derive(Serialize)]
 pub struct Vtmf {
     g: Group,
-    n: u32,
     sk: PrivateKey,
     pk: PublicKey,
     #[serde(serialize_with = "serialize_flat_map")]
@@ -40,25 +36,43 @@ pub struct Vtmf {
 pub type Mask = (Integer, Integer);
 
 impl Vtmf {
-    unsafe fn new_unchecked(
-        g: Group,
-        n: u32,
-        sk: PrivateKey,
-        pk: PublicKey,
-        pki: Vec<PublicKey>,
-    ) -> Self {
-        fpowm::precompute(&pk.element(), g.bits(), g.modulus()).unwrap();
-        Self {
+    /// Creates a new VTMF with the given private key
+    pub fn new(sk: PrivateKey) -> Self {
+        let pk = sk.public_key();
+        let group = sk.group().clone();
+        // SAFE: we know all the values are consistent
+        unsafe { Self::new_unchecked(group, sk, pk.clone(), vec![pk]) }
+    }
+
+    /// Add a public key to the VTMF
+    pub fn add_key(&mut self, pk: PublicKey) -> Result<(), Error> {
+        if pk.group() != self.sk.group() {
+            return Err(Error::GroupMismatch);
+        }
+
+        self.pk.combine(&pk);
+        self.pki.insert(pk.fingerprint(), pk);
+        self.precompute();
+        Ok(())
+    }
+
+    fn precompute(&self) {
+        fpowm::precompute(&self.pk.element(), self.g.bits(), self.g.modulus()).unwrap();
+    }
+
+    unsafe fn new_unchecked(g: Group, sk: PrivateKey, pk: PublicKey, pki: Vec<PublicKey>) -> Self {
+        let vtmf = Self {
             g,
-            n,
             sk,
             pk,
             pki: pki.into_iter().map(|k| (k.fingerprint(), k)).collect(),
-        }
+        };
+        vtmf.precompute();
+        vtmf
     }
 
     fn validate(self) -> Option<Self> {
-        if self.g == *self.pk.group() && self.g == *self.sk.group() && self.n > 1 {
+        if self.g == *self.pk.group() && self.g == *self.sk.group() {
             Some(self)
         } else {
             let p = self.g.modulus();
@@ -84,7 +98,7 @@ impl Vtmf {
 
     /// Gets the number of parties in this VTMF
     pub fn parties(&self) -> u32 {
-        self.n
+        self.pki.len() as _
     }
 }
 
@@ -226,7 +240,7 @@ impl<'de> Deserialize<'de> for Vtmf {
     where
         D: Deserializer<'de>,
     {
-        // SAFE: we explicit validate the values before returning
+        // SAFE: we explicitly validate the values before returning
         unsafe { VtmfRaw::deserialize(deserializer)?.into() }
             .validate()
             .ok_or_else(|| de::Error::custom("invalid VTMF values"))
@@ -236,7 +250,6 @@ impl<'de> Deserialize<'de> for Vtmf {
 #[derive(Deserialize)]
 struct VtmfRaw {
     g: Group,
-    n: u32,
     sk: PrivateKey,
     pk: PublicKey,
     pki: Vec<PublicKey>,
@@ -244,7 +257,7 @@ struct VtmfRaw {
 
 impl VtmfRaw {
     unsafe fn into(self) -> Vtmf {
-        Vtmf::new_unchecked(self.g, self.n, self.sk, self.pk, self.pki)
+        Vtmf::new_unchecked(self.g, self.sk, self.pk, self.pki)
     }
 }
 
@@ -252,7 +265,7 @@ derive_base64_conversions!(Vtmf, Error);
 
 #[cfg(test)]
 mod test {
-    use super::{KeyExchange, Vtmf};
+    use super::Vtmf;
     use crate::{group::Groups, keys::Keys, num::Bits, perm::Shuffles};
     use rand::{thread_rng, Rng};
     use rug::Integer;
@@ -267,13 +280,12 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
+        let (sk0, _) = rng.sample(&Keys(&group));
         let (_, pk1) = rng.sample(&Keys(&group));
         let (_, pk2) = rng.sample(&Keys(&group));
-        let mut kex = KeyExchange::new(group, 3);
-        let _ = kex.generate_key().unwrap();
-        kex.update_key(pk1).unwrap();
-        kex.update_key(pk2).unwrap();
-        let original = kex.finalize().unwrap();
+        let mut original = Vtmf::new(sk0);
+        original.add_key(pk1).unwrap();
+        original.add_key(pk2).unwrap();
         println!("vtmf = {}", original);
 
         let exported = original.to_string();
@@ -281,7 +293,6 @@ mod test {
         let recovered = Vtmf::from_str(&exported).unwrap();
 
         assert_eq!(original.g, recovered.g);
-        assert_eq!(original.n, recovered.n);
         assert_eq!(original.sk, recovered.sk);
         assert_eq!(original.pk, recovered.pk);
         assert_eq!(original.pki, recovered.pki);
@@ -296,16 +307,14 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let mut kex0 = KeyExchange::new(group.clone(), 2);
-        let pk0 = kex0.generate_key().unwrap();
+        let (sk0, pk0) = rng.sample(&Keys(&group));
+        let (sk1, pk1) = rng.sample(&Keys(&group));
+        let mut vtmf0 = Vtmf::new(sk0);
         let fp0 = pk0.fingerprint();
-        let mut kex1 = KeyExchange::new(group, 2);
-        let pk1 = kex1.generate_key().unwrap();
+        let mut vtmf1 = Vtmf::new(sk1);
         let fp1 = pk1.fingerprint();
-        kex0.update_key(pk1).unwrap();
-        kex1.update_key(pk0).unwrap();
-        let vtmf0 = kex0.finalize().unwrap();
-        let vtmf1 = kex1.finalize().unwrap();
+        vtmf0.add_key(pk1).unwrap();
+        vtmf1.add_key(pk0).unwrap();
 
         let x = rng.sample(&Bits(128));
         let (mask, proof) = vtmf0.mask(&x);
@@ -341,15 +350,13 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let mut kex0 = KeyExchange::new(group.clone(), 2);
-        let pk0 = kex0.generate_key().unwrap();
-        let mut kex1 = KeyExchange::new(group, 2);
-        let pk1 = kex1.generate_key().unwrap();
+        let (sk0, pk0) = rng.sample(&Keys(&group));
+        let (sk1, pk1) = rng.sample(&Keys(&group));
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
         let fp1 = pk1.fingerprint();
-        kex0.update_key(pk1).unwrap();
-        kex1.update_key(pk0).unwrap();
-        let vtmf0 = kex0.finalize().unwrap();
-        let vtmf1 = kex1.finalize().unwrap();
+        vtmf0.add_key(pk1).unwrap();
+        vtmf1.add_key(pk0).unwrap();
 
         let x = rng.sample(&Bits(128));
         let (mask, proof) = vtmf0.mask(&x);
@@ -386,15 +393,13 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let mut kex0 = KeyExchange::new(group.clone(), 2);
-        let pk0 = kex0.generate_key().unwrap();
-        let mut kex1 = KeyExchange::new(group, 2);
-        let pk1 = kex1.generate_key().unwrap();
+        let (sk0, pk0) = rng.sample(&Keys(&group));
+        let (sk1, pk1) = rng.sample(&Keys(&group));
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
         let fp1 = pk1.fingerprint();
-        kex0.update_key(pk1).unwrap();
-        kex1.update_key(pk0).unwrap();
-        let vtmf0 = kex0.finalize().unwrap();
-        let vtmf1 = kex1.finalize().unwrap();
+        vtmf0.add_key(pk1).unwrap();
+        vtmf1.add_key(pk0).unwrap();
 
         let x = rng.sample(&Bits(128));
         let mask = vtmf0.mask_open(&x);
@@ -421,15 +426,13 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let mut kex0 = KeyExchange::new(group.clone(), 2);
-        let pk0 = kex0.generate_key().unwrap();
-        let mut kex1 = KeyExchange::new(group, 2);
-        let pk1 = kex1.generate_key().unwrap();
+        let (sk0, pk0) = rng.sample(&Keys(&group));
+        let (sk1, pk1) = rng.sample(&Keys(&group));
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
         let fp1 = pk1.fingerprint();
-        kex0.update_key(pk1).unwrap();
-        kex1.update_key(pk0).unwrap();
-        let vtmf0 = kex0.finalize().unwrap();
-        let vtmf1 = kex1.finalize().unwrap();
+        vtmf0.add_key(pk1).unwrap();
+        vtmf1.add_key(pk0).unwrap();
 
         let m: Vec<_> = (1..8).map(Integer::from).collect();
         let idx = rng.gen_range(1, 7);
@@ -460,15 +463,13 @@ mod test {
             iterations: 64,
         };
         let group = rng.sample(&dist);
-        let mut kex0 = KeyExchange::new(group.clone(), 2);
-        let pk0 = kex0.generate_key().unwrap();
-        let mut kex1 = KeyExchange::new(group, 2);
-        let pk1 = kex1.generate_key().unwrap();
+        let (sk0, pk0) = rng.sample(&Keys(&group));
+        let (sk1, pk1) = rng.sample(&Keys(&group));
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
         let fp1 = pk1.fingerprint();
-        kex0.update_key(pk1).unwrap();
-        kex1.update_key(pk0).unwrap();
-        let vtmf0 = kex0.finalize().unwrap();
-        let vtmf1 = kex1.finalize().unwrap();
+        vtmf0.add_key(pk1).unwrap();
+        vtmf1.add_key(pk0).unwrap();
 
         let m: Vec<_> = (1..8)
             .map(Integer::from)

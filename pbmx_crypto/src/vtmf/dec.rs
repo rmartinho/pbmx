@@ -76,7 +76,7 @@ impl<'a> Decryption<'a> {
 
     /// Tests whether all shares have been provided
     pub fn is_complete(&self) -> bool {
-        self.seen.len() == self.vtmf.n as usize
+        self.seen.len() == self.vtmf.parties() as usize
     }
 
     /// Decrypting step of the verifiable decryption protocol
