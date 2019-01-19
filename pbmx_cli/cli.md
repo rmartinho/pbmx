@@ -15,7 +15,7 @@ block ID as the file name and its ID is printed before exiting.
 Adds arbitrary data to a block. `msg` adds text messages, `bin` adds raw binary
 data (provided in base64 format), and `file` adds the contents of a given file.
 
-    > start <game> <players>
+    > start <game>
 
 Starts a new game with the given number of players. The name of the game has no
 meaning at the moment, but in the future it could be used to load the game's
