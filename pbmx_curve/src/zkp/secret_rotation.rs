@@ -182,14 +182,16 @@ impl Proof {
         transcript.commit_scalars(b"rho", &self.rho);
         transcript.commit_scalars(b"mu", &self.mu);
 
-        self.skr
-            .verify(transcript, known_rotation::Publics {
-                com: &self.com,
-                m: &a,
-                c: &self.h,
-            });
+        self.skr.verify(transcript, known_rotation::Publics {
+            com: &self.com,
+            m: &a,
+            c: &self.h,
+        })?;
 
         // TODO rest of verifications
+        // commit tau by rho == f + h * l
+        // remask (d * tau, e * tau) by mu == ff + z * l
+        // prod (z + e0 * -a) = (g * v, h * v)
         Ok(())
     }
 }
@@ -241,7 +243,7 @@ mod tests {
         assert_eq!(verified, Ok(()));
 
         // break the proof
-        // proof.z += Scalar::one();
+        proof.v += Scalar::one();
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
         assert_eq!(verified, Err(()));
     }
