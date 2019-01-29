@@ -4,7 +4,7 @@ use crate::{
     error::Error,
     keys::{Fingerprint, PrivateKey, PublicKey},
     perm::Permutation,
-    zkp::{dlog_eq, mask_1ofn, secret_shuffle},
+    zkp::{dlog_eq, mask_1ofn, secret_rotation, secret_shuffle},
 };
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -20,7 +20,7 @@ use std::{collections::HashMap, sync::Mutex};
 
 pub use crate::zkp::{
     dlog_eq::Proof as MaskProof, mask_1ofn::Proof as PrivateMaskProof,
-    secret_shuffle::Proof as ShuffleProof,
+    secret_rotation::Proof as ShiftProof, secret_shuffle::Proof as ShuffleProof,
 };
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
@@ -301,6 +301,51 @@ impl Vtmf {
         proof.verify(
             &mut Transcript::new(b"mask_shuffle"),
             secret_shuffle::Publics {
+                h: &self.pk.point(),
+                e0: m,
+                e1: c,
+            },
+        )
+    }
+}
+
+impl Vtmf {
+    /// Applies the mask-shuffle protocol for a given permutation
+    pub fn mask_shift(&self, m: &[Mask], k: usize) -> (Vec<Mask>, ShiftProof) {
+        let mut rng = thread_rng();
+
+        let h = self.pk.point();
+
+        let remask = |c: &Mask| {
+            let r = Scalar::random(&mut rng);
+
+            let c1 = G * &r + c.0;
+            let c2 = h * r + c.1;
+            ((c1, c2), r)
+        };
+
+        let (mut rm, mut r): (Vec<_>, Vec<_>) = m.iter().map(remask).unzip();
+        let pi = Permutation::shift(m.len(), k);
+        pi.apply_to(&mut rm);
+        pi.apply_to(&mut r);
+
+        let proof = ShiftProof::create(
+            &mut Transcript::new(b"mask_shift"),
+            secret_rotation::Publics {
+                h: &h,
+                e0: m,
+                e1: &rm,
+            },
+            secret_rotation::Secrets { k, r: &r },
+        );
+        (rm, proof)
+    }
+
+    /// Verifies the application of the mask-shuffling protocol
+    pub fn verify_mask_shift(&self, m: &[Mask], c: &[Mask], proof: &ShiftProof) -> Result<(), ()> {
+        proof.verify(
+            &mut Transcript::new(b"mask_shift"),
+            secret_rotation::Publics {
                 h: &self.pk.point(),
                 e0: m,
                 e1: c,

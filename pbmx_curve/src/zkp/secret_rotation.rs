@@ -6,6 +6,7 @@ use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
     scalar::Scalar,
+    traits::Identity,
 };
 use merlin::Transcript;
 use rand::thread_rng;
@@ -86,7 +87,7 @@ impl Proof {
             .e1
             .iter()
             .zip(t.iter().zip(sa.iter()))
-            .map(|((d, e), (t, a))| (d * a + G * &t, e * a + publics.h * t))
+            .map(|((d, e), (t, a))| (d * a + G * t, e * a + publics.h * t))
             .collect();
         transcript.commit_masks(b"z", &z);
         let v = sa
@@ -117,7 +118,7 @@ impl Proof {
             .e1
             .iter()
             .zip(o.iter().zip(m.iter()))
-            .map(|((d, e), (o, m))| (d * o + G * &m, e * o + publics.h * m))
+            .map(|((d, e), (o, m))| (d * o + G * m, e * o + publics.h * m))
             .collect();
         transcript.commit_masks(b"ff", &ff);
 
@@ -188,11 +189,48 @@ impl Proof {
             c: &self.h,
         })?;
 
-        // TODO rest of verifications
-        // commit tau by rho == f + h * l
-        // remask (d * tau, e * tau) by mu == ff + z * l
-        // prod (z + e0 * -a) = (g * v, h * v)
-        Ok(())
+        let tr: Vec<_> = self
+            .tau
+            .iter()
+            .zip(self.rho.iter())
+            .map(|(t, r)| self.com.commit_by(&[*t], r))
+            .collect();
+        let fhl: Vec<_> = self
+            .f
+            .iter()
+            .zip(self.h.iter())
+            .map(|(f, h)| f + h * l)
+            .collect();
+
+        let dtm: Vec<_> = publics
+            .e1
+            .iter()
+            .zip(self.tau.iter().zip(self.mu.iter()))
+            .map(|((d, e), (t, m))| (d * t + G * m, e * t + publics.h * m))
+            .collect();
+        let fzl: Vec<_> = self
+            .ff
+            .iter()
+            .zip(self.z.iter())
+            .map(|(f, z)| (f.0 + z.0 * l, f.1 + z.1 * l))
+            .collect();
+
+        let pzea = self
+            .z
+            .iter()
+            .zip(publics.e0.iter())
+            .zip(a.iter())
+            .map(|((z, e), a)| (z.0 + e.0 * -a, z.1 + e.1 * -a))
+            .fold(
+                (RistrettoPoint::identity(), RistrettoPoint::identity()),
+                |acc, x| (acc.0 + x.0, acc.1 + x.1),
+            );
+        let gvhv = (G * &self.v, publics.h * self.v);
+        if tr == fhl && dtm == fzl && pzea == gvhv {
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 }
 
