@@ -1,7 +1,10 @@
 //! PBMX blockchain
 
-use crate::block::{Block, BlockBuilder, Id};
-use pbmx_crypto::Error;
+use crate::{
+    block::{Block, BlockBuilder},
+    Id,
+};
+use pbmx_curve::Error;
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use serde::de::{Deserialize, Deserializer};
 use std::collections::HashMap;
@@ -161,9 +164,9 @@ impl<'a> Iterator for Blocks<'a> {
 #[cfg(test)]
 mod test {
     use super::Chain;
-    use crate::block::{Block, Payload};
-    use pbmx_crypto::{keys::Keys, schnorr::SchnorrGroups};
-    use rand::{thread_rng, Rng};
+    use crate::{block::Block, payload::Payload};
+    use pbmx_curve::keys::PrivateKey;
+    use rand::thread_rng;
     use std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -172,16 +175,11 @@ mod test {
     #[test]
     fn chain_block_iteration_works() {
         let mut rng = thread_rng();
-        let dist = SchnorrGroups {
-            field_bits: 2048,
-            group_bits: 1024,
-            iterations: 64,
-        };
-        let group = rng.sample(&dist);
-        let (sk, pk) = rng.sample(&Keys(&group));
+        let sk = PrivateKey::random(&mut rng);
+        let pk = sk.public_key();
         let mut chain = Chain::new();
         let mut gen = chain.build_block();
-        gen.add_payload(Payload::DefineGame("test".into(), group));
+        gen.add_payload(Payload::DefineGame("test".into()));
         gen.add_payload(Payload::PublishKey(pk));
         chain.add_block(gen.build(&sk));
         let gid = chain.roots[0];
@@ -209,16 +207,11 @@ mod test {
     #[test]
     fn chain_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let dist = SchnorrGroups {
-            field_bits: 2048,
-            group_bits: 1024,
-            iterations: 64,
-        };
-        let group = rng.sample(&dist);
-        let (sk, pk) = rng.sample(&Keys(&group));
+        let sk = PrivateKey::random(&mut rng);
+        let pk = sk.public_key();
         let mut chain = Chain::new();
         let mut gen = chain.build_block();
-        gen.add_payload(Payload::DefineGame("test".into(), group));
+        gen.add_payload(Payload::DefineGame("test".into()));
         gen.add_payload(Payload::PublishKey(pk));
         chain.add_block(gen.build(&sk));
         let mut b0 = chain.build_block();
