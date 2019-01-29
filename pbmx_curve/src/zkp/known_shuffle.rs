@@ -78,19 +78,19 @@ impl Proof {
             })
             .collect();
 
-        let (cd, rd) = publics.com.commit_to(&d);
+        let (cd, rd) = publics.com.commit_to(&d, &mut rng);
         transcript.commit_point(b"cd", &cd);
 
         let mut dd: Vec<_> = (1..n).map(|i| (-delta[i - 1]) * d[i]).collect();
         dd.push(Scalar::zero());
-        let (cdd, rdd) = publics.com.commit_to(&dd);
+        let (cdd, rdd) = publics.com.commit_to(&dd, &mut rng);
         transcript.commit_point(b"cdd", &cdd);
 
         let mut da: Vec<_> = (1..n)
             .map(|i| delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])
             .collect();
         da.push(Scalar::zero());
-        let (cda, rda) = publics.com.commit_to(&da);
+        let (cda, rda) = publics.com.commit_to(&da, &mut rng);
         transcript.commit_point(b"cda", &cda);
 
         let e = transcript.challenge_scalar(b"e");
@@ -185,7 +185,7 @@ mod tests {
         pi.apply_to(&mut mp);
 
         let com = &Pedersen::new(*h, 8, &mut rng);
-        let (c, r) = com.commit_to(&mp);
+        let (c, r) = com.commit_to(&mp, &mut rng);
         let publics = Publics { com, c: &c, m };
         let secrets = Secrets { pi, r: &r };
 

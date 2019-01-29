@@ -4,11 +4,13 @@ pub mod dlog_eq;
 mod known_rotation;
 mod known_shuffle;
 pub mod mask_1ofn;
+pub mod secret_rotation;
 pub mod secret_shuffle;
 
 use crate::{commit::Pedersen, perm::Permutation, vtmf::Mask};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::{Transcript, TranscriptRngBuilder};
+use rand::{CryptoRng, Rng};
 use std::iter;
 
 trait TranscriptProtocol {
@@ -114,4 +116,8 @@ impl TranscriptRngProtocol for TranscriptRngBuilder {
         }
         builder
     }
+}
+
+fn random_scalars<R: Rng + CryptoRng>(n: usize, rng: &mut R) -> Vec<Scalar> {
+    iter::repeat_with(|| Scalar::random(rng)).take(n).collect()
 }

@@ -3,7 +3,7 @@
 use crate::error::Error;
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar, traits::MultiscalarMul};
 use pbmx_serde::derive_base64_conversions;
-use rand::{thread_rng, CryptoRng, Rng};
+use rand::{CryptoRng, Rng};
 use serde::{de, Deserialize, Deserializer};
 use std::iter;
 
@@ -44,11 +44,14 @@ impl Pedersen {
     }
 
     /// Creates a commitment to a given sequence of scalars
-    pub fn commit_to(&self, m: &[Scalar]) -> (RistrettoPoint, Scalar) {
+    pub fn commit_to<R: Rng + CryptoRng>(
+        &self,
+        m: &[Scalar],
+        rng: &mut R,
+    ) -> (RistrettoPoint, Scalar) {
         assert!(m.len() == self.g.len());
 
-        let mut rng = thread_rng();
-        let r = Scalar::random(&mut rng);
+        let r = Scalar::random(rng);
         let c = self.commit_by(m, &r);
         (c, r)
     }
@@ -131,11 +134,11 @@ mod tests {
             Scalar::random(&mut rng),
             Scalar::random(&mut rng),
         ];
-        let (c, r) = com.commit_to(&m);
+        let (c, r) = com.commit_to(&m, &mut rng);
         let open = com.open(&c, &m, &r);
         assert_eq!(open, Ok(()));
         let fake = [m[1], m[2], Scalar::random(&mut rng)];
-        let (c1, r1) = com.commit_to(&fake);
+        let (c1, r1) = com.commit_to(&fake, &mut rng);
         let open = com.open(&c1, &m, &r1);
         assert_eq!(open, Err(()));
     }

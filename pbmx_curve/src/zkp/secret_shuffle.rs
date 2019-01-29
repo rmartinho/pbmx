@@ -69,14 +69,14 @@ impl Proof {
             .iter()
             .map(|p| Scalar::from((p + 1) as u64))
             .collect();
-        let (c, r) = com.commit_to(&p2);
+        let (c, r) = com.commit_to(&p2, &mut rng);
         transcript.commit_point(b"c", &c);
 
         let d: Vec<_> = iter::repeat_with(|| Scalar::random(&mut rng))
             .map(|d| -d)
             .take(n)
             .collect();
-        let (cd, rd) = com.commit_to(&d);
+        let (cd, rd) = com.commit_to(&d, &mut rng);
         transcript.commit_point(b"cd", &cd);
 
         let ed = d
@@ -200,12 +200,11 @@ impl Proof {
 
 #[cfg(test)]
 mod tests {
-    use super::{Proof, Publics, Secrets, G};
+    use super::{super::random_scalars, Proof, Publics, Secrets, G};
     use crate::perm::Shuffles;
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
-    use std::iter;
 
     #[test]
     fn prove_and_verify_agree() {
@@ -213,9 +212,7 @@ mod tests {
 
         let h = &RistrettoPoint::random(&mut rng);
 
-        let m = &iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(8)
-            .collect::<Vec<_>>();
+        let m = &random_scalars(8, &mut rng);
         let e0: Vec<_> = m
             .into_iter()
             .map(|m| {

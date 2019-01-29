@@ -1,11 +1,10 @@
 //! Hoogh et al's verifiable rotation of known content
 
-use super::{TranscriptProtocol, TranscriptRngProtocol};
+use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::{commit::Pedersen, perm::Permutation};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use rand::thread_rng;
-use std::iter;
 
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,20 +57,16 @@ impl Proof {
         shift.apply_to(&mut sm);
 
         let u = Scalar::random(&mut rng);
-        let mut l: Vec<_> = iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(n)
-            .collect();
+        let mut l = random_scalars(n, &mut rng);
         l[secrets.k] = Scalar::zero();
-        let mut t: Vec<_> = iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(n)
-            .collect();
+        let mut t = random_scalars(n, &mut rng);
         t[secrets.k] = Scalar::zero();
 
         let b = transcript.challenge_scalars(b"b", n);
         let y: Vec<_> = (0..n)
-            .map(|k| {
+            .map(|i| {
                 (0..n)
-                    .map(|j| publics.m[(n + j - k) % n] * b[j])
+                    .map(|j| publics.m[(n + j - i) % n] * b[j])
                     .sum::<Scalar>()
             })
             .collect();
@@ -165,33 +160,26 @@ impl Proof {
 
 #[cfg(test)]
 mod tests {
-    use super::{Proof, Publics, Secrets};
-    use crate::{
-        commit::Pedersen,
-        perm::{Permutation, Shuffles},
-    };
+    use super::{super::random_scalars, Proof, Publics, Secrets};
+    use crate::{commit::Pedersen, perm::Permutation};
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
-    use std::iter;
 
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
 
-        let g = &RistrettoPoint::random(&mut rng);
         let h = &RistrettoPoint::random(&mut rng);
 
-        let m = &iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(8)
-            .collect::<Vec<_>>();
+        let m = &random_scalars(8, &mut rng);
         let mut mp = m.clone();
         let k = rng.gen_range(0, 8);
         let pi = Permutation::shift(8, k);
         pi.apply_to(&mut mp);
 
         let com = &Pedersen::new(*h, 1, &mut rng);
-        let (c, r): (Vec<_>, Vec<_>) = mp.iter().map(|m| com.commit_to(&[*m])).unzip();
+        let (c, r): (Vec<_>, Vec<_>) = mp.iter().map(|m| com.commit_to(&[*m], &mut rng)).unzip();
         let publics = Publics { com, m, c: &c };
         let secrets = Secrets { k, r: &r };
 
