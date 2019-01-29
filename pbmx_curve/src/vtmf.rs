@@ -539,7 +539,7 @@ mod tests {
         let verified = vtmf1.verify_mask_shuffle(&m, &shuffle, &proof);
         assert_eq!(verified, Ok(()));
 
-        let mut open: Vec<_> = shuffle
+        let open: Vec<_> = shuffle
             .iter()
             .map(|m| {
                 let (d0, proof0) = vtmf0.unmask_share(m);

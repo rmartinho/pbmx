@@ -17,7 +17,7 @@ impl Permutation {
 
     /// Creates a new cyclic shift permutation
     pub fn shift(n: usize, c: usize) -> Self {
-        let v = (0..n).map(|i| (i + c) % n).collect();
+        let v = (0..n).map(|i| (i + n - c) % n).collect();
         Self(v)
     }
 
@@ -108,7 +108,7 @@ impl Distribution<Permutation> for Shuffles {
 
 impl Distribution<Permutation> for Shifts {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Permutation {
-        let c = rng.gen();
+        let c = rng.gen_range(0, self.0);
         Permutation::shift(self.0, c)
     }
 }
@@ -131,8 +131,8 @@ mod tests {
     #[test]
     fn permutation_shifts_are_generated_correctly() {
         let mut expected = Vec::new();
-        expected.extend(3..10);
-        expected.extend(0..3);
+        expected.extend(7..10);
+        expected.extend(0..7);
 
         let p = Permutation::shift(10, 3);
         assert_eq!(p.0, expected);
