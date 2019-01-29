@@ -384,7 +384,10 @@ derive_base64_conversions!(Vtmf, Error);
 #[cfg(test)]
 mod tests {
     use super::Vtmf;
-    use crate::{keys::PrivateKey, perm::Shuffles};
+    use crate::{
+        keys::PrivateKey,
+        perm::{Permutation, Shuffles},
+    };
     use curve25519_dalek::scalar::Scalar;
     use rand::{thread_rng, Rng};
     use std::str::FromStr;
@@ -596,6 +599,46 @@ mod tests {
             })
             .collect();
         let mut expected: Vec<_> = (0u64..8).map(Scalar::from).collect();
+        pi.apply_to(&mut expected);
+        assert_eq!(open, expected);
+    }
+
+    #[test]
+    fn vtmf_mask_shifting_works() {
+        let mut rng = thread_rng();
+        let sk0 = PrivateKey::random(&mut rng);
+        let sk1 = PrivateKey::random(&mut rng);
+        let pk0 = sk0.public_key();
+        let pk1 = sk1.public_key();
+
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
+        let fp0 = pk0.fingerprint();
+        vtmf0.add_key(pk1).unwrap();
+        vtmf1.add_key(pk0).unwrap();
+
+        let m: Vec<_> = (0u64..8)
+            .map(Scalar::from)
+            .map(|i| vtmf0.mask(&i).0)
+            .collect();
+        let k = thread_rng().gen_range(0, 8);
+        let (shift, proof) = vtmf0.mask_shift(&m, k);
+        let verified = vtmf1.verify_mask_shift(&m, &shift, &proof);
+        assert_eq!(verified, Ok(()));
+
+        let open: Vec<_> = shift
+            .iter()
+            .map(|m| {
+                let (d0, proof0) = vtmf0.unmask_share(m);
+                let verified = vtmf1.verify_unmask(m, &fp0, &d0, &proof0);
+                assert_eq!(verified, Ok(()));
+                let mask1 = vtmf1.unmask(*m, d0);
+                let mask1 = vtmf1.unmask_private(mask1);
+                vtmf1.unmask_open(&mask1).unwrap()
+            })
+            .collect();
+        let mut expected: Vec<_> = (0u64..8).map(Scalar::from).collect();
+        let pi = Permutation::shift(8, k);
         pi.apply_to(&mut expected);
         assert_eq!(open, expected);
     }

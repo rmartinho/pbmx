@@ -8,21 +8,19 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     /// Occurs when serialization or deserialization fails
     Serde(pbmx_serde::Error),
-    /// Occurs when an unknown public key share is used to unmask
-    UnknownPublicKey,
-    /// Occurs when a proof of a mask share is incorrect
-    InvalidSecretShare,
-    /// Occurs when building a fast modular exponentiation table fails
-    FpowmPrecomputeFailure,
-    /// Occurs when trying to combine a key of the wrong group
-    GroupMismatch,
-    /// Occurs when trying to create a permutation from a non-permutation vec
-    NonPermutation,
+    /// Occurs when a cryptography operation fails
+    Crypto(pbmx_curve::Error),
 }
 
 impl From<pbmx_serde::Error> for Error {
     fn from(e: pbmx_serde::Error) -> Self {
         Error::Serde(e)
+    }
+}
+
+impl From<pbmx_curve::Error> for Error {
+    fn from(e: pbmx_curve::Error) -> Self {
+        Error::Crypto(e)
     }
 }
 
