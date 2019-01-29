@@ -6,9 +6,9 @@
 #[macro_use]
 extern crate serde_derive;
 
-// pub mod block;
-// pub mod chain;
+pub mod block;
 pub mod payload;
+// pub mod chain;
 
 mod error;
 pub use self::error::{Error, Result};
