@@ -111,7 +111,7 @@ impl Proof {
     /// Verifies a non-interactive zero-knowledge proof of a shuffle of known
     /// content
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
-        transcript.domain_sep(b"known_shuffle");
+        transcript.domain_sep(b"known_rotation");
 
         transcript.commit_pedersen(b"com", publics.com);
         transcript.commit_scalars(b"m", publics.m);
@@ -135,6 +135,7 @@ impl Proof {
             .sum::<RistrettoPoint>();
 
         transcript.commit_points(b"f", &self.f);
+
         let lambda = transcript.challenge_scalar(b"lambda");
         let fgl: Vec<_> = self
             .l
@@ -153,12 +154,11 @@ impl Proof {
             .map(|t| publics.com.commit_by(&[Scalar::zero()], t))
             .collect();
 
-        if lambda != self.l.iter().sum::<Scalar>() {
-            Err(())
-        } else if ht.iter().zip(fgl.iter()).any(|(l, r)| l != r) {
-            Err(())
-        } else {
+        let l_sum = self.l.iter().sum::<Scalar>();
+        if lambda == l_sum && ht == fgl {
             Ok(())
+        } else {
+            Err(())
         }
     }
 }
@@ -181,7 +181,6 @@ mod tests {
 
         let g = &RistrettoPoint::random(&mut rng);
         let h = &RistrettoPoint::random(&mut rng);
-        dbg!((g, h));
 
         let m = &iter::repeat_with(|| Scalar::random(&mut rng))
             .take(8)
@@ -202,8 +201,8 @@ mod tests {
         assert_eq!(verified, Ok(()));
 
         // break the proof
-        // proof.z += Scalar::one();
-        // let verified = proof.verify(&mut Transcript::new(b"test"), publics);
-        // assert_eq!(verified, Err(()));
+        proof.t[0] += Scalar::one();
+        let verified = proof.verify(&mut Transcript::new(b"test"), publics);
+        assert_eq!(verified, Err(()));
     }
 }
