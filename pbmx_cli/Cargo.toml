@@ -3,12 +3,13 @@ name = "pbmx_cli"
 version = "0.1.0"
 authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
 edition = "2018"
+description = "Secure play-by-mail toolkit"
 
-[dependencies.pbmx_blocks]
-path = "../pbmx_blocks"
+[dependencies.pbmx_chain]
+path = "../pbmx_chain"
 
-[dependencies.pbmx_crypto]
-path = "../pbmx_crypto"
+[dependencies.pbmx_curve]
+path = "../pbmx_curve"
 
 [dependencies.pbmx_serde]
 path = "../pbmx_serde"

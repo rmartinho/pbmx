@@ -10,6 +10,7 @@ use pbmx_curve::{
 use pbmx_serde::derive_base64_conversions;
 
 /// A PBMX message payload
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Payload {
     /// A game definition payload

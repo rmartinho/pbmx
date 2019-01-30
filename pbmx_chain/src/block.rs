@@ -234,9 +234,9 @@ mod tests {
         builder.add_payload(Payload::Bytes(vec![2]));
         builder.add_payload(Payload::Bytes(vec![3]));
         let original = builder.build(&sk);
-        println!("block = {}", original);
 
         let exported = original.to_string();
+        dbg!(&exported);
 
         let recovered = Block::from_str(&exported).unwrap();
         assert!(recovered.is_valid(&ring).is_true());

@@ -231,9 +231,9 @@ mod test {
         let b2 = b2.build(&sk);
         chain.add_block(b2.clone());
         let original = chain;
-        println!("chain = {}", original);
 
         let exported = original.to_string();
+        dbg!(&exported);
 
         let recovered = Chain::from_str(&exported).unwrap();
 

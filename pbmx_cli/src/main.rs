@@ -1,234 +1,131 @@
-#![warn(missing_docs)]
-#![deny(clippy::correctness)]
-
-//! PBMX CLI tool
-
-use crate::{
-    error::{Error, Result},
-    stacks::StackMap,
-};
-use pbmx_blocks::{
-    block::{Block, BlockBuilder, Payload::*},
-    chain::Chain,
-};
-use pbmx_crypto::{
-    group::{Group, Groups},
-    keys::{Keys, PrivateKey},
-};
-use pbmx_serde::{FromBytes, ToBytes};
-use rand::{thread_rng, Rng};
-use rustyline::{error::ReadlineError, Editor};
-use std::{ffi::OsStr, fs, mem, path::Path};
-
-mod chain_parser;
-mod error;
-use self::chain_parser::ParsedChain;
-mod command;
-mod index_spec;
-mod stacks;
-
-struct State {
-    block: BlockBuilder,
-    chain: ParsedChain,
-    group: Option<Group>,
-    private_key: Option<PrivateKey>,
-    stacks: StackMap,
-}
+#[macro_use]
+extern crate clap;
 
 fn main() {
-    let chain = read_chain().unwrap();
-    println!("# Blocks: {}", chain.count());
-
-    let sk = read_secrets().unwrap();
-    if let Some(sk) = &sk {
-        println!("# Private key: {:16}", sk.fingerprint());
-    }
-
-    let parsed_chain = chain_parser::parse_chain(&chain, &sk).unwrap();
-    parsed_chain.print_out();
-
-    let mut state = State {
-        block: chain.build_block(),
-        group: parsed_chain.group().cloned(),
-        stacks: parsed_chain.stacks().clone(),
-        chain: parsed_chain,
-        private_key: sk,
-    };
-    let mut rl = Editor::<()>::new();
-    loop {
-        let readline = rl.readline("> ");
-        match readline {
-            Ok(line) => {
-                rl.add_history_entry(line.as_ref());
-                let words: Vec<_> = line.split(' ').filter(|s| !s.is_empty()).collect();;
-                match words[0] {
-                    //"start" => do_start(&mut state, &words),
-                    //"join" => do_join(&mut state, &words),
-                    //"stack" => do_stack(&mut state, &words),
-                    //"pstack" => do_pstack(&mut state, &words),
-                    //"name" => do_name(&mut state, &words),
-                    //"shuffle" => do_shuffle(&mut state, &words),
-                    ////"shift" => do_shift(&mut state, &words),
-                    //"take" => do_take(&mut state, &words),
-                    //"pile" => do_pile(&mut state, &words),
-                    //"reveal" => do_reveal(&mut state, &words),
-                    //"gen" => do_gen(&mut state, &words),
-                    //"rand" => do_rand(&mut state, &words),
-                    "msg" => do_msg(&mut state, &words),
-                    "bin" => do_bin(&mut state, &words),
-                    "file" => do_file(&mut state, &words),
-                    "issue" => {
-                        if let Ok(()) = do_issue(&mut state, &words) {
-                            break;
-                        }
-                    }
-                    "quit" => break,
-                    "" => {}
-                    _ => println!("- Unknown command: {}", line),
-                }
-            }
-            Err(ReadlineError::Interrupted) => break,
-            Err(ReadlineError::Eof) => break,
-            Err(err) => {
-                println!("- Error: {:?}", err);
-                break;
-            }
-        }
-    }
-    save_secrets(&state.private_key).unwrap();
-}
-
-fn read_chain() -> Result<Chain> {
-    let mut chain = Chain::default();
-    for entry in fs::read_dir(Path::new("blocks"))? {
-        let entry = entry?;
-        if !entry.file_type()?.is_file() {
-            continue;
-        }
-        if let Some(ext) = entry.path().extension() {
-            if ext != OsStr::new("pbmx") {
-                continue;
-            }
-            let block = Block::from_bytes(&fs::read(&entry.path())?)?;
-            chain.add_block(block);
-        }
-    }
-    Ok(chain)
-}
-
-fn read_secrets() -> Result<Option<PrivateKey>> {
-    let mut sk = None;
-    for entry in fs::read_dir(Path::new("secrets"))? {
-        let entry = entry?;
-        if !entry.file_type()?.is_file() {
-            continue;
-        }
-        if let Some(fname) = entry.path().file_name() {
-            if fname != OsStr::new("me.sk") {
-                continue;
-            }
-            sk = Some(PrivateKey::from_bytes(&fs::read(&entry.path())?)?);
-        }
-    }
-    Ok(sk)
-}
-
-fn save_secrets(sk: &Option<PrivateKey>) -> Result<()> {
-    if let Some(sk) = &sk {
-        fs::write(Path::new("secrets/me.sk"), sk.to_bytes()?)?;
-    }
-    Ok(())
-}
-
-fn ensure_private_key_exists(state: &mut State) {
-    let mut rng = thread_rng();
-
-    if state.private_key.is_none() {
-        let (sk, pk) = rng.sample(&Keys(state.group.as_ref().unwrap()));
-        state.private_key = Some(sk);
-        println!("+ Publish key {:16}", pk.fingerprint());
-        state.block.add_payload(PublishKey(pk));
-    }
-}
-
-fn do_issue(state: &mut State, words: &[&str]) -> Result<()> {
-    if words.len() != 1 {
-        println!("- Usage: issue");
-        return Err(Error::BadCommand);
-    }
-    ensure_private_key_exists(state);
-    let builder = mem::replace(&mut state.block, BlockBuilder::new());
-    let block = builder.build(state.private_key.as_ref().unwrap());
-    fs::write(
-        Path::new(&format!("blocks/{:16}.pbmx", block.id())),
-        block.to_bytes()?,
-    )?;
-    println!("* Issued block {:16}", block.id());
-    eprintln!("{:?}", block);
-    Ok(())
-}
-
-fn do_start(state: &mut State, words: &[&str]) {
-    if words.len() != 2 {
-        println!("- Usage: start <game>");
-        return;
-    }
-
-    println!(": Generating Schnorr group...");
-
-    let group = thread_rng().sample(&Groups {
-        field_bits: 2048,
-        group_bits: 1024,
-        iterations: 64,
-    });
-    state.group = Some(group.clone());
-
-    let game = words[1].to_string();
-    println!("+ Start game '{}'", game);
-    state.block.add_payload(DefineGame(game, group));
-    ensure_private_key_exists(state);
-}
-
-fn do_join(state: &mut State, words: &[&str]) {
-    if words.len() != 1 {
-        println!("- Usage: join");
-        return;
-    }
-    ensure_private_key_exists(state);
-    println!("+ Join game");
-}
-
-fn do_msg(state: &mut State, words: &[&str]) {
-    if words.len() < 2 {
-        println!("- Usage: msg <text>...");
-        return;
-    }
-    let mut bytes = Vec::new();
-    bytes.extend(words[1].as_bytes());
-    for w in &words[2..] {
-        bytes.extend(&[b' ']);
-        bytes.extend(w.as_bytes());
-    }
-    println!("+ Message: {} bytes", bytes.len());
-    state.block.add_payload(Bytes(bytes));
-}
-
-fn do_bin(state: &mut State, words: &[&str]) {
-    if words.len() != 2 {
-        println!("- Usage: bin <base64>");
-        return;
-    }
-    let bytes = base64::decode(words[1]).unwrap();
-    println!("+ Message: {} bytes", bytes.len());
-    state.block.add_payload(Bytes(bytes));
-}
-
-fn do_file(state: &mut State, words: &[&str]) {
-    if words.len() != 2 {
-        println!("- Usage: file <path>");
-        return;
-    }
-    let bytes = fs::read(Path::new(words[1])).unwrap();
-    println!("+ Message: {} bytes", bytes.len());
-    state.block.add_payload(Bytes(bytes));
+    let matches = clap_app!(pbmx =>
+        (version: crate_version!())
+        (author: crate_authors!())
+        (about: crate_description!())
+        (@subcommand init =>
+            (about: "Initializes a new game folder")
+            (version: "unimplemented")
+            (@arg FOLDER: +required "The folder to hold game data")
+        )
+        (@subcommand issue =>
+            (about: "Issues the current block")
+            (version: "unimplemented")
+        )
+        (@subcommand msg =>
+            (about: "Adds a message to the current block")
+            (version: "unimplemented")
+            (@arg MESSAGE: +required "The message")
+        )
+        (@subcommand bin =>
+            (about: "Adds a binary blob to the current block")
+            (version: "unimplemented")
+            (@arg BASE64: +required "The blob in base64")
+        )
+        (@subcommand file =>
+            (about: "Adds a the contents of a file to the current block")
+            (version: "unimplemented")
+            (@arg FILE: +required "The path to the file")
+        )
+        (@subcommand file =>
+            (about: "Adds a the contents of a file to the current block")
+            (version: "unimplemented")
+            (@arg FILE: +required "The path to the file")
+        )
+        (@subcommand start =>
+            (about: "Starts a game")
+            (version: "unimplemented")
+            (@arg NAME: +required "The name of the game")
+        )
+        (@subcommand join =>
+            (about: "Joins the game")
+            (version: "unimplemented")
+        )
+        (@subcommand stack =>
+            (about: "Manipulates stacks")
+            (version: "unimplemented")
+            (@subcommand create =>
+                (about: "Creates a new stack")
+                (version: "unimplemented")
+                (@arg TOKENS: +multiple +use_delimiter "The tokens in the stack")
+                (@arg NAME: -n --name +takes_value "Sets the name of the stack")
+                (@arg HIDDEN: -H --hidden conflicts_with[OPEN] "Makes the stack contents hidden from others")
+                (@arg OPEN: -O --open conflicts_with[HIDDEN] "Makes the stack contents open to others (default)")
+            )
+            (@subcommand list =>
+                (about: "Lists existing stacks")
+                (version: "unimplemented")
+                (@arg ALL: -a --all "Also includes unnamed stacks")
+            )
+            (@subcommand show =>
+                (about: "Shows a stack's details")
+                (version: "unimplemented")
+                (@arg STACK: +required "The name or identifier of the stack")
+                (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data")
+            )
+            (@subcommand mask =>
+                (about: "Remasks a stack")
+                (version: "unimplemented")
+                (@arg STACK: +required "The name or identifier of the stack")
+            )
+            (@subcommand shuffle =>
+                (about: "Shuffles a stack")
+                (version: "unimplemented")
+                (@arg STACK: +required "The name or identifier of the stack")
+                (@arg ORDER: -o --order <INDICES> +multiple +use_delimiter "Chooses a specific order instead of randomizing")
+            )
+            (@subcommand cut =>
+                (about: "Cuts a stack")
+                (version: "unimplemented")
+                (@arg STACK: +required "The name or identifier of the stack")
+                (@arg N: -n +takes_value "Chooses a specific cut size instead of randomizing")
+            )
+            (@subcommand take =>
+                (about: "Takes some tokens from an existing stack into another")
+                (version: "unimplemented")
+                (@arg SOURCE: +required "The name or identifier of the source stack")
+                (@arg INDICES: +required +multiple +use_delimiter "The indices of the tokens to remove")
+                (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stack")
+                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
+            )
+            (@subcommand pile =>
+                (about: "Piles several stacks together")
+                (version: "unimplemented")
+                (@arg STACKS: +required +multiple "The name or identifier of the source stacks, from top to bottom")
+                (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks")
+                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
+            )
+            (@subcommand reveal =>
+                (about: "Reveals the secret share of a stack to others")
+                (version: "unimplemented")
+                (@arg STACK: +required "The name or identifier of the stack")
+            )
+        )
+        (@subcommand random =>
+            (about: "Handles distributed generation of shared random numbers")
+            (version: "unimplemented")
+            (@subcommand new =>
+                (about: "Starts the generation of a new shared random number")
+                (version: "unimplemented")
+                (@arg BOUND: +required "The exclusive upper bound on the number")
+            )
+            (@subcommand add =>
+                (about: "Adds a share in the generation of a shared random number")
+                (version: "unimplemented")
+                (@arg ID: +required "The identifier for the random number being generated")
+            )
+            (@subcommand gen =>
+                (about: "Completes the generation of a shared random number")
+                (version: "unimplemented")
+                (@arg ID: +required "The identifier for the random number being generated")
+            )
+        )
+    )
+    .get_matches();
+    dbg!(matches);
 }
