@@ -19,27 +19,5 @@ macro_rules! derive_base64_conversions {
                 Ok(x)
             }
         }
-
-        impl ::std::fmt::Display for $t {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                use $crate::ToBytes;
-                write!(
-                    f,
-                    "{}",
-                    ::base64::encode_config(&self.to_bytes()?, ::base64::URL_SAFE_NO_PAD)
-                )
-            }
-        }
-
-        impl ::std::str::FromStr for $t {
-            type Err = $e;
-
-            fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
-                use $crate::FromBytes;
-                let bytes = ::base64::decode_config(s, ::base64::URL_SAFE_NO_PAD).map_err($crate::Error::from)?;
-                let x = Self::from_bytes(&bytes)?;
-                Ok(x)
-            }
-        }
     };
 }

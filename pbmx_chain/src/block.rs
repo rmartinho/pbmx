@@ -184,8 +184,9 @@ mod tests {
     use super::{Block, BlockBuilder};
     use crate::payload::Payload;
     use pbmx_curve::keys::PrivateKey;
+    use pbmx_serde::{FromBase64, ToBase64};
     use rand::thread_rng;
-    use std::{collections::HashMap, str::FromStr};
+    use std::collections::HashMap;
 
     #[test]
     fn new_block_has_valid_signature() {
@@ -235,10 +236,10 @@ mod tests {
         builder.add_payload(Payload::Bytes(vec![3]));
         let original = builder.build(&sk);
 
-        let exported = original.to_string();
+        let exported = original.to_base64().unwrap();
         dbg!(&exported);
 
-        let recovered = Block::from_str(&exported).unwrap();
+        let recovered = Block::from_base64(&exported).unwrap();
         assert!(recovered.is_valid(&ring).is_true());
 
         assert_eq!(original.acks, recovered.acks);

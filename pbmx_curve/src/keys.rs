@@ -201,6 +201,7 @@ const FINGERPRINT_SIZE: usize = 20;
 mod tests {
     use super::{Fingerprint, PrivateKey, PublicKey, G};
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use pbmx_serde::{FromBase64, ToBase64};
     use rand::thread_rng;
     use std::str::FromStr;
 
@@ -218,10 +219,10 @@ mod tests {
         let mut rng = thread_rng();
         let original = PrivateKey::random(&mut rng);
 
-        let exported = original.to_string();
+        let exported = original.to_base64().unwrap();
         dbg!(&exported);
 
-        let recovered = PrivateKey::from_str(&exported).unwrap();
+        let recovered = PrivateKey::from_base64(&exported).unwrap();
 
         assert_eq!(original.x, recovered.x);
     }
@@ -232,10 +233,10 @@ mod tests {
         let sk = PrivateKey::random(&mut rng);
         let original = sk.public_key();
 
-        let exported = original.to_string();
+        let exported = original.to_base64().unwrap();
         dbg!(&exported);
 
-        let recovered = PublicKey::from_str(&exported).unwrap();
+        let recovered = PublicKey::from_base64(&exported).unwrap();
 
         assert_eq!(original.h, recovered.h);
     }

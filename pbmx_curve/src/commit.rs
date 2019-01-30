@@ -121,8 +121,8 @@ derive_base64_conversions!(Pedersen, Error);
 mod tests {
     use super::Pedersen;
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use pbmx_serde::{FromBase64, ToBase64};
     use rand::thread_rng;
-    use std::str::FromStr;
 
     #[test]
     fn pedersen_scheme_commitments_agree_with_validation() {
@@ -149,10 +149,10 @@ mod tests {
         let h = RistrettoPoint::random(&mut rng);
         let original = Pedersen::new(h, 3, &mut rng);
 
-        let exported = original.to_string();
+        let exported = original.to_base64().unwrap();
         dbg!(&exported);
 
-        let recovered = Pedersen::from_str(&exported).unwrap();
+        let recovered = Pedersen::from_base64(&exported).unwrap();
 
         assert_eq!(original.h, recovered.h);
         assert_eq!(original.g, recovered.g);

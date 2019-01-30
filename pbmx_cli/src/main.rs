@@ -7,6 +7,7 @@ mod constants;
 mod error;
 use self::error::Error;
 mod file;
+mod stacks;
 
 mod init;
 use self::init::init;

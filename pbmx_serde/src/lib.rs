@@ -6,7 +6,7 @@
 #[macro_use]
 mod macros;
 mod bytes;
-pub use self::bytes::{FromBytes, ToBytes};
+pub use self::bytes::{FromBase64, FromBytes, ToBase64, ToBytes};
 mod error;
 pub use self::error::{Error, Result};
 

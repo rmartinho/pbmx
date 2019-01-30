@@ -1,5 +1,6 @@
 //! Serialization/deserialization
 
+use crate::Error;
 use serde::{de::Deserialize, ser::Serialize};
 
 /// A trait for types that can be serialized to bytes
@@ -18,6 +19,52 @@ pub trait FromBytes: Sized {
 
     /// Deserializes from bytes
     fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error>;
+}
+
+/// A trait for types that can be serialized to base64
+pub trait ToBase64 {
+    /// Error type
+    type Error;
+
+    /// Serializes to base64
+    fn to_base64(&self) -> Result<String, Self::Error>;
+}
+
+/// A trait for types that can be deserialized from base64
+pub trait FromBase64: Sized {
+    /// Error type
+    type Error;
+
+    /// Deserializes from base64
+    fn from_base64(string: &str) -> Result<Self, Self::Error>;
+}
+
+impl<T> ToBase64 for T
+where
+    T: ToBytes,
+{
+    type Error = T::Error;
+
+    fn to_base64(&self) -> Result<String, Self::Error> {
+        Ok(base64::encode_config(
+            &self.to_bytes()?,
+            base64::URL_SAFE_NO_PAD,
+        ))
+    }
+}
+
+impl<T> FromBase64 for T
+where
+    T: FromBytes,
+    T::Error: From<Error>,
+{
+    type Error = T::Error;
+
+    fn from_base64(string: &str) -> Result<Self, Self::Error> {
+        let bytes = base64::decode_config(string, base64::URL_SAFE_NO_PAD).map_err(Error::from)?;
+        let x = Self::from_bytes(&bytes)?;
+        Ok(x)
+    }
 }
 
 impl<T> ToBytes for Vec<T>

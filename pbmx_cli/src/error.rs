@@ -22,7 +22,8 @@ impl Error {
                 message: "Crypto failure".into(),
                 kind: clap::ErrorKind::Io,
                 info: None,
-            }.exit(),
+            }
+            .exit(),
             Error::InvalidSubcommand => clap::Error {
                 message: "Invalid subcommand".into(),
                 kind: clap::ErrorKind::InvalidSubcommand,

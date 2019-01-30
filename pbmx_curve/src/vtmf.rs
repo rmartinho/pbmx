@@ -389,8 +389,8 @@ mod tests {
         perm::{Permutation, Shuffles},
     };
     use curve25519_dalek::scalar::Scalar;
+    use pbmx_serde::{FromBase64, ToBase64};
     use rand::{thread_rng, Rng};
-    use std::str::FromStr;
 
     #[test]
     fn vtmf_roundtrips_via_base64() {
@@ -405,10 +405,10 @@ mod tests {
         original.add_key(pk1).unwrap();
         original.add_key(pk2).unwrap();
 
-        let exported = original.to_string();
+        let exported = original.to_base64().unwrap();
         dbg!(&exported);
 
-        let recovered = Vtmf::from_str(&exported).unwrap();
+        let recovered = Vtmf::from_base64(&exported).unwrap();
 
         assert_eq!(original.sk, recovered.sk);
         assert_eq!(original.pk, recovered.pk);
