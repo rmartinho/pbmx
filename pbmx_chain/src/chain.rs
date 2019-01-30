@@ -166,11 +166,9 @@ mod test {
     use super::Chain;
     use crate::{block::Block, payload::Payload};
     use pbmx_curve::keys::PrivateKey;
+    use pbmx_serde::{FromBase64, ToBase64};
     use rand::thread_rng;
-    use std::{
-        collections::{BTreeMap, BTreeSet},
-        str::FromStr,
-    };
+    use std::collections::{BTreeMap, BTreeSet};
 
     #[test]
     fn chain_block_iteration_works() {
@@ -230,10 +228,10 @@ mod test {
         chain.add_block(b2.clone());
         let original = chain;
 
-        let exported = original.to_string();
+        let exported = original.to_base64().unwrap();
         dbg!(&exported);
 
-        let recovered = Chain::from_str(&exported).unwrap();
+        let recovered = Chain::from_base64(&exported).unwrap();
 
         assert_eq!(original.heads, recovered.heads);
         assert_eq!(original.roots, recovered.roots);

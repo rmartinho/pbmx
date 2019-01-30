@@ -28,6 +28,3 @@ version = "1.7"
 
 [dependencies.rand]
 version = "0.6"
-
-[dependencies.rustyline]
-version = "3.0"

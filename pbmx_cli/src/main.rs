@@ -1,4 +1,6 @@
 #![deny(clippy::correctness)]
+// TODO REMOVE
+#![allow(dead_code)]
 
 #[macro_use]
 extern crate clap;
@@ -8,6 +10,7 @@ mod error;
 use self::error::Error;
 mod file;
 mod stacks;
+mod state;
 
 mod init;
 use self::init::init;

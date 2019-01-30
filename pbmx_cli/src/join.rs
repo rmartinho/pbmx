@@ -1,10 +1,7 @@
-use crate::{constants::VTMF_FILE_NAME, error::Result};
+use crate::{error::Result, state::read_state};
 use clap::ArgMatches;
-use pbmx_curve::vtmf::Vtmf;
-use pbmx_serde::FromBase64;
-use std::fs;
 
-pub fn join(m: &ArgMatches) -> Result<()> {
-    let vtmf = Vtmf::from_base64(&fs::read_to_string(VTMF_FILE_NAME)?)?;
+pub fn join(_: &ArgMatches) -> Result<()> {
+    let _state = dbg!(read_state());
     Ok(())
 }

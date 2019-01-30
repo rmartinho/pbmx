@@ -26,7 +26,7 @@ pub use crate::zkp::{
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 /// A verifiable *k*-out-of-*k* threshold masking function
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Vtmf {
     sk: PrivateKey,
     pk: PublicKey,
