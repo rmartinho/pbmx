@@ -1,5 +1,14 @@
+#![deny(clippy::correctness)]
+
 #[macro_use]
 extern crate clap;
+
+mod error;
+use self::error::Error;
+mod file;
+
+mod init;
+use self::init::init;
 
 fn main() {
     let matches = clap_app!(pbmx =>
@@ -8,8 +17,8 @@ fn main() {
         (about: crate_description!())
         (@subcommand init =>
             (about: "Initializes a new game folder")
-            (version: "unimplemented")
-            (@arg FOLDER: +required "The folder to hold game data")
+            (version: crate_version!())
+            (@arg PATH: +required "The folder to hold game data")
         )
         (@subcommand issue =>
             (about: "Issues the current block")
@@ -127,5 +136,10 @@ fn main() {
         )
     )
     .get_matches();
-    dbg!(matches);
+
+    match dbg!(matches.subcommand()) {
+        ("init", Some(sub_m)) => init(sub_m),
+        _ => Err(Error::InvalidSubcommand),
+    }
+    .unwrap_or_else(|e| e.exit());
 }
