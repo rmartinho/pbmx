@@ -3,12 +3,16 @@
 #[macro_use]
 extern crate clap;
 
+mod constants;
 mod error;
 use self::error::Error;
 mod file;
 
 mod init;
 use self::init::init;
+
+mod join;
+use self::join::join;
 
 fn main() {
     let matches = clap_app!(pbmx =>
@@ -19,6 +23,10 @@ fn main() {
             (about: "Initializes a new game folder")
             (version: crate_version!())
             (@arg PATH: +required "The folder to hold game data")
+        )
+        (@subcommand log =>
+            (about: "Displays the game log")
+            (version: "unimplemented")
         )
         (@subcommand issue =>
             (about: "Issues the current block")
@@ -39,19 +47,14 @@ fn main() {
             (version: "unimplemented")
             (@arg FILE: +required "The path to the file")
         )
-        (@subcommand file =>
-            (about: "Adds a the contents of a file to the current block")
+        (@subcommand setup =>
+            (about: "Defines the game setup")
             (version: "unimplemented")
-            (@arg FILE: +required "The path to the file")
-        )
-        (@subcommand start =>
-            (about: "Starts a game")
-            (version: "unimplemented")
-            (@arg NAME: +required "The name of the game")
+            (@arg PATH: +required "A file with a game description")
         )
         (@subcommand join =>
             (about: "Joins the game")
-            (version: "unimplemented")
+            (version: crate_version!())
         )
         (@subcommand stack =>
             (about: "Manipulates stacks")
@@ -139,6 +142,7 @@ fn main() {
 
     match dbg!(matches.subcommand()) {
         ("init", Some(sub_m)) => init(sub_m),
+        ("join", Some(sub_m)) => join(sub_m),
         _ => Err(Error::InvalidSubcommand),
     }
     .unwrap_or_else(|e| e.exit());

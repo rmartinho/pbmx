@@ -4,6 +4,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     Clap(clap::Error),
     Io(std::io::Error),
+    Crypto(pbmx_curve::Error),
     InvalidSubcommand,
 }
 
@@ -14,13 +15,20 @@ impl Error {
                 message: e.to_string(),
                 kind: clap::ErrorKind::Io,
                 info: None,
-            }.exit(),
+            }
+            .exit(),
             Error::Clap(e) => e.exit(),
+            Error::Crypto(e) => clap::Error {
+                message: "Crypto failure".into(),
+                kind: clap::ErrorKind::Io,
+                info: None,
+            }.exit(),
             Error::InvalidSubcommand => clap::Error {
                 message: "Invalid subcommand".into(),
                 kind: clap::ErrorKind::InvalidSubcommand,
                 info: None,
-            }.exit(),
+            }
+            .exit(),
         }
     }
 }
@@ -34,6 +42,12 @@ impl From<clap::Error> for Error {
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Error::Io(e)
+    }
+}
+
+impl From<pbmx_curve::Error> for Error {
+    fn from(e: pbmx_curve::Error) -> Self {
+        Error::Crypto(e)
     }
 }
 
