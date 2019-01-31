@@ -3,10 +3,7 @@ use pbmx_curve::{keys::Fingerprint, vtmf::SecretShare};
 use std::collections::HashMap;
 
 #[derive(Clone, Default, Debug)]
-pub struct SecretMap {
-    shares: HashMap<Id, Vec<SecretShare>>,
-    owners: HashMap<Id, Vec<Fingerprint>>,
-}
+pub struct SecretMap(HashMap<Id, (Vec<SecretShare>, Vec<Fingerprint>)>);
 
 impl SecretMap {
     pub fn new() -> Self {
@@ -14,7 +11,7 @@ impl SecretMap {
     }
 
     pub fn len(&self) -> usize {
-        self.shares.len()
+        self.0.len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -22,30 +19,26 @@ impl SecretMap {
     }
 
     pub fn insert(&mut self, id: Id, owner: Fingerprint, shares: Vec<SecretShare>) {
-        self.shares
+        self.0
             .entry(id)
-            .and_modify(|v| {
-                for (s, s1) in v.iter_mut().zip(shares.iter()) {
-                    *s += s1;
+            .and_modify(|(s, fp)| {
+                for (s0, s1) in s.iter_mut().zip(shares.iter()) {
+                    *s0 += s1;
                 }
+                fp.push(owner);
             })
-            .or_insert(shares);
-
-        self.owners
-            .entry(id)
-            .and_modify(|v| v.push(owner))
-            .or_insert_with(|| vec![owner]);
+            .or_insert_with(|| (shares, vec![owner]));
     }
 
     pub fn ids(&self) -> impl Iterator<Item = &Id> {
-        self.shares.keys()
+        self.0.keys()
     }
 
     pub fn shares(&self, id: Id) -> &[SecretShare] {
-        &self.shares[&id]
+        &self.0[&id].0
     }
 
     pub fn fingerprints(&self, id: Id) -> &[Fingerprint] {
-        &self.owners[&id]
+        &self.0[&id].1
     }
 }

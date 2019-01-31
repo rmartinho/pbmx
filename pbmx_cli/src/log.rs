@@ -49,32 +49,38 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
     }
 
     fn visit_open_stack(&mut self, _: &Chain, _: &Block, _stack: &[Mask]) {
-        println!("    {} {}", "stack[open]".green(), 4);
+        println!("    {} {}", "stack[pub]".green(), "<???>");
     }
 
     fn visit_private_stack(
         &mut self,
         _: &Chain,
         _: &Block,
-        _: Id,
-        _stack: &[Mask],
+        id: Id,
+        stack: &[Mask],
         _: &[PrivateMaskProof],
     ) {
+        println!("    {} {:16} \u{2283} {:16}", "stack[sec]".green(), id, Id::of(&stack.to_vec()).unwrap());
     }
 
-    fn visit_mask_stack(&mut self, _: &Chain, _: &Block, _: Id, _stack: &[Mask], _: &[MaskProof]) {}
+    fn visit_mask_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &[Mask], _: &[MaskProof]) {
+        println!("    {} {:16} \u{21AC} {:16}", "mask".green(), id, Id::of(&stack.to_vec()).unwrap());
+    }
 
     fn visit_shuffle_stack(
         &mut self,
         _: &Chain,
         _: &Block,
-        _: Id,
-        _stack: &[Mask],
+        id: Id,
+        stack: &[Mask],
         _: &ShuffleProof,
     ) {
+        println!("    {} {:16} \u{224B} {:16}", "shuffle".green(), id, Id::of(&stack.to_vec()).unwrap());
     }
 
-    fn visit_shift_stack(&mut self, _: &Chain, _: &Block, _: Id, _stack: &[Mask], _: &ShiftProof) {}
+    fn visit_shift_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &[Mask], _: &ShiftProof) {
+        println!("    {} {:16} \u{21CB} {:16}", "cut".green(), id, Id::of(&stack.to_vec()).unwrap());
+    }
 
     fn visit_name_stack(&mut self, _: &Chain, _: &Block, id: Id, name: &str) {
         println!("    {} {:16} {}", "name".green(), id, name);

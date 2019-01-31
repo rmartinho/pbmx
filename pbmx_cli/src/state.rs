@@ -1,6 +1,7 @@
 use crate::{
     constants::{BLOCKS_FOLDER_NAME, BLOCK_EXTENSION, CURRENT_BLOCK_FILE_NAME, KEY_FILE_NAME},
     error::Result,
+    randoms::RandomMap,
     secrets::SecretMap,
     stacks::StackMap,
 };
@@ -26,6 +27,7 @@ pub struct State {
     pub chain: Chain,
     pub stacks: StackMap,
     pub secrets: SecretMap,
+    pub randoms: RandomMap,
     pub payloads: Vec<Payload>,
 }
 
@@ -52,6 +54,7 @@ impl State {
             vtmf: Vtmf::new(sk),
             stacks: StackMap::new(),
             secrets: SecretMap::new(),
+            randoms: RandomMap::new(),
         };
         chain.visit(&mut visitor);
 
@@ -61,6 +64,7 @@ impl State {
             vtmf: visitor.vtmf,
             stacks: visitor.stacks,
             secrets: visitor.secrets,
+            randoms: visitor.randoms,
             chain,
             payloads,
         })
@@ -79,6 +83,7 @@ struct ChainParser {
     vtmf: Vtmf,
     stacks: StackMap,
     secrets: SecretMap,
+    randoms: RandomMap,
 }
 
 impl ChainVisitor for ChainParser {

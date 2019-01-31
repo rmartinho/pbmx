@@ -3,10 +3,7 @@ use pbmx_curve::{keys::Fingerprint, vtmf::Mask};
 use std::collections::HashMap;
 
 #[derive(Clone, Default, Debug)]
-pub struct RandomMap {
-    entropy: HashMap<Id, Mask>,
-    owners: HashMap<Id, Vec<Fingerprint>>,
-}
+pub struct RandomMap(HashMap<Id, (u64, Mask, Vec<Fingerprint>)>);
 
 impl RandomMap {
     pub fn new() -> Self {
@@ -14,37 +11,33 @@ impl RandomMap {
     }
 
     pub fn len(&self) -> usize {
-        self.entropy.len()
+        self.0.len()
     }
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    pub fn insert(&mut self, id: Id, owner: Fingerprint, entropy: Mask) {
-        self.entropy
-            .entry(id)
-            .and_modify(|e| {
-                e.0 += entropy.0;
-                e.1 += entropy.1;
-            })
-            .or_insert(entropy);
+    pub fn insert(&mut self, id: Id, n: u64) {
+        self.0.insert(id, (n, Mask::default(), Vec::new()));
+    }
 
-        self.owners
-            .entry(id)
-            .and_modify(|v| v.push(owner))
-            .or_insert_with(|| vec![owner]);
+    pub fn add_entropy(&mut self, id: Id, owner: Fingerprint, entropy: Mask) {
+        let (_, m, fp) = self.0.get_mut(&id).unwrap();
+        m.0 += entropy.0;
+        m.1 += entropy.1;
+        fp.push(owner);
     }
 
     pub fn ids(&self) -> impl Iterator<Item = &Id> {
-        self.entropy.keys()
+        self.0.keys()
     }
 
     pub fn entropy(&self, id: Id) -> &Mask {
-        &self.entropy[&id]
+        &self.0[&id].1
     }
 
     pub fn fingerprints(&self, id: Id) -> &[Fingerprint] {
-        &self.owners[&id]
+        &self.0[&id].2
     }
 }
