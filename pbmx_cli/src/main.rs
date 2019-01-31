@@ -14,18 +14,15 @@ mod secrets;
 mod stacks;
 mod state;
 
-mod init;
-use self::init::init;
-mod join;
-use self::join::join;
-mod status;
-use self::status::status;
-mod log;
-use self::log::log;
-mod message;
-use self::message::message;
-mod issue;
-use self::issue::issue;
+mod cmd;
+use cmd::init::init;
+use cmd::join::join;
+use cmd::status::status;
+use cmd::log::log;
+use cmd::message::message;
+use cmd::issue::issue;
+use cmd::stack::stack;
+use cmd::random::random;
 
 fn main() {
     let matches = clap_app!(pbmx =>
@@ -38,19 +35,29 @@ fn main() {
         (@setting VersionlessSubcommands)
         (@subcommand init =>
             (about: "Initializes a new game folder")
+            (@setting DeriveDisplayOrder)
+            (@setting ColoredHelp)
             (@arg PATH: +required "The folder to hold game data")
         )
         (@subcommand join =>
             (about: "Joins the game")
+            (@setting DeriveDisplayOrder)
+            (@setting ColoredHelp)
         )
         (@subcommand status =>
             (about: "Displays the game status")
+            (@setting DeriveDisplayOrder)
+            (@setting ColoredHelp)
         )
         (@subcommand log =>
             (about: "Displays the game log")
+            (@setting DeriveDisplayOrder)
+            (@setting ColoredHelp)
         )
         (@subcommand message =>
             (about: "Adds a message to the current block")
+            (@setting DeriveDisplayOrder)
+            (@setting ColoredHelp)
             (@group data +required =>
                 (@arg MESSAGE: "The message")
                 (@arg BASE64: -b --base64 +takes_value "Use a binary message given in base64")
@@ -59,8 +66,13 @@ fn main() {
         )
         (@subcommand stack =>
             (about: "Manipulates stacks")
+            (@setting DeriveDisplayOrder)
+            (@setting ColoredHelp)
+            (@setting SubcommandRequiredElseHelp)
             (@subcommand create =>
                 (about: "Creates a new stack")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg TOKENS: +multiple +use_delimiter "The tokens in the stack")
                 (@arg NAME: -n --name +takes_value "Sets the name of the stack")
                 (@arg HIDDEN: -H --hidden conflicts_with[OPEN] "Makes the stack contents hidden from others")
@@ -68,29 +80,41 @@ fn main() {
             )
             (@subcommand list =>
                 (about: "Lists existing stacks")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg ALL: -a --all "Also includes unnamed stacks")
             )
             (@subcommand show =>
                 (about: "Shows a stack's details")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")
                 (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data")
             )
             (@subcommand mask =>
                 (about: "Remasks a stack")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")
             )
             (@subcommand shuffle =>
                 (about: "Shuffles a stack")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")
                 (@arg ORDER: -o --order <INDICES> +multiple +use_delimiter "Chooses a specific order instead of randomizing")
             )
             (@subcommand cut =>
                 (about: "Cuts a stack")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")
                 (@arg N: -n +takes_value "Chooses a specific cut size instead of randomizing")
             )
             (@subcommand take =>
                 (about: "Takes some tokens from an existing stack into another")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg SOURCE: +required "The name or identifier of the source stack")
                 (@arg INDICES: +required +multiple +use_delimiter "The indices of the tokens to remove")
                 (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
@@ -99,6 +123,8 @@ fn main() {
             )
             (@subcommand pile =>
                 (about: "Piles several stacks together")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg STACKS: +required +multiple "The name or identifier of the source stacks, from top to bottom")
                 (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
                 (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks")
@@ -106,21 +132,32 @@ fn main() {
             )
             (@subcommand reveal =>
                 (about: "Reveals the secret share of a stack to others")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")
             )
         )
         (@subcommand random =>
             (about: "Handles distributed generation of shared random numbers")
+            (@setting DeriveDisplayOrder)
+            (@setting ColoredHelp)
+            (@setting SubcommandRequiredElseHelp)
             (@subcommand new =>
                 (about: "Starts the generation of a new shared random number")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg BOUND: +required "The exclusive upper bound on the number")
             )
             (@subcommand add =>
                 (about: "Adds a share in the generation of a shared random number")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg ID: +required "The identifier for the random number being generated")
             )
             (@subcommand gen =>
                 (about: "Completes the generation of a shared random number")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
                 (@arg ID: +required "The identifier for the random number being generated")
             )
         )
@@ -136,6 +173,8 @@ fn main() {
         ("status", Some(sub_m)) => status(sub_m),
         ("log", Some(sub_m)) => log(sub_m),
         ("message", Some(sub_m)) => message(sub_m),
+        ("stack", Some(sub_m)) => stack(sub_m),
+        ("random", Some(sub_m)) => random(sub_m),
         ("issue", Some(sub_m)) => issue(sub_m),
         _ => Err(Error::InvalidSubcommand),
     }

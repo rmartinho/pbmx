@@ -126,6 +126,10 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
     }
 
     fn visit_bytes(&mut self, _: &Chain, _: &Block, bytes: &[u8]) {
-        println!("    {} {}", "bytes".green().bold(), String::from_utf8_lossy(bytes));
+        println!(
+            "    {} {}",
+            "bytes".green().bold(),
+            String::from_utf8_lossy(bytes)
+        );
     }
 }
