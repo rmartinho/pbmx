@@ -14,9 +14,12 @@ mod state;
 
 mod init;
 use self::init::init;
-
 mod join;
 use self::join::join;
+mod issue;
+use self::issue::issue;
+mod message;
+use self::message::message;
 
 fn main() {
     let matches = clap_app!(pbmx =>
@@ -34,22 +37,16 @@ fn main() {
         )
         (@subcommand issue =>
             (about: "Issues the current block")
-            (version: "unimplemented")
+            (version: crate_version!())
         )
-        (@subcommand msg =>
+        (@subcommand message =>
             (about: "Adds a message to the current block")
-            (version: "unimplemented")
-            (@arg MESSAGE: +required "The message")
-        )
-        (@subcommand bin =>
-            (about: "Adds a binary blob to the current block")
-            (version: "unimplemented")
-            (@arg BASE64: +required "The blob in base64")
-        )
-        (@subcommand file =>
-            (about: "Adds a the contents of a file to the current block")
-            (version: "unimplemented")
-            (@arg FILE: +required "The path to the file")
+            (version: crate_version!())
+            (@group data +required =>
+                (@arg MESSAGE: "The message")
+                (@arg BASE64: -b --base64 +takes_value "Use a binary message given in base64")
+                (@arg FILE: -f --file +takes_value "Use the contents of the file as the message")
+            )
         )
         (@subcommand setup =>
             (about: "Defines the game setup")
@@ -147,6 +144,8 @@ fn main() {
     match dbg!(matches.subcommand()) {
         ("init", Some(sub_m)) => init(sub_m),
         ("join", Some(sub_m)) => join(sub_m),
+        ("issue", Some(sub_m)) => issue(sub_m),
+        ("message", Some(sub_m)) => message(sub_m),
         _ => Err(Error::InvalidSubcommand),
     }
     .unwrap_or_else(|e| e.exit());

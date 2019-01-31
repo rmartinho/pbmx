@@ -80,8 +80,8 @@ impl PrivateKey {
 
 impl PublicKey {
     /// Gets this key's public value
-    pub fn point(&self) -> &RistrettoPoint {
-        &self.h
+    pub fn point(&self) -> RistrettoPoint {
+        self.h
     }
 
     /// Gets this key's fingerprint
@@ -91,7 +91,7 @@ impl PublicKey {
 
     /// Combines this public key with another one to form a shared key
     pub fn combine(&mut self, pk: &PublicKey) {
-        self.h += &pk.h;
+        self.h += pk.h
     }
 
     /// Encrypts a given plaintext
@@ -107,13 +107,13 @@ impl PublicKey {
         let mut rng = thread_rng();
         let r = Scalar::random(&mut rng);
         let c0 = c.0 + G * &r;
-        let c1 = c.1 + self.h * r;
+        let c1 = c.1 + self.point() * r;
         (c0, c1)
     }
 
     /// Verifies a given signature
     pub fn verify(&self, m: &Scalar, s: &(RistrettoPoint, Scalar)) -> Result<(), ()> {
-        let lhs = self.h * point_to_scalar(&s.0) + s.0 * s.1;
+        let lhs = self.point() * point_to_scalar(&s.0) + s.0 * s.1;
         let rhs = G * m;
         if lhs == rhs {
             Ok(())
@@ -211,7 +211,7 @@ mod tests {
         let sk = PrivateKey::random(&mut rng);
         let pk = sk.public_key();
 
-        assert_eq!(pk.h, G * &sk.x);
+        assert_eq!(pk.point(), G * &sk.x);
     }
 
     #[test]

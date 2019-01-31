@@ -51,6 +51,21 @@ impl Vtmf {
         unsafe { Self::new_unchecked(sk, pk.clone(), vec![pk]) }
     }
 
+    /// Gets the private key
+    pub fn private_key(&mut self) -> PrivateKey {
+        self.sk.clone()
+    }
+
+    /// Gets the public key
+    pub fn public_key(&mut self) -> PublicKey {
+        self.sk.public_key()
+    }
+
+    /// Gets the shared public key
+    pub fn shared_key(&mut self) -> PublicKey {
+        self.pk.clone()
+    }
+
     /// Add a public key to the VTMF
     pub fn add_key(&mut self, pk: PublicKey) -> Result<(), Error> {
         self.pk.combine(&pk);
@@ -76,7 +91,7 @@ impl Vtmf {
             .values()
             .map(PublicKey::point)
             .sum::<RistrettoPoint>();
-        if h == *self.pk.point() {
+        if h == self.pk.point() {
             Some(self)
         } else {
             None
@@ -110,7 +125,7 @@ impl Vtmf {
                 a: &c0,
                 b: &hr,
                 g: &G.basepoint(),
-                h,
+                h: &h,
             },
             dlog_eq::Secrets { x: &r },
         );
@@ -123,7 +138,7 @@ impl Vtmf {
             a: &c.0,
             b: &(c.1 - G * m),
             g: &G.basepoint(),
-            h: self.pk.point(),
+            h: &self.pk.point(),
         })
     }
 
@@ -140,7 +155,7 @@ impl Vtmf {
                 a: &c0,
                 b: &c1,
                 g: &G.basepoint(),
-                h,
+                h: &h,
                 m,
             },
             mask_1ofn::Secrets { x: &r, i },
@@ -159,7 +174,7 @@ impl Vtmf {
             a: &c.0,
             b: &c.1,
             g: &G.basepoint(),
-            h: self.pk.point(),
+            h: &self.pk.point(),
             m,
         })
     }
@@ -176,7 +191,7 @@ impl Vtmf {
                 a: &gr,
                 b: &hr,
                 g: &G.basepoint(),
-                h,
+                h: &h,
             },
             dlog_eq::Secrets { x: &r },
         );
@@ -195,7 +210,7 @@ impl Vtmf {
             a: &gr,
             b: &hr,
             g: &G.basepoint(),
-            h,
+            h: &h,
         })
     }
 }

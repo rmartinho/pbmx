@@ -8,9 +8,11 @@ pub enum Error {
     Chain(pbmx_chain::Error),
     Serde(pbmx_serde::Error),
     InvalidSubcommand,
+    InvalidData,
 }
 
 impl Error {
+    #[allow(clippy::cyclomatic_complexity)] // triggers a clippy bug
     pub fn exit(&self) -> ! {
         match self {
             Error::Io(e) => clap::Error {
@@ -41,6 +43,12 @@ impl Error {
             Error::InvalidSubcommand => clap::Error {
                 message: "Invalid subcommand".into(),
                 kind: clap::ErrorKind::InvalidSubcommand,
+                info: None,
+            }
+            .exit(),
+            Error::InvalidData => clap::Error {
+                message: "Invalid data".into(),
+                kind: clap::ErrorKind::InvalidValue,
                 info: None,
             }
             .exit(),
