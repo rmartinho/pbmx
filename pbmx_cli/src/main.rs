@@ -9,6 +9,7 @@ mod constants;
 mod error;
 use self::error::Error;
 mod file;
+mod randoms;
 mod secrets;
 mod stacks;
 mod state;

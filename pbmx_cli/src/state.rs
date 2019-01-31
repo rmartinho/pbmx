@@ -1,6 +1,7 @@
 use crate::{
     constants::{BLOCKS_FOLDER_NAME, BLOCK_EXTENSION, CURRENT_BLOCK_FILE_NAME, KEY_FILE_NAME},
     error::Result,
+    secrets::SecretMap,
     stacks::StackMap,
 };
 use pbmx_chain::{
@@ -11,18 +12,21 @@ use pbmx_chain::{
 };
 use pbmx_curve::{
     keys::{PrivateKey, PublicKey},
-    vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, ShiftProof, ShuffleProof, Vtmf},
+    vtmf::{
+        Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+        Vtmf,
+    },
 };
 use pbmx_serde::{FromBase64, ToBase64};
-use std::{collections::HashMap, ffi::OsStr, fs};
+use std::{ffi::OsStr, fs};
 
 #[derive(Debug)]
 pub struct State {
     pub vtmf: Vtmf,
     pub chain: Chain,
     pub stacks: StackMap,
+    pub secrets: SecretMap,
     pub payloads: Vec<Payload>,
-    pub secrets: HashMap<Id, Vec<SecretShare>>,
 }
 
 impl State {
@@ -47,6 +51,7 @@ impl State {
         let mut visitor = ChainParser {
             vtmf: Vtmf::new(sk),
             stacks: StackMap::new(),
+            secrets: SecretMap::new(),
         };
         chain.visit(&mut visitor);
 
@@ -55,7 +60,7 @@ impl State {
         Ok(State {
             vtmf: visitor.vtmf,
             stacks: visitor.stacks,
-            secrets: HashMap::new(),
+            secrets: visitor.secrets,
             chain,
             payloads,
         })
@@ -73,6 +78,7 @@ impl State {
 struct ChainParser {
     vtmf: Vtmf,
     stacks: StackMap,
+    secrets: SecretMap,
 }
 
 impl ChainVisitor for ChainParser {
@@ -116,5 +122,16 @@ impl ChainVisitor for ChainParser {
 
     fn visit_name_stack(&mut self, _: &Chain, _: &Block, id: Id, name: &str) {
         self.stacks.set_name(name.to_string(), id);
+    }
+
+    fn visit_publish_shares(
+        &mut self,
+        _: &Chain,
+        block: &Block,
+        id: Id,
+        shares: &[SecretShare],
+        _: &[SecretShareProof],
+    ) {
+        self.secrets.insert(id, block.signer(), shares.to_vec());
     }
 }

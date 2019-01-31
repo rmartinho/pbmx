@@ -1,35 +1,34 @@
 use pbmx_chain::Id;
-use pbmx_curve::{keys::Fingerprint, vtmf::SecretShare};
+use pbmx_curve::{keys::Fingerprint, vtmf::Mask};
 use std::collections::HashMap;
 
 #[derive(Clone, Default, Debug)]
-pub struct SecretMap {
-    shares: HashMap<Id, Vec<SecretShare>>,
+pub struct RandomMap {
+    entropy: HashMap<Id, Mask>,
     owners: HashMap<Id, Vec<Fingerprint>>,
 }
 
-impl SecretMap {
+impl RandomMap {
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn len(&self) -> usize {
-        self.shares.len()
+        self.entropy.len()
     }
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    pub fn insert(&mut self, id: Id, owner: Fingerprint, shares: Vec<SecretShare>) {
-        self.shares
+    pub fn insert(&mut self, id: Id, owner: Fingerprint, entropy: Mask) {
+        self.entropy
             .entry(id)
-            .and_modify(|v| {
-                for (s, s1) in v.iter_mut().zip(shares.iter()) {
-                    *s += s1;
-                }
+            .and_modify(|e| {
+                e.0 += entropy.0;
+                e.1 += entropy.1;
             })
-            .or_insert(shares);
+            .or_insert(entropy);
 
         self.owners
             .entry(id)
@@ -38,11 +37,11 @@ impl SecretMap {
     }
 
     pub fn ids(&self) -> impl Iterator<Item = &Id> {
-        self.shares.keys()
+        self.entropy.keys()
     }
 
-    pub fn shares(&self, id: Id) -> &[SecretShare] {
-        &self.shares[&id]
+    pub fn entropy(&self, id: Id) -> &Mask {
+        &self.entropy[&id]
     }
 
     pub fn fingerprints(&self, id: Id) -> &[Fingerprint] {
