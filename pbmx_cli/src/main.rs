@@ -26,27 +26,14 @@ fn main() {
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
+        (@setting DeriveDisplayOrder)
+        (@setting ColoredHelp)
+        (@setting SubcommandRequiredElseHelp)
+        (@setting VersionlessSubcommands)
         (@subcommand init =>
             (about: "Initializes a new game folder")
             (version: crate_version!())
             (@arg PATH: +required "The folder to hold game data")
-        )
-        (@subcommand log =>
-            (about: "Displays the game log")
-            (version: "unimplemented")
-        )
-        (@subcommand issue =>
-            (about: "Issues the current block")
-            (version: crate_version!())
-        )
-        (@subcommand message =>
-            (about: "Adds a message to the current block")
-            (version: crate_version!())
-            (@group data +required =>
-                (@arg MESSAGE: "The message")
-                (@arg BASE64: -b --base64 +takes_value "Use a binary message given in base64")
-                (@arg FILE: -f --file +takes_value "Use the contents of the file as the message")
-            )
         )
         (@subcommand setup =>
             (about: "Defines the game setup")
@@ -56,6 +43,19 @@ fn main() {
         (@subcommand join =>
             (about: "Joins the game")
             (version: crate_version!())
+        )
+        (@subcommand log =>
+            (about: "Displays the game log")
+            (version: "unimplemented")
+        )
+        (@subcommand message =>
+            (about: "Adds a message to the current block")
+            (version: crate_version!())
+            (@group data +required =>
+                (@arg MESSAGE: "The message")
+                (@arg BASE64: -b --base64 +takes_value "Use a binary message given in base64")
+                (@arg FILE: -f --file +takes_value "Use the contents of the file as the message")
+            )
         )
         (@subcommand stack =>
             (about: "Manipulates stacks")
@@ -138,14 +138,18 @@ fn main() {
                 (@arg ID: +required "The identifier for the random number being generated")
             )
         )
+        (@subcommand issue =>
+            (about: "Issues the current block")
+            (version: crate_version!())
+        )
     )
     .get_matches();
 
-    match dbg!(matches.subcommand()) {
+    match matches.subcommand() {
         ("init", Some(sub_m)) => init(sub_m),
         ("join", Some(sub_m)) => join(sub_m),
-        ("issue", Some(sub_m)) => issue(sub_m),
         ("message", Some(sub_m)) => message(sub_m),
+        ("issue", Some(sub_m)) => issue(sub_m),
         _ => Err(Error::InvalidSubcommand),
     }
     .unwrap_or_else(|e| e.exit());
