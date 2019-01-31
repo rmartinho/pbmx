@@ -68,8 +68,12 @@ impl Vtmf {
 
     /// Add a public key to the VTMF
     pub fn add_key(&mut self, pk: PublicKey) -> Result<(), Error> {
+        let fp = pk.fingerprint();
+        if self.pki.contains_key(&fp) {
+            return Ok(())
+        }
         self.pk.combine(&pk);
-        self.pki.insert(pk.fingerprint(), pk);
+        self.pki.insert(fp, pk);
         Ok(())
     }
 
