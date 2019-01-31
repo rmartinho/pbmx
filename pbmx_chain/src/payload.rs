@@ -42,6 +42,34 @@ impl Payload {
     pub fn id(&self) -> Id {
         Id::of(self).unwrap()
     }
+
+    /// Gets a short string description of this payload
+    pub fn display_short(&self) -> String {
+        use Payload::*;
+        match self {
+            PublishKey(pk) => format!("publish key {:16}", pk.fingerprint()),
+            OpenStack(stk) => format!("open stack {:16}", Id::of(stk).unwrap()),
+            PrivateStack(id, stk, _) => format!(
+                "private stack {1:16} \u{2282} {0:16}",
+                id,
+                Id::of(stk).unwrap()
+            ),
+            NameStack(id, name) => format!("name {:16} {}", id, name),
+            MaskStack(id, stk, _) => {
+                format!("mask {1:16} \u{21AC} {0:16}", id, Id::of(stk).unwrap())
+            }
+            ShuffleStack(id, stk, _) => {
+                format!("shuffle {1:16} \u{224B} {0:16}", id, Id::of(stk).unwrap())
+            }
+            ShiftStack(id, stk, _) => {
+                format!("cut {1:16} \u{21CB} {0:16}", id, Id::of(stk).unwrap())
+            }
+            PublishShares(id, ..) => format!("reveal {:16}", id),
+            StartRandom(n) => format!("random {:16} < {}", n, self.id()),
+            RandomShare(id, _) => format!("entropy {:16}", id),
+            Bytes(bytes) => format!("message {}", &String::from_utf8_lossy(bytes)),
+        }
+    }
 }
 
 derive_base64_conversions!(Payload, Error);

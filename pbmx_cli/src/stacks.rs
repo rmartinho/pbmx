@@ -22,6 +22,10 @@ impl StackMap {
         self.map.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn insert(&mut self, stack: Vec<Mask>) {
         self.map.insert(Id::of(&stack).unwrap(), stack);
     }

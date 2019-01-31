@@ -42,6 +42,16 @@ impl Chain {
         self.blocks.len()
     }
 
+    /// Gets the IDs of the heads
+    pub fn heads(&self) -> &[Id] {
+        &self.heads
+    }
+
+    /// Gets the IDs of the roots
+    pub fn roots(&self) -> &[Id] {
+        &self.roots
+    }
+
     /// Tests whether this chain is fully merged (i.e. there is only one head)
     pub fn is_merged(&self) -> bool {
         self.heads.len() == 1

@@ -16,10 +16,12 @@ mod init;
 use self::init::init;
 mod join;
 use self::join::join;
-mod issue;
-use self::issue::issue;
+mod status;
+use self::status::status;
 mod message;
 use self::message::message;
+mod issue;
+use self::issue::issue;
 
 fn main() {
     let matches = clap_app!(pbmx =>
@@ -32,25 +34,19 @@ fn main() {
         (@setting VersionlessSubcommands)
         (@subcommand init =>
             (about: "Initializes a new game folder")
-            (version: crate_version!())
             (@arg PATH: +required "The folder to hold game data")
-        )
-        (@subcommand setup =>
-            (about: "Defines the game setup")
-            (version: "unimplemented")
-            (@arg PATH: +required "A file with a game description")
         )
         (@subcommand join =>
             (about: "Joins the game")
-            (version: crate_version!())
+        )
+        (@subcommand status =>
+            (about: "Displays the game status")
         )
         (@subcommand log =>
             (about: "Displays the game log")
-            (version: "unimplemented")
         )
         (@subcommand message =>
             (about: "Adds a message to the current block")
-            (version: crate_version!())
             (@group data +required =>
                 (@arg MESSAGE: "The message")
                 (@arg BASE64: -b --base64 +takes_value "Use a binary message given in base64")
@@ -59,10 +55,8 @@ fn main() {
         )
         (@subcommand stack =>
             (about: "Manipulates stacks")
-            (version: "unimplemented")
             (@subcommand create =>
                 (about: "Creates a new stack")
-                (version: "unimplemented")
                 (@arg TOKENS: +multiple +use_delimiter "The tokens in the stack")
                 (@arg NAME: -n --name +takes_value "Sets the name of the stack")
                 (@arg HIDDEN: -H --hidden conflicts_with[OPEN] "Makes the stack contents hidden from others")
@@ -70,35 +64,29 @@ fn main() {
             )
             (@subcommand list =>
                 (about: "Lists existing stacks")
-                (version: "unimplemented")
                 (@arg ALL: -a --all "Also includes unnamed stacks")
             )
             (@subcommand show =>
                 (about: "Shows a stack's details")
-                (version: "unimplemented")
                 (@arg STACK: +required "The name or identifier of the stack")
                 (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data")
             )
             (@subcommand mask =>
                 (about: "Remasks a stack")
-                (version: "unimplemented")
                 (@arg STACK: +required "The name or identifier of the stack")
             )
             (@subcommand shuffle =>
                 (about: "Shuffles a stack")
-                (version: "unimplemented")
                 (@arg STACK: +required "The name or identifier of the stack")
                 (@arg ORDER: -o --order <INDICES> +multiple +use_delimiter "Chooses a specific order instead of randomizing")
             )
             (@subcommand cut =>
                 (about: "Cuts a stack")
-                (version: "unimplemented")
                 (@arg STACK: +required "The name or identifier of the stack")
                 (@arg N: -n +takes_value "Chooses a specific cut size instead of randomizing")
             )
             (@subcommand take =>
                 (about: "Takes some tokens from an existing stack into another")
-                (version: "unimplemented")
                 (@arg SOURCE: +required "The name or identifier of the source stack")
                 (@arg INDICES: +required +multiple +use_delimiter "The indices of the tokens to remove")
                 (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
@@ -107,7 +95,6 @@ fn main() {
             )
             (@subcommand pile =>
                 (about: "Piles several stacks together")
-                (version: "unimplemented")
                 (@arg STACKS: +required +multiple "The name or identifier of the source stacks, from top to bottom")
                 (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
                 (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks")
@@ -115,32 +102,26 @@ fn main() {
             )
             (@subcommand reveal =>
                 (about: "Reveals the secret share of a stack to others")
-                (version: "unimplemented")
                 (@arg STACK: +required "The name or identifier of the stack")
             )
         )
         (@subcommand random =>
             (about: "Handles distributed generation of shared random numbers")
-            (version: "unimplemented")
             (@subcommand new =>
                 (about: "Starts the generation of a new shared random number")
-                (version: "unimplemented")
                 (@arg BOUND: +required "The exclusive upper bound on the number")
             )
             (@subcommand add =>
                 (about: "Adds a share in the generation of a shared random number")
-                (version: "unimplemented")
                 (@arg ID: +required "The identifier for the random number being generated")
             )
             (@subcommand gen =>
                 (about: "Completes the generation of a shared random number")
-                (version: "unimplemented")
                 (@arg ID: +required "The identifier for the random number being generated")
             )
         )
         (@subcommand issue =>
             (about: "Issues the current block")
-            (version: crate_version!())
         )
     )
     .get_matches();
@@ -148,6 +129,7 @@ fn main() {
     match matches.subcommand() {
         ("init", Some(sub_m)) => init(sub_m),
         ("join", Some(sub_m)) => join(sub_m),
+        ("status", Some(sub_m)) => status(sub_m),
         ("message", Some(sub_m)) => message(sub_m),
         ("issue", Some(sub_m)) => issue(sub_m),
         _ => Err(Error::InvalidSubcommand),
