@@ -9,7 +9,8 @@ use pbmx_chain::{
 use pbmx_curve::{
     keys::PublicKey,
     vtmf::{
-        Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Vtmf,
+        Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+        Vtmf,
     },
 };
 

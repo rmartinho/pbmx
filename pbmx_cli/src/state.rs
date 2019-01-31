@@ -11,11 +11,10 @@ use pbmx_chain::{
 };
 use pbmx_curve::{
     keys::{PrivateKey, PublicKey},
-    vtmf::{Mask, MaskProof, PrivateMaskProof, ShiftProof, ShuffleProof, Vtmf, SecretShare},
+    vtmf::{Mask, MaskProof, PrivateMaskProof, SecretShare, ShiftProof, ShuffleProof, Vtmf},
 };
 use pbmx_serde::{FromBase64, ToBase64};
-use std::{ffi::OsStr, fs};
-use std::collections::HashMap;
+use std::{collections::HashMap, ffi::OsStr, fs};
 
 #[derive(Debug)]
 pub struct State {

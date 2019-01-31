@@ -58,7 +58,8 @@ impl<'a> Display for DisplayShort<'a> {
         match self.0 {
             PublishKey(pk) => write!(f, "publish key {:16}", pk.fingerprint()),
             OpenStack(stk) => write!(f, "open stack {:16}", Id::of(stk)?),
-            PrivateStack(id, stk, _) => write!(f, 
+            PrivateStack(id, stk, _) => write!(
+                f,
                 "private stack {1:16} \u{2282} {0:16}",
                 id,
                 Id::of(stk).unwrap()
@@ -67,9 +68,12 @@ impl<'a> Display for DisplayShort<'a> {
             MaskStack(id, stk, _) => {
                 write!(f, "mask {1:16} \u{21AC} {0:16}", id, Id::of(stk).unwrap())
             }
-            ShuffleStack(id, stk, _) => {
-                write!(f, "shuffle {1:16} \u{224B} {0:16}", id, Id::of(stk).unwrap())
-            }
+            ShuffleStack(id, stk, _) => write!(
+                f,
+                "shuffle {1:16} \u{224B} {0:16}",
+                id,
+                Id::of(stk).unwrap()
+            ),
             ShiftStack(id, stk, _) => {
                 write!(f, "cut {1:16} \u{21CB} {0:16}", id, Id::of(stk).unwrap())
             }
