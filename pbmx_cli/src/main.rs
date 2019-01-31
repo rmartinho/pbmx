@@ -18,6 +18,8 @@ mod join;
 use self::join::join;
 mod status;
 use self::status::status;
+mod log;
+use self::log::log;
 mod message;
 use self::message::message;
 mod issue;
@@ -130,6 +132,7 @@ fn main() {
         ("init", Some(sub_m)) => init(sub_m),
         ("join", Some(sub_m)) => join(sub_m),
         ("status", Some(sub_m)) => status(sub_m),
+        ("log", Some(sub_m)) => log(sub_m),
         ("message", Some(sub_m)) => message(sub_m),
         ("issue", Some(sub_m)) => issue(sub_m),
         _ => Err(Error::InvalidSubcommand),

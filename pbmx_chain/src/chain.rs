@@ -2,9 +2,16 @@
 
 use crate::{
     block::{Block, BlockBuilder},
+    payload::Payload,
     Id,
 };
-use pbmx_curve::Error;
+use pbmx_curve::{
+    keys::PublicKey,
+    vtmf::{
+        Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+    },
+    Error,
+};
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use serde::de::{Deserialize, Deserializer};
 use std::collections::HashMap;
@@ -40,6 +47,11 @@ impl Chain {
     /// Gets the number of blocks in the chain
     pub fn count(&self) -> usize {
         self.blocks.len()
+    }
+
+    /// Visits this chain
+    pub fn visit<V: ChainVisitor>(&self, v: &mut V) {
+        v.visit_chain(self);
     }
 
     /// Gets the IDs of the heads
@@ -169,6 +181,123 @@ impl<'a> Iterator for Blocks<'a> {
             }
         }
     }
+}
+
+/// A visitor for chains
+pub trait ChainVisitor {
+    /// Visits a chain
+    fn visit_chain(&mut self, chain: &Chain) {
+        for block in chain.blocks() {
+            self.visit_block(chain, block);
+        }
+    }
+    /// Visits a block
+    fn visit_block(&mut self, chain: &Chain, block: &Block) {
+        for payload in block.payloads() {
+            self.visit_payload(chain, block, payload);
+        }
+    }
+    /// Visits a payload
+    fn visit_payload(&mut self, chain: &Chain, block: &Block, payload: &Payload) {
+        use Payload::*;
+        match payload {
+            PublishKey(pk) => {
+                self.visit_publish_key(chain, block, pk);
+            }
+            OpenStack(stk) => {
+                self.visit_open_stack(chain, block, stk);
+            }
+            PrivateStack(id, stk, proof) => {
+                self.visit_private_stack(chain, block, *id, stk, proof);
+            }
+            MaskStack(id, stk, proof) => {
+                self.visit_mask_stack(chain, block, *id, stk, proof);
+            }
+            ShuffleStack(id, stk, proof) => {
+                self.visit_shuffle_stack(chain, block, *id, stk, proof);
+            }
+            ShiftStack(id, stk, proof) => {
+                self.visit_shift_stack(chain, block, *id, stk, proof);
+            }
+            NameStack(id, name) => {
+                self.visit_name_stack(chain, block, *id, name);
+            }
+            PublishShares(id, shares, proof) => {
+                self.visit_publish_shares(chain, block, *id, shares, proof);
+            }
+            StartRandom(id, n) => {
+                self.visit_start_random(chain, block, *id, *n);
+            }
+            RandomShare(id, mask) => {
+                self.visit_random_share(chain, block, *id, mask);
+            }
+            Bytes(bytes) => {
+                self.visit_bytes(chain, block, bytes);
+            }
+        }
+    }
+    /// Visits a PublishKey payload
+    fn visit_publish_key(&mut self, _chain: &Chain, _block: &Block, _key: &PublicKey) {}
+    /// Visits a OpenStack payload
+    fn visit_open_stack(&mut self, _chain: &Chain, _block: &Block, _stack: &[Mask]) {}
+    /// Visits a PrivateStack payload
+    fn visit_private_stack(
+        &mut self,
+        _chain: &Chain,
+        _block: &Block,
+        _domain: Id,
+        _stack: &[Mask],
+        _proof: &[PrivateMaskProof],
+    ) {
+    }
+    /// Visits a MaskStack payload
+    fn visit_mask_stack(
+        &mut self,
+        _chain: &Chain,
+        _block: &Block,
+        _source: Id,
+        _stack: &[Mask],
+        _proof: &[MaskProof],
+    ) {
+    }
+    /// Visits a ShuffleStack payload
+    fn visit_shuffle_stack(
+        &mut self,
+        _chain: &Chain,
+        _block: &Block,
+        _source: Id,
+        _stack: &[Mask],
+        _proof: &ShuffleProof,
+    ) {
+    }
+    /// Visits a ShiftStack payload
+    fn visit_shift_stack(
+        &mut self,
+        _chain: &Chain,
+        _block: &Block,
+        _id: Id,
+        _stack: &[Mask],
+        _proof: &ShiftProof,
+    ) {
+    }
+    /// Visits a NameStack payload
+    fn visit_name_stack(&mut self, _chain: &Chain, _block: &Block, _id: Id, _name: &str) {}
+    /// Visits a PublishShares payload
+    fn visit_publish_shares(
+        &mut self,
+        _chain: &Chain,
+        _block: &Block,
+        _id: Id,
+        _shares: &[SecretShare],
+        _proof: &[SecretShareProof],
+    ) {
+    }
+    /// Visits a StartRandom payload
+    fn visit_start_random(&mut self, _chain: &Chain, _block: &Block, _id: Id, _n: u64) {}
+    /// Visits a RandomShare payload
+    fn visit_random_share(&mut self, _chain: &Chain, _block: &Block, _id: Id, _mask: &Mask) {}
+    /// Visits a Bytes payload
+    fn visit_bytes(&mut self, _chain: &Chain, _block: &Block, _bytes: &[u8]) {}
 }
 
 #[cfg(test)]
