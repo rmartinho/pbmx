@@ -229,6 +229,7 @@ dependencies = [
  "bincode 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "curve25519-dalek 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "pbmx_chain 0.1.0",
  "pbmx_curve 0.1.0",
  "pbmx_serde 0.1.0",

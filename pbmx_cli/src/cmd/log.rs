@@ -26,19 +26,18 @@ struct LogPrinter<'a>(&'a Vtmf);
 
 impl<'a> ChainVisitor for LogPrinter<'a> {
     fn visit_block(&mut self, chain: &Chain, block: &Block) {
-        println!("{}", format!("{:16}", block.id()).yellow());
+        print!("{}", format!("{:16}", block.id()).yellow());
+
+        print!(" {} {:16}", "by".blue().bold(), block.signer());
 
         if !block.parent_ids().is_empty() {
-            print!("  {}", "ack".blue());
+            print!(" {}", "ack".blue());
             for id in block.parent_ids() {
                 print!(" {:16}", id);
             }
-            println!();
         }
+        println!();
 
-        println!("  {} {:16}", "signer".blue().bold(), block.signer());
-
-        println!("  {}", "payloads".blue());
         for payload in block.payloads() {
             self.visit_payload(chain, block, payload);
         }

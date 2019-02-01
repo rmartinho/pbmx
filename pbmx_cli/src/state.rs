@@ -66,6 +66,10 @@ impl State {
         })
     }
 
+    pub fn clear_payloads(&mut self) {
+        self.payloads.clear();
+    }
+
     pub fn save_payloads(&self) -> Result<()> {
         fs::write(
             CURRENT_BLOCK_FILE_NAME,
@@ -121,7 +125,7 @@ impl ChainVisitor for ChainParser {
     }
 
     fn visit_name_stack(&mut self, _: &Chain, _: &Block, id: Id, name: &str) {
-        self.stacks.set_name(name.to_string(), id);
+        self.stacks.set_name(id, name.to_string());
     }
 
     fn visit_publish_shares(

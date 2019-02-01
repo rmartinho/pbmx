@@ -30,7 +30,7 @@ impl StackMap {
         self.map.insert(Id::of(&stack).unwrap(), stack);
     }
 
-    pub fn set_name(&mut self, name: String, id: Id) {
+    pub fn set_name(&mut self, id: Id, name: String) {
         self.name_map
             .entry(name)
             .and_modify(|e| *e = id)
@@ -44,6 +44,14 @@ impl StackMap {
             }
         }
         self.get_by_name(s)
+    }
+
+    pub fn ids(&self) -> impl Iterator<Item = &Id> {
+        self.map.keys()
+    }
+
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        self.name_map.keys().map(String::as_str)
     }
 
     pub fn get_by_id(&self, id: &Id) -> Option<&Stack> {

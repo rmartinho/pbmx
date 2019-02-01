@@ -54,17 +54,17 @@ impl Vtmf {
     }
 
     /// Gets the private key
-    pub fn private_key(&mut self) -> PrivateKey {
+    pub fn private_key(&self) -> PrivateKey {
         self.sk.clone()
     }
 
     /// Gets the public key
-    pub fn public_key(&mut self) -> PublicKey {
+    pub fn public_key(&self) -> PublicKey {
         self.sk.public_key()
     }
 
     /// Gets the shared public key
-    pub fn shared_key(&mut self) -> PublicKey {
+    pub fn shared_key(&self) -> PublicKey {
         self.pk.clone()
     }
 

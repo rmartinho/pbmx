@@ -9,13 +9,15 @@ mod constants;
 mod error;
 use self::error::Error;
 mod file;
+mod indices;
 mod secrets;
 mod stacks;
 mod state;
 
 mod cmd;
 use cmd::{
-    init::init, issue::issue, join::join, log::log, message::message, stack::stack, status::status,
+    init::init, issue::issue, join::join, log::log, message::message, reset::reset, stack::stack,
+    status::status,
 };
 
 fn main() {
@@ -67,9 +69,9 @@ fn main() {
                 (about: "Creates a new stack")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
-                (@arg TOKENS: +multiple +use_delimiter "The tokens in the stack")
+                (@arg TOKENS: +required +multiple +use_delimiter "The tokens in the stack")
                 (@arg NAME: -n --name +takes_value "Sets the name of the stack")
-                (@arg HIDDEN: -H --hidden conflicts_with[OPEN] "Makes the stack contents hidden from others")
+                (@arg HIDDEN: -H --hidden conflicts_with[OPEN] "Makes the stack contents hidden from others (unimplemented)")
                 (@arg OPEN: -O --open conflicts_with[HIDDEN] "Makes the stack contents open to others (default)")
             )
             (@subcommand list =>
@@ -131,6 +133,9 @@ fn main() {
                 (@arg STACK: +required "The name or identifier of the stack")
             )
         )
+        (@subcommand reset =>
+            (about: "Resets the current block")
+        )
         (@subcommand issue =>
             (about: "Issues the current block")
         )
@@ -144,6 +149,7 @@ fn main() {
         ("log", Some(sub_m)) => log(sub_m),
         ("message", Some(sub_m)) => message(sub_m),
         ("stack", Some(sub_m)) => stack(sub_m),
+        ("reset", Some(sub_m)) => reset(sub_m),
         ("issue", Some(sub_m)) => issue(sub_m),
         _ => Err(Error::InvalidSubcommand),
     }
