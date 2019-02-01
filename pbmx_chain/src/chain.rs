@@ -225,12 +225,6 @@ pub trait ChainVisitor {
             PublishShares(id, shares, proof) => {
                 self.visit_publish_shares(chain, block, *id, shares, proof);
             }
-            StartRandom(id, n) => {
-                self.visit_start_random(chain, block, *id, *n);
-            }
-            RandomShare(id, mask) => {
-                self.visit_random_share(chain, block, *id, mask);
-            }
             Bytes(bytes) => {
                 self.visit_bytes(chain, block, bytes);
             }
@@ -292,10 +286,6 @@ pub trait ChainVisitor {
         _proof: &[SecretShareProof],
     ) {
     }
-    /// Visits a StartRandom payload
-    fn visit_start_random(&mut self, _chain: &Chain, _block: &Block, _id: Id, _n: u64) {}
-    /// Visits a RandomShare payload
-    fn visit_random_share(&mut self, _chain: &Chain, _block: &Block, _id: Id, _mask: &Mask) {}
     /// Visits a Bytes payload
     fn visit_bytes(&mut self, _chain: &Chain, _block: &Block, _bytes: &[u8]) {}
 }

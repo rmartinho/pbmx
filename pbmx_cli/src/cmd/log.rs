@@ -38,7 +38,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
 
         println!("  {} {:16}", "signer".blue().bold(), block.signer());
 
-        println!("  {}", "payloads".blue().bold());
+        println!("  {}", "payloads".blue());
         for payload in block.payloads() {
             self.visit_payload(chain, block, payload);
         }
@@ -115,14 +115,6 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         _: &[SecretShareProof],
     ) {
         println!("    {} {:16}", "secret".green().bold(), id);
-    }
-
-    fn visit_start_random(&mut self, _: &Chain, _: &Block, id: Id, n: u64) {
-        println!("    {} {:16} < {}", "random".green().bold(), id, n);
-    }
-
-    fn visit_random_share(&mut self, _: &Chain, _: &Block, id: Id, _: &Mask) {
-        println!("    {} {:16}", "entropy".green().bold(), id);
     }
 
     fn visit_bytes(&mut self, _: &Chain, _: &Block, bytes: &[u8]) {

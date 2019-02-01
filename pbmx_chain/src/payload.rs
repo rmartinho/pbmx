@@ -30,10 +30,6 @@ pub enum Payload {
     NameStack(Id, String),
     /// A secret share payload
     PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
-    /// A random bound payload
-    StartRandom(Id, u64),
-    /// A random share payload
-    RandomShare(Id, Mask),
     /// Raw byte payload
     Bytes(Vec<u8>),
 }
@@ -78,8 +74,6 @@ impl<'a> Display for DisplayShort<'a> {
                 write!(f, "cut {1:16} \u{21CB} {0:16}", id, Id::of(stk).unwrap())
             }
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
-            StartRandom(id, n) => write!(f, "random {:16} < {}", id, n),
-            RandomShare(id, _) => write!(f, "entropy {:16}", id),
             Bytes(bytes) => write!(f, "message {}", &String::from_utf8_lossy(bytes)),
         }
     }

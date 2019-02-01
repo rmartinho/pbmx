@@ -2,6 +2,7 @@
 
 use crate::{
     error::Error,
+    hash::Xof,
     keys::{Fingerprint, PrivateKey, PublicKey},
     perm::Permutation,
     zkp::{dlog_eq, mask_1ofn, secret_rotation, secret_shuffle},
@@ -12,9 +13,10 @@ use curve25519_dalek::{
     scalar::Scalar,
     traits::Identity,
 };
+use digest::{ExtendableOutput, Input, XofReader};
 use merlin::Transcript;
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
-use rand::thread_rng;
+use rand::{thread_rng, CryptoRng, Rng};
 use serde::{de, Deserialize, Deserializer};
 use std::{collections::HashMap, sync::Mutex};
 
@@ -329,7 +331,7 @@ impl Vtmf {
 }
 
 impl Vtmf {
-    /// Applies the mask-shuffle protocol for a given permutation
+    /// Applies the mask-shift protocol for a given permutation
     pub fn mask_shift(&self, m: &[Mask], k: usize) -> (Vec<Mask>, ShiftProof) {
         let mut rng = thread_rng();
 
@@ -360,7 +362,7 @@ impl Vtmf {
         (rm, proof)
     }
 
-    /// Verifies the application of the mask-shuffling protocol
+    /// Verifies the application of the mask-shifting protocol
     pub fn verify_mask_shift(&self, m: &[Mask], c: &[Mask], proof: &ShiftProof) -> Result<(), ()> {
         proof.verify(
             &mut Transcript::new(b"mask_shift"),
@@ -370,6 +372,21 @@ impl Vtmf {
                 e1: c,
             },
         )
+    }
+}
+
+impl Vtmf {
+    /// Applies a random mask
+    pub fn mask_random<R: Rng + CryptoRng>(&self, rng: &mut R) -> Mask {
+        let s = Scalar::random(rng);
+        self.mask(&s).0
+    }
+
+    /// Undoes a random mask
+    pub fn unmask_random(&self, m: &Mask) -> impl XofReader {
+        let mut xof = Xof::default();
+        xof.input(&m.1.compress().to_bytes());
+        xof.xof_result()
     }
 }
 
@@ -408,6 +425,7 @@ mod tests {
         perm::{Permutation, Shuffles},
     };
     use curve25519_dalek::scalar::Scalar;
+    use digest::XofReader;
     use pbmx_serde::{FromBase64, ToBase64};
     use rand::{thread_rng, Rng};
 
@@ -461,7 +479,7 @@ mod tests {
         assert_eq!(verified, Ok(()));
         let mask0 = vtmf0.unmask(mask, d1);
         let mask0 = vtmf0.unmask_private(mask0);
-        let r = vtmf1.unmask_open(&mask0);
+        let r = vtmf0.unmask_open(&mask0);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
@@ -503,7 +521,7 @@ mod tests {
         assert_eq!(verified, Ok(()));
         let mask0 = vtmf0.unmask(mask, d1);
         let mask0 = vtmf0.unmask_private(mask0);
-        let r = vtmf1.unmask_open(&mask0);
+        let r = vtmf0.unmask_open(&mask0);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
@@ -542,7 +560,7 @@ mod tests {
         assert_eq!(verified, Ok(()));
         let mask0 = vtmf0.unmask(mask, d1);
         let mask0 = vtmf0.unmask_private(mask0);
-        let r = vtmf1.unmask_open(&mask0);
+        let r = vtmf0.unmask_open(&mask0);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
@@ -660,6 +678,49 @@ mod tests {
         let pi = Permutation::shift(8, k);
         pi.apply_to(&mut expected);
         assert_eq!(open, expected);
+    }
+
+    #[test]
+    fn vtmf_random_masking_works() {
+        let mut rng = thread_rng();
+        let sk0 = PrivateKey::random(&mut rng);
+        let sk1 = PrivateKey::random(&mut rng);
+        let pk0 = sk0.public_key();
+        let pk1 = sk1.public_key();
+
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
+        let fp0 = pk0.fingerprint();
+        let fp1 = pk1.fingerprint();
+        vtmf0.add_key(pk1).unwrap();
+        vtmf1.add_key(pk0).unwrap();
+
+        let mask0 = vtmf0.mask_random(&mut rng);
+        let mask1 = vtmf1.mask_random(&mut rng);
+        let mask = (mask0.0 + mask1.0, mask0.1 + mask1.1);
+
+        let (d0, proof0) = vtmf0.unmask_share(&mask);
+        let (d1, proof1) = vtmf1.unmask_share(&mask);
+
+        let verified = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
+        assert_eq!(verified, Ok(()));
+        let mask0 = vtmf0.unmask(mask, d1);
+        let mask0 = vtmf0.unmask_private(mask0);
+        let mut xof0 = vtmf0.unmask_random(&mask0);
+
+        let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
+        assert_eq!(verified, Ok(()));
+        let mask1 = vtmf1.unmask(mask, d0);
+        let mask1 = vtmf1.unmask_private(mask1);
+        let mut xof1 = vtmf1.unmask_random(&mask1);
+
+        let mut buf0 = [0u8; 64].to_vec();
+        let mut buf1 = [0u8; 64].to_vec();
+        for _ in 0..1024 {
+            xof0.read(&mut buf0);
+            xof1.read(&mut buf1);
+            assert_eq!(buf0, buf1);
+        }
     }
 }
 

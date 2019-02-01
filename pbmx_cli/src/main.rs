@@ -9,20 +9,14 @@ mod constants;
 mod error;
 use self::error::Error;
 mod file;
-mod randoms;
 mod secrets;
 mod stacks;
 mod state;
 
 mod cmd;
-use cmd::init::init;
-use cmd::join::join;
-use cmd::status::status;
-use cmd::log::log;
-use cmd::message::message;
-use cmd::issue::issue;
-use cmd::stack::stack;
-use cmd::random::random;
+use cmd::{
+    init::init, issue::issue, join::join, log::log, message::message, stack::stack, status::status,
+};
 
 fn main() {
     let matches = clap_app!(pbmx =>
@@ -137,30 +131,6 @@ fn main() {
                 (@arg STACK: +required "The name or identifier of the stack")
             )
         )
-        (@subcommand random =>
-            (about: "Handles distributed generation of shared random numbers")
-            (@setting DeriveDisplayOrder)
-            (@setting ColoredHelp)
-            (@setting SubcommandRequiredElseHelp)
-            (@subcommand new =>
-                (about: "Starts the generation of a new shared random number")
-                (@setting DeriveDisplayOrder)
-                (@setting ColoredHelp)
-                (@arg BOUND: +required "The exclusive upper bound on the number")
-            )
-            (@subcommand add =>
-                (about: "Adds a share in the generation of a shared random number")
-                (@setting DeriveDisplayOrder)
-                (@setting ColoredHelp)
-                (@arg ID: +required "The identifier for the random number being generated")
-            )
-            (@subcommand gen =>
-                (about: "Completes the generation of a shared random number")
-                (@setting DeriveDisplayOrder)
-                (@setting ColoredHelp)
-                (@arg ID: +required "The identifier for the random number being generated")
-            )
-        )
         (@subcommand issue =>
             (about: "Issues the current block")
         )
@@ -174,7 +144,6 @@ fn main() {
         ("log", Some(sub_m)) => log(sub_m),
         ("message", Some(sub_m)) => message(sub_m),
         ("stack", Some(sub_m)) => stack(sub_m),
-        ("random", Some(sub_m)) => random(sub_m),
         ("issue", Some(sub_m)) => issue(sub_m),
         _ => Err(Error::InvalidSubcommand),
     }

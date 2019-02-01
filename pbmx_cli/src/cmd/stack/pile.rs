@@ -4,4 +4,3 @@ use clap::ArgMatches;
 pub fn pile(_: &ArgMatches) -> Result<()> {
     Ok(())
 }
-

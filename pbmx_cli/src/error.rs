@@ -22,20 +22,20 @@ impl Error {
             }
             .exit(),
             Error::Clap(e) => e.exit(),
-            Error::Crypto(_) => clap::Error {
-                message: "Key deserialization failure".into(),
+            Error::Crypto(e) => clap::Error {
+                message: format!("{:?}", e),
                 kind: clap::ErrorKind::Io,
                 info: None,
             }
             .exit(),
-            Error::Chain(_) => clap::Error {
-                message: "Chain deserialization failure".into(),
+            Error::Chain(e) => clap::Error {
+                message: format!("{:?}", e),
                 kind: clap::ErrorKind::Io,
                 info: None,
             }
             .exit(),
-            Error::Serde(_) => clap::Error {
-                message: "Deserialization failure".into(),
+            Error::Serde(e) => clap::Error {
+                message: format!("{:?}", e),
                 kind: clap::ErrorKind::Io,
                 info: None,
             }

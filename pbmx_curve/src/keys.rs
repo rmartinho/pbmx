@@ -140,6 +140,13 @@ impl Fingerprint {
         array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
         Ok(Fingerprint(array))
     }
+
+    /// Generates a random fingerprint
+    pub fn random<R: Rng>(r: &mut R) -> Fingerprint {
+        let mut array = [0u8; FINGERPRINT_SIZE];
+        r.fill(&mut array);
+        Fingerprint(array)
+    }
 }
 
 impl AsRef<[u8]> for Fingerprint {

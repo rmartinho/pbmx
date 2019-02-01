@@ -4,4 +4,3 @@ use clap::ArgMatches;
 pub fn mask(_: &ArgMatches) -> Result<()> {
     Ok(())
 }
-

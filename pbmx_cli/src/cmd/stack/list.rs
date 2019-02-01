@@ -4,4 +4,3 @@ use clap::ArgMatches;
 pub fn list(_: &ArgMatches) -> Result<()> {
     Ok(())
 }
-
