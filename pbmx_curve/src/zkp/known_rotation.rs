@@ -5,6 +5,7 @@ use crate::{commit::Pedersen, perm::Permutation};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use rand::thread_rng;
+use subtle::{ConditionallySelectable, ConstantTimeEq};
 
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -77,17 +78,15 @@ impl Proof {
             .map(|(c, b)| c * b)
             .sum::<RistrettoPoint>();
 
+        let com_u = publics.com.commit_by(&[Scalar::zero()], &u);
         let f: Vec<_> = l
             .iter()
             .zip(t.iter())
             .zip(y.iter())
             .enumerate()
             .map(|(i, ((l, t), y))| {
-                if i == secrets.k {
-                    publics.com.commit_by(&[Scalar::zero()], &u)
-                } else {
-                    publics.com.commit_by(&[l * y], t) + g * -l
-                }
+                let com_i = publics.com.commit_by(&[l * y], t) + g * -l;
+                RistrettoPoint::conditional_select(&com_i, &com_u, i.ct_eq(&secrets.k))
             })
             .collect();
         transcript.commit_points(b"f", &f);

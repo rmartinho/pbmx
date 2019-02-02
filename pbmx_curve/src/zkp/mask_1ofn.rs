@@ -4,6 +4,7 @@ use super::{TranscriptProtocol, TranscriptRngProtocol};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use rand::thread_rng;
+use subtle::{ConditionallySelectable, ConstantTimeEq};
 
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -59,11 +60,9 @@ impl Proof {
             .enumerate()
             .map(|(i, m)| {
                 let v = Scalar::random(&mut rng);
-                let w = if i == secrets.i {
-                    Scalar::zero()
-                } else {
-                    Scalar::random(&mut rng)
-                };
+                let zero = Scalar::zero();
+                let wrand = Scalar::random(&mut rng);
+                let w = Scalar::conditional_select(&wrand, &zero, i.ct_eq(&secrets.i));
                 let t0 = publics.a * w + publics.g * v;
                 let gm = publics.g * m;
                 let bgm = publics.b - gm;
@@ -79,14 +78,17 @@ impl Proof {
         let c: Vec<_> = w
             .into_iter()
             .enumerate()
-            .map(|(i, w)| if i == secrets.i { ci } else { w })
+            .map(|(i, w)| Scalar::conditional_select(&w, &ci, i.ct_eq(&secrets.i)))
             .collect();
 
         let r: Vec<_> = v
             .into_iter()
             .zip(c.iter())
             .enumerate()
-            .map(|(i, (v, c))| if i == secrets.i { v - c * secrets.x } else { v })
+            .map(|(i, (v, c))| {
+                let vx = v - c * secrets.x;
+                Scalar::conditional_select(&v, &vx, i.ct_eq(&secrets.i))
+            })
             .collect();
 
         Self { c, r }
