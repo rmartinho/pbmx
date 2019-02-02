@@ -1,5 +1,8 @@
 use crate::{
-    constants::{BLOCKS_FOLDER_NAME, BLOCK_EXTENSION, CURRENT_BLOCK_FILE_NAME, KEY_FILE_NAME},
+    constants::{
+        BLOCKS_FOLDER_NAME, BLOCK_EXTENSION, CURRENT_BLOCK_FILE_NAME, KEY_FILE_NAME,
+        SECRETS_FOLDER_NAME,
+    },
     error::Result,
     secrets::SecretMap,
     stacks::StackMap,
@@ -18,7 +21,7 @@ use pbmx_curve::{
     },
 };
 use pbmx_serde::{FromBase64, ToBase64};
-use std::{ffi::OsStr, fs};
+use std::{ffi::OsStr, fs, path::PathBuf};
 
 #[derive(Debug)]
 pub struct State {
@@ -47,15 +50,17 @@ impl State {
             }
         }
 
-        let sk = PrivateKey::from_base64(&fs::read_to_string(KEY_FILE_NAME)?)?;
+        let payloads = Vec::from_base64(&fs::read_to_string(CURRENT_BLOCK_FILE_NAME)?)?;
+
+        let mut path = PathBuf::from(SECRETS_FOLDER_NAME);
+        path.push(KEY_FILE_NAME);
+        let sk = PrivateKey::from_base64(&fs::read_to_string(&path)?)?;
         let mut visitor = ChainParser {
             vtmf: Vtmf::new(sk),
             stacks: StackMap::new(),
             secrets: SecretMap::new(),
         };
         chain.visit(&mut visitor);
-
-        let payloads = Vec::from_base64(&fs::read_to_string(CURRENT_BLOCK_FILE_NAME)?)?;
 
         Ok(State {
             vtmf: visitor.vtmf,
