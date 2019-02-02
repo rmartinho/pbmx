@@ -82,6 +82,22 @@ impl State {
         )?;
         Ok(())
     }
+
+    pub fn find_stack(&self, id: &str) -> Option<(&[Mask], bool)> {
+        let by_name = self
+            .stacks
+            .named_stacks()
+            .find_map(|(n, s)| if n == id { Some(s) } else { None });
+        if let Some(stack) = by_name {
+            Some((&stack, true))
+        } else {
+            self.stacks
+                .ids()
+                .find(|it| it.to_string().ends_with(&id))
+                .and_then(|id| self.stacks.get_by_id(&id))
+                .map(|s| (s.as_slice(), false))
+        }
+    }
 }
 
 struct ChainParser {

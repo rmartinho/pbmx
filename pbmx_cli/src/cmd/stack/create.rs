@@ -15,7 +15,8 @@ pub fn create(m: &ArgMatches) -> Result<()> {
     let id = if m.is_present("HIDDEN") {
         unimplemented!()
     } else {
-        let stack = values_t!(m, "TOKENS", String)?
+        let stack = values_t!(m, "TOKENS", String)
+            .unwrap_or(vec![])
             .iter()
             .map(|s| parse_indices(s).ok_or(Error::InvalidData))
             .collect::<Result<Vec<_>>>()?

@@ -109,11 +109,17 @@ impl<'a> Display for DisplayStackContents<'a> {
                     write!(f, "{}", token)?;
                 }
                 last_in_seq = Some(token);
+                first = false;
             } else {
                 last_in_seq = None;
                 count_encrypted += 1;
             }
-            first = false;
+        }
+        if count_encrypted > 0 {
+            if !first {
+                write!(f, " ")?;
+            }
+            write!(f, "?{}", count_encrypted)?;
         }
         if unfinished_seq {
             let last = last_in_seq.unwrap();

@@ -4,25 +4,16 @@ use crate::{
     state::State,
 };
 use clap::{value_t, ArgMatches};
+use colored::Colorize;
 
 pub fn show(m: &ArgMatches) -> Result<()> {
     let state = State::read()?;
 
     let id = value_t!(m, "STACK", String)?;
-    let by_name = state
-        .stacks
-        .named_stacks()
-        .find_map(|(n, s)| if n == id { Some(s) } else { None });
-    let stack = if let Some(stack) = by_name {
-        Some(stack)
-    } else {
-        state
-            .stacks
-            .ids()
-            .find(|it| it.to_string().ends_with(&id))
-            .and_then(|id| state.stacks.get_by_id(&id))
-    };
-    let stack = stack.ok_or(Error::InvalidData)?;
+    let (stack, name) = state.find_stack(&id).ok_or(Error::InvalidData)?;
+    if name {
+        print!("{} ", id.bold());
+    }
     println!("{}", display_stack_contents(&stack, &state.vtmf));
 
     Ok(())
