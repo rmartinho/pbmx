@@ -1,3 +1,4 @@
+#![feature(try_from)]
 #![deny(clippy::correctness)]
 // TODO REMOVE
 #![allow(dead_code)]
@@ -88,17 +89,17 @@ fn main() {
                 (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data")
             )
             (@subcommand mask =>
-                (about: "Remasks a stack (unimplemented)")
+                (about: "Remasks a stack")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")
             )
             (@subcommand shuffle =>
-                (about: "Shuffles a stack (unimplemented)")
+                (about: "Shuffles a stack")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")
-                (@arg ORDER: -o --order <INDICES> +multiple +use_delimiter "Chooses a specific order instead of randomizing")
+                (@arg ORDER: -o --order [INDICES] +multiple +use_delimiter "Chooses a specific order instead of randomizing (unimplemented)")
             )
             (@subcommand cut =>
                 (about: "Cuts a stack (unimplemented)")
