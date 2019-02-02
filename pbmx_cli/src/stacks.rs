@@ -1,7 +1,8 @@
 use pbmx_chain::Id;
-use pbmx_curve::vtmf::Mask;
+use pbmx_curve::vtmf::{Mask, Vtmf};
 use std::{
     collections::HashMap,
+    fmt::{self, Display, Formatter},
     str::{self, FromStr},
 };
 
@@ -66,5 +67,56 @@ impl StackMap {
         self.name_map
             .keys()
             .map(move |k| (k.as_str(), self.get_by_name(k).unwrap()))
+    }
+}
+
+struct DisplayStackContents<'a>(&'a [Mask], &'a Vtmf);
+pub fn display_stack_contents<'a>(stack: &'a [Mask], vtmf: &'a Vtmf) -> impl Display + 'a {
+    DisplayStackContents(stack, vtmf)
+}
+
+impl<'a> Display for DisplayStackContents<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut first = true;
+        let mut last_in_seq = None;
+        let mut unfinished_seq = false;
+        let mut count_encrypted = 0;
+        write!(f, "[")?;
+        for m in self.0.iter() {
+            if let Some(s) = self.1.unmask_open(m) {
+                if count_encrypted > 0 {
+                    if !first {
+                        write!(f, " ")?;
+                    }
+                    write!(f, "?{}", count_encrypted)?;
+                    count_encrypted = 0;
+                }
+                let token = s.as_bytes()[0];
+                if let Some(last) = last_in_seq {
+                    if last + 1 == token {
+                        unfinished_seq = true;
+                    } else {
+                        write!(f, "-{} ", last)?;
+                        write!(f, "{}", token)?;
+                    }
+                } else {
+                    if !first {
+                        write!(f, " ")?;
+                    }
+                    write!(f, "{}", token)?;
+                }
+                last_in_seq = Some(token);
+            } else {
+                last_in_seq = None;
+                count_encrypted += 1;
+            }
+            first = false;
+        }
+        if unfinished_seq {
+            let last = last_in_seq.unwrap();
+            write!(f, "-{}", last)?;
+        }
+        write!(f, "]")?;
+        Ok(())
     }
 }
