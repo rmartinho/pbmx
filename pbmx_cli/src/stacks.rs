@@ -96,8 +96,11 @@ impl<'a> Display for DisplayStackContents<'a> {
                     if last + 1 == token {
                         unfinished_seq = true;
                     } else {
-                        write!(f, "-{} ", last)?;
-                        write!(f, "{}", token)?;
+                        if unfinished_seq {
+                            write!(f, "-{}", last)?;
+                            unfinished_seq = false;
+                        }
+                        write!(f, " {}", token)?;
                     }
                 } else {
                     if !first {

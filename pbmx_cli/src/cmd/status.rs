@@ -33,7 +33,12 @@ pub fn status(_: &ArgMatches) -> Result<()> {
     );
 
     if !state.stacks.is_empty() {
-        println!("   {}", "Stacks".blue().bold());
+        println!(
+            "   {} {} ({})",
+            "Stacks".blue().bold(),
+            state.stacks.named_stacks().count(),
+            state.stacks.len()
+        );
     }
 
     if !state.payloads.is_empty() {
