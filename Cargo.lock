@@ -204,6 +204,21 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "pbmx"
+version = "0.1.0"
+dependencies = [
+ "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bincode 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "colored 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "curve25519-dalek 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pbmx_chain 0.1.0",
+ "pbmx_curve 0.1.0",
+ "pbmx_serde 0.1.0",
+ "rand 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "pbmx_chain"
 version = "0.1.0"
 dependencies = [
@@ -219,21 +234,6 @@ dependencies = [
  "serde 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)",
  "tribool 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "pbmx_cli"
-version = "0.1.0"
-dependencies = [
- "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bincode 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "colored 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "curve25519-dalek 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "pbmx_chain 0.1.0",
- "pbmx_curve 0.1.0",
- "pbmx_serde 0.1.0",
- "rand 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

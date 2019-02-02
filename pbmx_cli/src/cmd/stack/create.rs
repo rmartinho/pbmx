@@ -4,6 +4,7 @@ use crate::{
     state::State,
 };
 use clap::{value_t, ArgMatches};
+use colored::Colorize;
 use curve25519_dalek::scalar::Scalar;
 use pbmx_chain::{payload::Payload, Id};
 
@@ -29,6 +30,7 @@ pub fn create(m: &ArgMatches) -> Result<()> {
     if let Some(name) = name {
         state.payloads.push(Payload::NameStack(id, name));
     }
+    println!("{} {}", " + Open stack".green().bold(), "<???>");
 
     state.save_payloads()?;
     Ok(())
