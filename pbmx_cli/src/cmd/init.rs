@@ -1,5 +1,8 @@
 use crate::{
-    constants::{BLOCKS_FOLDER_NAME, CURRENT_BLOCK_FILE_NAME, KEY_FILE_NAME, SECRETS_FOLDER_NAME},
+    constants::{
+        BLOCKS_FOLDER_NAME, CURRENT_BLOCK_FILE_NAME, IGNORE_FILE_CONTENTS, IGNORE_FILE_NAME,
+        KEY_FILE_NAME, SECRETS_FOLDER_NAME,
+    },
     error::Result,
     file,
 };
@@ -18,6 +21,12 @@ pub fn init(m: &ArgMatches) -> Result<()> {
     let current = <Vec<Payload>>::new();
 
     fs::create_dir_all(&path)?;
+
+    {
+        path.push(IGNORE_FILE_NAME);
+        file::write_new(&path, IGNORE_FILE_CONTENTS)?;
+        path.pop();
+    }
 
     {
         path.push(BLOCKS_FOLDER_NAME);
