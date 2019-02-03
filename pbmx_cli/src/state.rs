@@ -154,9 +154,11 @@ impl ChainVisitor for ChainParser {
         _: &Chain,
         block: &Block,
         id: Id,
+        stack: &[Mask],
         shares: &[SecretShare],
         _: &[SecretShareProof],
     ) {
+        self.stacks.insert(stack.to_vec());
         self.secrets.insert(id, block.signer(), shares.to_vec());
     }
 }

@@ -29,7 +29,7 @@ pub enum Payload {
     /// A stack name payload
     NameStack(Id, String),
     /// A secret share payload
-    PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
+    PublishShares(Id, Vec<Mask>, Vec<SecretShare>, Vec<SecretShareProof>),
     /// Raw byte payload
     Bytes(Vec<u8>),
 }

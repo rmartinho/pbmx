@@ -66,6 +66,7 @@ fn main() {
             (@setting DeriveDisplayOrder)
             (@setting ColoredHelp)
             (@setting SubcommandRequiredElseHelp)
+            (@setting VersionlessSubcommands)
             (@subcommand create =>
                 (about: "Creates a new stack")
                 (@setting DeriveDisplayOrder)

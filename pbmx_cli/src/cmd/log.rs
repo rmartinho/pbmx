@@ -110,6 +110,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         _: &Chain,
         _: &Block,
         id: Id,
+        _: &[Mask],
         _: &[SecretShare],
         _: &[SecretShareProof],
     ) {
