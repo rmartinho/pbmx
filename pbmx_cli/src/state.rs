@@ -145,6 +145,14 @@ impl ChainVisitor for ChainParser {
         self.stacks.insert(stack.to_vec());
     }
 
+    fn visit_take_stack(&mut self, _: &Chain, _: &Block, _: Id, indices: &[usize], stack: &[Mask]) {
+        self.stacks.insert(stack.to_vec());
+    }
+
+    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, _: &[Id], stack: &[Mask]) {
+        self.stacks.insert(stack.to_vec());
+    }
+
     fn visit_name_stack(&mut self, _: &Chain, _: &Block, id: Id, name: &str) {
         self.stacks.set_name(id, name.to_string());
     }
