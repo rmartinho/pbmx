@@ -219,6 +219,12 @@ pub trait ChainVisitor {
             ShiftStack(id, stk, proof) => {
                 self.visit_shift_stack(chain, block, *id, stk, proof);
             }
+            TakeStack(id, idxs, stk) => {
+                self.visit_take_stack(chain, block, *id, idxs, stk);
+            }
+            PileStacks(ids, stk) => {
+                self.visit_pile_stack(chain, block, ids, stk);
+            }
             NameStack(id, name) => {
                 self.visit_name_stack(chain, block, *id, name);
             }
@@ -272,6 +278,25 @@ pub trait ChainVisitor {
         _id: Id,
         _stack: &[Mask],
         _proof: &ShiftProof,
+    ) {
+    }
+    /// Visits a TakeStack payload
+    fn visit_take_stack(
+        &mut self,
+        _chain: &Chain,
+        _block: &Block,
+        _id: Id,
+        _idxs: &[usize],
+        _stack: &[Mask],
+    ) {
+    }
+    /// Visits a PileStack payload
+    fn visit_pile_stack(
+        &mut self,
+        _chain: &Chain,
+        _block: &Block,
+        _ids: &[Id],
+        _stack: &[Mask],
     ) {
     }
     /// Visits a NameStack payload

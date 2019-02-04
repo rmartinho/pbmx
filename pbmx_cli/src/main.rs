@@ -100,7 +100,7 @@ fn main() {
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")
-                (@arg ORDER: -o --order [INDICES] +multiple +use_delimiter "Chooses a specific order instead of randomizing (unimplemented)")
+                (@arg ORDER: -o --order [INDICES] +multiple +use_delimiter "Chooses a specific order instead of randomizing")
             )
             (@subcommand cut =>
                 (about: "Cuts a stack (unimplemented)")
@@ -116,7 +116,7 @@ fn main() {
                 (@arg SOURCE: +required "The name or identifier of the source stack")
                 (@arg INDICES: +required +multiple +use_delimiter "The indices of the tokens to remove")
                 (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
-                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stack")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stack (unimplemented)")
                 (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
             )
             (@subcommand pile =>
@@ -129,7 +129,7 @@ fn main() {
                 (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
             )
             (@subcommand reveal =>
-                (about: "Reveals the secret share of a stack to others (unimplemented)")
+                (about: "Reveals the secret share of a stack to others")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
                 (@arg STACK: +required "The name or identifier of the stack")

@@ -3,3 +3,4 @@
 - return secrets from VTMF functions so they can be re-combined later
 - add config for mapping keys<->users, and tokens<->names
 - rework stack map to better match usage
+- rework payloads/interface for additional ops

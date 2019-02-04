@@ -28,6 +28,10 @@ pub enum Payload {
     ShiftStack(Id, Vec<Mask>, ShiftProof),
     /// A stack name payload
     NameStack(Id, String),
+    /// A substack payload
+    TakeStack(Id, Vec<usize>, Vec<Mask>),
+    /// A stack pile payload
+    PileStacks(Vec<Id>, Vec<Mask>),
     /// A secret share payload
     PublishShares(Id, Vec<Mask>, Vec<SecretShare>, Vec<SecretShareProof>),
     /// Raw byte payload
@@ -72,6 +76,12 @@ impl<'a> Display for DisplayShort<'a> {
             ),
             ShiftStack(id, stk, _) => {
                 write!(f, "cut {1:16} \u{21CB} {0:16}", id, Id::of(stk).unwrap())
+            }
+            TakeStack(id, idxs, stk) => {
+                write!(f, "take {:16}{:?} {:16}", id, idxs, Id::of(stk).unwrap())
+            }
+            PileStacks(ids, stk) => {
+                write!(f, "pile {:16?} {:16}", ids, Id::of(stk).unwrap())
             }
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
             Bytes(bytes) => write!(f, "message {}", &String::from_utf8_lossy(bytes)),
