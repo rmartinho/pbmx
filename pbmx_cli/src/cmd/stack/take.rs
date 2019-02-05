@@ -6,8 +6,6 @@ use crate::{
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::{payload::Payload, Id};
-use pbmx_curve::perm::{Permutation, Shuffles};
-use rand::{thread_rng, Rng};
 
 pub fn take(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;

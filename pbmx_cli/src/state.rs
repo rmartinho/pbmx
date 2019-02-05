@@ -145,7 +145,7 @@ impl ChainVisitor for ChainParser {
         self.stacks.insert(stack.to_vec());
     }
 
-    fn visit_take_stack(&mut self, _: &Chain, _: &Block, _: Id, indices: &[usize], stack: &[Mask]) {
+    fn visit_take_stack(&mut self, _: &Chain, _: &Block, _: Id, _: &[usize], stack: &[Mask]) {
         self.stacks.insert(stack.to_vec());
     }
 
@@ -162,11 +162,9 @@ impl ChainVisitor for ChainParser {
         _: &Chain,
         block: &Block,
         id: Id,
-        stack: &[Mask],
         shares: &[SecretShare],
         _: &[SecretShareProof],
     ) {
-        self.stacks.insert(stack.to_vec());
         self.secrets.insert(id, block.signer(), shares.to_vec());
     }
 }

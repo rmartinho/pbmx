@@ -1,13 +1,10 @@
 use crate::{
     error::{Error, Result},
-    indices::parse_indices,
     state::State,
 };
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::{payload::Payload, Id};
-use pbmx_curve::perm::{Permutation, Shuffles};
-use rand::{thread_rng, Rng};
 
 pub fn pile(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;

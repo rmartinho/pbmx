@@ -47,8 +47,12 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         println!("    {} {:16}", "key".green().bold(), pk.fingerprint());
     }
 
-    fn visit_open_stack(&mut self, _: &Chain, _: &Block, _stack: &[Mask]) {
-        println!("    {} {}", "stack[pub]".green().bold(), "<???>");
+    fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &[Mask]) {
+        println!(
+            "    {} {:16}",
+            "stack".green().bold(),
+            Id::of(&stack.to_vec()).unwrap()
+        );
     }
 
     fn visit_private_stack(
@@ -136,7 +140,6 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         _: &Chain,
         _: &Block,
         id: Id,
-        _: &[Mask],
         _: &[SecretShare],
         _: &[SecretShareProof],
     ) {

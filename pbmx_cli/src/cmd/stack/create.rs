@@ -16,7 +16,7 @@ pub fn create(m: &ArgMatches) -> Result<()> {
         unimplemented!()
     } else {
         let stack = values_t!(m, "TOKENS", String)
-            .unwrap_or(vec![])
+            .unwrap_or_else(|_| vec![])
             .iter()
             .map(|s| parse_indices(s).ok_or(Error::InvalidData))
             .collect::<Result<Vec<_>>>()?

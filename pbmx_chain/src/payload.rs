@@ -33,7 +33,9 @@ pub enum Payload {
     /// A stack pile payload
     PileStacks(Vec<Id>, Vec<Mask>),
     /// A secret share payload
-    PublishShares(Id, Vec<Mask>, Vec<SecretShare>, Vec<SecretShareProof>),
+    PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
+    /// A stack unmask payload
+    UnmaskStack(Id, Vec<Mask>),
     /// Raw byte payload
     Bytes(Vec<u8>),
 }
@@ -82,6 +84,7 @@ impl<'a> Display for DisplayShort<'a> {
             }
             PileStacks(ids, stk) => write!(f, "pile {:16?} {:16}", ids, Id::of(stk).unwrap()),
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
+            UnmaskStack(id, stk) => write!(f, "unmask {:16} {:16}", id, Id::of(stk).unwrap()),
             Bytes(bytes) => write!(f, "message {}", &String::from_utf8_lossy(bytes)),
         }
     }

@@ -168,9 +168,9 @@ impl Display for Fingerprint {
                 w = 40;
             }
             w /= 2;
-            self.0.iter().skip(20 - w)
+            self.0.iter().take(w)
         } else {
-            self.0.iter().skip(0)
+            self.0.iter().take(self.0.len())
         };
         for b in it {
             write!(f, "{:02X}", b)?;
