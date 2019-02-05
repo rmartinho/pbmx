@@ -93,7 +93,7 @@ impl State {
         } else {
             self.stacks
                 .ids()
-                .find(|it| it.to_string().ends_with(&id))
+                .find(|it| it.to_string().starts_with(&id))
                 .and_then(|id| self.stacks.get_by_id(&id))
                 .map(|s| (s.as_slice(), false))
         }
@@ -166,5 +166,9 @@ impl ChainVisitor for ChainParser {
         _: &[SecretShareProof],
     ) {
         self.secrets.insert(id, block.signer(), shares.to_vec());
+    }
+
+    fn visit_unmask_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &[Mask]) {
+        self.stacks.insert(stack.to_vec());
     }
 }

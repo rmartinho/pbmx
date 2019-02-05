@@ -17,8 +17,8 @@ pub fn list(m: &ArgMatches) -> Result<()> {
             s.len(),
             n.bold()
         );
-        if !state.secrets.fingerprints(id).is_empty() {
-            print!("\t + {}{:16?}", "?".bold(), state.secrets.fingerprints(id));
+        if !state.secrets.fingerprints(&id).is_empty() {
+            print!("\t + {}{:16?}", "?".bold(), state.secrets.fingerprints(&id));
         }
         println!();
     }

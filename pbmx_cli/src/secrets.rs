@@ -34,17 +34,18 @@ impl SecretMap {
         self.0.keys()
     }
 
-    pub fn shares(&self, id: Id) -> &[SecretShare] {
-        &self.0[&id].0
+    pub fn shares(&self, id: &Id) -> &[SecretShare] {
+        &self.0.get(id).map(|x| x.0.as_slice()).unwrap_or(&NO_SHARES)
     }
 
-    pub fn fingerprints(&self, id: Id) -> &[Fingerprint] {
+    pub fn fingerprints(&self, id: &Id) -> &[Fingerprint] {
         &self
             .0
-            .get(&id)
+            .get(id)
             .map(|x| x.1.as_slice())
             .unwrap_or(&NO_FINGERPRINTS)
     }
 }
 
+const NO_SHARES: [SecretShare; 0] = [];
 const NO_FINGERPRINTS: [Fingerprint; 0] = [];
