@@ -80,9 +80,7 @@ impl<'a> Display for DisplayShort<'a> {
             TakeStack(id, idxs, stk) => {
                 write!(f, "take {:16}{:?} {:16}", id, idxs, Id::of(stk).unwrap())
             }
-            PileStacks(ids, stk) => {
-                write!(f, "pile {:16?} {:16}", ids, Id::of(stk).unwrap())
-            }
+            PileStacks(ids, stk) => write!(f, "pile {:16?} {:16}", ids, Id::of(stk).unwrap()),
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
             Bytes(bytes) => write!(f, "message {}", &String::from_utf8_lossy(bytes)),
         }

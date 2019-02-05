@@ -101,6 +101,32 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         );
     }
 
+    fn visit_take_stack(
+        &mut self,
+        _: &Chain,
+        _: &Block,
+        id: Id,
+        indices: &[usize],
+        stack: &[Mask],
+    ) {
+        println!(
+            "    {} {:16}{:?} \u{219B} {:16}",
+            "take".green().bold(),
+            id,
+            indices,
+            Id::of(&stack.to_vec()).unwrap()
+        );
+    }
+
+    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, ids: &[Id], stack: &[Mask]) {
+        println!(
+            "    {} {:16?} \u{21A3} {:16}",
+            "pile".green().bold(),
+            ids,
+            Id::of(&stack.to_vec()).unwrap()
+        );
+    }
+
     fn visit_name_stack(&mut self, _: &Chain, _: &Block, id: Id, name: &str) {
         println!("    {} {:16} {}", "name".green().bold(), id, name);
     }

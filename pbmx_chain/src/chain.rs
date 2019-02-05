@@ -291,14 +291,7 @@ pub trait ChainVisitor {
     ) {
     }
     /// Visits a PileStack payload
-    fn visit_pile_stack(
-        &mut self,
-        _chain: &Chain,
-        _block: &Block,
-        _ids: &[Id],
-        _stack: &[Mask],
-    ) {
-    }
+    fn visit_pile_stack(&mut self, _chain: &Chain, _block: &Block, _ids: &[Id], _stack: &[Mask]) {}
     /// Visits a NameStack payload
     fn visit_name_stack(&mut self, _chain: &Chain, _block: &Block, _id: Id, _name: &str) {}
     /// Visits a PublishShares payload
