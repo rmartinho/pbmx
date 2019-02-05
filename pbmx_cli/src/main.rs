@@ -125,7 +125,7 @@ fn main() {
                 (@setting ColoredHelp)
                 (@arg STACKS: +required +multiple "The name or identifier of the source stacks, from top to bottom")
                 (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
-                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks (unimplemented)")
                 (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
             )
             (@subcommand reveal =>

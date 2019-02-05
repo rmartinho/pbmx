@@ -89,6 +89,7 @@ impl<'a> Display for DisplayStackContents<'a> {
                         write!(f, " ")?;
                     }
                     write!(f, "?{}", count_encrypted)?;
+                    first = false;
                     count_encrypted = 0;
                 }
                 let token = s.as_bytes()[0];

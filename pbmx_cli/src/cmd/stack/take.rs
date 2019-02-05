@@ -23,7 +23,11 @@ pub fn take(m: &ArgMatches) -> Result<()> {
         .flatten()
         .collect();
 
-    let tokens: Vec<_> = stack.iter().enumerate().filter_map(|(i, m)| if indices.contains(&i) { Some(*m) } else { None }).collect();
+    let tokens: Vec<_> = stack
+        .iter()
+        .enumerate()
+        .filter_map(|(i, m)| if indices.contains(&i) { Some(*m) } else { None })
+        .collect();
 
     let id1 = Id::of(&stack.to_vec()).unwrap();
     let id2 = Id::of(&tokens).unwrap();
@@ -34,7 +38,9 @@ pub fn take(m: &ArgMatches) -> Result<()> {
         indices,
         id2
     );
-    state.payloads.push(Payload::TakeStack(id1, indices, tokens));
+    state
+        .payloads
+        .push(Payload::TakeStack(id1, indices, tokens));
     let name = value_t!(m, "TARGET", String).ok();
     if let Some(name) = name {
         println!("{} {:16} {}", " + Name stack".green().bold(), id2, name);
