@@ -39,6 +39,12 @@ impl SecretMap {
     }
 
     pub fn fingerprints(&self, id: Id) -> &[Fingerprint] {
-        &self.0[&id].1
+        &self
+            .0
+            .get(&id)
+            .map(|x| x.1.as_slice())
+            .unwrap_or(&NO_FINGERPRINTS)
     }
 }
+
+const NO_FINGERPRINTS: [Fingerprint; 0] = [];

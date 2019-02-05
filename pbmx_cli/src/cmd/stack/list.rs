@@ -11,12 +11,16 @@ pub fn list(m: &ArgMatches) -> Result<()> {
     for (n, s) in state.stacks.named_stacks() {
         let id = Id::of(s).unwrap();
         named.insert(id);
-        println!(
+        print!(
             "{} {:4}\t{}",
             format!("{:16}", id).yellow(),
             s.len(),
             n.bold()
         );
+        if !state.secrets.fingerprints(id).is_empty() {
+            print!("\t + {}{:16?}", "?".bold(), state.secrets.fingerprints(id));
+        }
+        println!();
     }
     if m.is_present("ALL") {
         for id in state.stacks.ids() {
