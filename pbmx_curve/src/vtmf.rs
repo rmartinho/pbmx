@@ -18,7 +18,7 @@ use merlin::Transcript;
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use rand::{thread_rng, CryptoRng, Rng};
 use serde::{de, Deserialize, Deserializer};
-use std::{collections::HashMap, sync::Mutex};
+use std::collections::HashMap;
 
 pub use crate::zkp::{
     dlog_eq::Proof as MaskProof, mask_1ofn::Proof as PrivateMaskProof,
@@ -277,7 +277,7 @@ impl Vtmf {
 
     /// Undoes a non-secret masking operation
     pub fn unmask_open(&self, m: &Mask) -> Option<Scalar> {
-        get_scalar_for(&m.1)
+        unmap_scalar_from(&m.1)
     }
 }
 
@@ -724,29 +724,11 @@ mod tests {
     }
 }
 
-lazy_static! {
-    static ref POINT_MAP: Mutex<Vec<(Scalar, RistrettoPoint)>> = Mutex::new(Vec::new());
+fn unmap_scalar_from(point: &RistrettoPoint) -> Option<Scalar> {
+    CURVE_MAP
+        .get(&point.compress().0)
+        .cloned()
+        .map(Scalar::from)
 }
-const MAX_POINTS_MAPPED: usize = 2048;
 
-fn get_scalar_for(point: &RistrettoPoint) -> Option<Scalar> {
-    match POINT_MAP.lock() {
-        Ok(mut map) => match map.iter().find(|(_, p)| p == point) {
-            None => loop {
-                if map.len() >= MAX_POINTS_MAPPED {
-                    return None;
-                }
-
-                let s = Scalar::from(map.len() as u64);
-                let p = G * &s;
-                map.push((s, p));
-
-                if p == *point {
-                    return Some(s);
-                }
-            },
-            Some((s, _)) => Some(*s),
-        },
-        _ => None,
-    }
-}
+static CURVE_MAP: phf::Map<[u8; 32], u64> = include!(concat!(env!("OUT_DIR"), "/curve_map.rs"));
