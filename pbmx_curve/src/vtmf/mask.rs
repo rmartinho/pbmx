@@ -16,6 +16,12 @@ impl Mask {
     }
 }
 
+impl From<(RistrettoPoint, RistrettoPoint)> for Mask {
+    fn from(pair: (RistrettoPoint, RistrettoPoint)) -> Mask {
+        Mask(pair.0, pair.1)
+    }
+}
+
 impl<'a, 'b> Add<&'b Mask> for &'a Mask {
     type Output = Mask;
 

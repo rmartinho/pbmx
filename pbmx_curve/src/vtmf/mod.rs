@@ -25,7 +25,9 @@ pub use crate::zkp::{
 };
 
 mod mask;
-pub use mask::Mask;
+pub use mask::*;
+mod stack;
+pub use stack::*;
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 

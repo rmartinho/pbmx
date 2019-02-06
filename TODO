@@ -1,4 +1,3 @@
-- make Mask its own type with + * etc
 - make Stack its own type
 - return secrets from VTMF functions so they can be re-combined later
 - add config for mapping keys<->users, and tokens<->names
