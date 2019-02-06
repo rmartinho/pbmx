@@ -72,8 +72,6 @@ fn main() {
                 (@setting ColoredHelp)
                 (@arg TOKENS: +multiple +use_delimiter "The tokens in the stack")
                 (@arg NAME: -n --name +takes_value "Sets the name of the stack")
-                (@arg HIDDEN: -H --hidden conflicts_with[OPEN] "Makes the stack contents hidden from others (unimplemented)")
-                (@arg OPEN: -O --open conflicts_with[HIDDEN] "Makes the stack contents open to others (default)")
             )
             (@subcommand list =>
                 (about: "Lists existing stacks")

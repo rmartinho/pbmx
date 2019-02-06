@@ -3,7 +3,6 @@
 pub mod dlog_eq;
 mod known_rotation;
 mod known_shuffle;
-pub mod mask_1ofn;
 pub mod secret_rotation;
 pub mod secret_shuffle;
 

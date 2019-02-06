@@ -15,10 +15,7 @@ use pbmx_chain::{
 };
 use pbmx_curve::{
     keys::{PrivateKey, PublicKey},
-    vtmf::{
-        Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-        Vtmf,
-    },
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Vtmf},
 };
 use pbmx_serde::{FromBase64, ToBase64};
 use std::{ffi::OsStr, fs, path::PathBuf};
@@ -112,17 +109,6 @@ impl ChainVisitor for ChainParser {
     }
 
     fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &[Mask]) {
-        self.stacks.insert(stack.to_vec());
-    }
-
-    fn visit_private_stack(
-        &mut self,
-        _: &Chain,
-        _: &Block,
-        _: Id,
-        stack: &[Mask],
-        _: &[PrivateMaskProof],
-    ) {
         self.stacks.insert(stack.to_vec());
     }
 

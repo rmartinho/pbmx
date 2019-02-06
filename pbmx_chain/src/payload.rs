@@ -3,9 +3,7 @@
 use crate::{error::Error, Id};
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{
-        Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-    },
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
 };
 use pbmx_serde::derive_base64_conversions;
 use std::fmt::{self, Display, Formatter};
@@ -18,8 +16,6 @@ pub enum Payload {
     PublishKey(PublicKey),
     /// An open stack payload
     OpenStack(Vec<Mask>),
-    /// A private stack payload
-    PrivateStack(Id, Vec<Mask>, Vec<PrivateMaskProof>),
     /// A stack mask payload
     MaskStack(Id, Vec<Mask>, Vec<MaskProof>),
     /// A stack shuffle payload
@@ -60,12 +56,6 @@ impl<'a> Display for DisplayShort<'a> {
         match self.0 {
             PublishKey(pk) => write!(f, "publish key {:16}", pk.fingerprint()),
             OpenStack(stk) => write!(f, "open stack {:16}", Id::of(stk)?),
-            PrivateStack(id, stk, _) => write!(
-                f,
-                "private stack {1:16} \u{2282} {0:16}",
-                id,
-                Id::of(stk).unwrap()
-            ),
             NameStack(id, name) => write!(f, "name {:16} {}", id, name),
             MaskStack(id, stk, _) => {
                 write!(f, "mask {1:16} \u{21AC} {0:16}", id, Id::of(stk).unwrap())

@@ -7,9 +7,7 @@ use crate::{
 };
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{
-        Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-    },
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
     Error,
 };
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
@@ -207,9 +205,6 @@ pub trait ChainVisitor {
             OpenStack(stk) => {
                 self.visit_open_stack(chain, block, stk);
             }
-            PrivateStack(id, stk, proof) => {
-                self.visit_private_stack(chain, block, *id, stk, proof);
-            }
             MaskStack(id, stk, proof) => {
                 self.visit_mask_stack(chain, block, *id, stk, proof);
             }
@@ -243,16 +238,6 @@ pub trait ChainVisitor {
     fn visit_publish_key(&mut self, _chain: &Chain, _block: &Block, _key: &PublicKey) {}
     /// Visits a OpenStack payload
     fn visit_open_stack(&mut self, _chain: &Chain, _block: &Block, _stack: &[Mask]) {}
-    /// Visits a PrivateStack payload
-    fn visit_private_stack(
-        &mut self,
-        _chain: &Chain,
-        _block: &Block,
-        _domain: Id,
-        _stack: &[Mask],
-        _proof: &[PrivateMaskProof],
-    ) {
-    }
     /// Visits a MaskStack payload
     fn visit_mask_stack(
         &mut self,

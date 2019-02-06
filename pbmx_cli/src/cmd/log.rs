@@ -8,10 +8,7 @@ use pbmx_chain::{
 };
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{
-        Mask, MaskProof, PrivateMaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-        Vtmf,
-    },
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Vtmf},
 };
 
 pub fn log(_: &ArgMatches) -> Result<()> {
@@ -51,22 +48,6 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         println!(
             "    {} {:16}",
             "stack".green().bold(),
-            Id::of(&stack.to_vec()).unwrap()
-        );
-    }
-
-    fn visit_private_stack(
-        &mut self,
-        _: &Chain,
-        _: &Block,
-        id: Id,
-        stack: &[Mask],
-        _: &[PrivateMaskProof],
-    ) {
-        println!(
-            "    {} {:16} \u{2283} {:16}",
-            "stack[sec]".green().bold(),
-            id,
             Id::of(&stack.to_vec()).unwrap()
         );
     }

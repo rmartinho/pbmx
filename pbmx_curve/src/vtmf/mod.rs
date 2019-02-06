@@ -5,7 +5,7 @@ use crate::{
     hash::Xof,
     keys::{Fingerprint, PrivateKey, PublicKey},
     perm::Permutation,
-    zkp::{dlog_eq, mask_1ofn, secret_rotation, secret_shuffle},
+    zkp::{dlog_eq, secret_rotation, secret_shuffle},
 };
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -20,8 +20,8 @@ use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 
 pub use crate::zkp::{
-    dlog_eq::Proof as MaskProof, mask_1ofn::Proof as PrivateMaskProof,
-    secret_rotation::Proof as ShiftProof, secret_shuffle::Proof as ShuffleProof,
+    dlog_eq::Proof as MaskProof, secret_rotation::Proof as ShiftProof,
+    secret_shuffle::Proof as ShuffleProof,
 };
 
 mod mask;
@@ -141,43 +141,6 @@ impl Vtmf {
             b: &(c.1 - G * m),
             g: &G.basepoint(),
             h: &self.pk.point(),
-        })
-    }
-
-    /// Applies a private masking operation from a given subset
-    pub fn mask_private(&self, m: &[Scalar], i: usize) -> (Mask, PrivateMaskProof) {
-        let h = self.pk.point();
-        let r = Scalar::random(&mut thread_rng());
-        let c0 = G * &r;
-        let c1 = h * r + G * &m[i];
-
-        let proof = PrivateMaskProof::create(
-            &mut Transcript::new(b"mask_private"),
-            mask_1ofn::Publics {
-                a: &c0,
-                b: &c1,
-                g: &G.basepoint(),
-                h: &h,
-                m,
-            },
-            mask_1ofn::Secrets { x: &r, i },
-        );
-        (Mask(c0, c1), proof)
-    }
-
-    /// Verifies the application of a private masking operation
-    pub fn verify_private_mask(
-        &self,
-        m: &[Scalar],
-        c: &Mask,
-        proof: &PrivateMaskProof,
-    ) -> Result<(), ()> {
-        proof.verify(&mut Transcript::new(b"mask_private"), mask_1ofn::Publics {
-            a: &c.0,
-            b: &c.1,
-            g: &G.basepoint(),
-            h: &self.pk.point(),
-            m,
         })
     }
 
@@ -565,36 +528,6 @@ mod tests {
         let mask1 = vtmf1.unmask_private(mask1);
         let r = vtmf1.unmask_open(&mask1);
         assert_eq!(r, Some(x));
-    }
-
-    #[test]
-    fn vtmf_private_masking_works() {
-        let mut rng = thread_rng();
-        let sk0 = PrivateKey::random(&mut rng);
-        let sk1 = PrivateKey::random(&mut rng);
-        let pk0 = sk0.public_key();
-        let pk1 = sk1.public_key();
-
-        let mut vtmf0 = Vtmf::new(sk0);
-        let mut vtmf1 = Vtmf::new(sk1);
-        let fp0 = pk0.fingerprint();
-        vtmf0.add_key(pk1).unwrap();
-        vtmf1.add_key(pk0).unwrap();
-
-        let m: Vec<_> = (0u64..8).map(Scalar::from).collect();
-        let i = rng.gen_range(0, 8);
-
-        let (mask, proof) = vtmf0.mask_private(&m, i);
-        let verified = vtmf1.verify_private_mask(&m, &mask, &proof);
-        assert_eq!(verified, Ok(()));
-
-        let (d0, proof0) = vtmf0.unmask_share(&mask);
-        let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
-        assert_eq!(verified, Ok(()));
-        let mask1 = vtmf1.unmask(mask, d0);
-        let mask1 = vtmf1.unmask_private(mask1);
-        let r = vtmf1.unmask_open(&mask1);
-        assert_eq!(r, Some(m[i]));
     }
 
     #[test]
