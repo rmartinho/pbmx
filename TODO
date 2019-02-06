@@ -4,3 +4,7 @@
 - add config for mapping keys<->users, and tokens<->names
 - rework stack map to better match usage
 - rework payloads/interface for additional ops
+- extract mapping out of curve
+- merge non-CLI crates together
+- move more toolkit-ish stuff out of CLI
+- use Groth's minimal shuffle
