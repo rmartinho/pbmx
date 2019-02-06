@@ -82,10 +82,11 @@ impl Proof {
         let ed = d
             .iter()
             .zip(publics.e1.iter())
-            .map(|(d, (e0, e1))| (e0 * d, e1 * d))
-            .fold((G * &rd, publics.h * rd), |(a1, a2), (e1, e2)| {
-                (a1 + e1, a2 + e2)
-            });
+            .map(|(d, Mask(e0, e1))| Mask(e0 * d, e1 * d))
+            .fold(
+                Mask(G * &rd, publics.h * rd),
+                |Mask(a1, a2), Mask(e1, e2)| Mask(a1 + e1, a2 + e2),
+            );
         transcript.commit_mask(b"ed", &ed);
 
         let t = transcript.challenge_scalars(b"t", n);
@@ -177,7 +178,7 @@ impl Proof {
             .iter()
             .zip(self.f.iter())
             .map(|(e, f)| (e.0 * f, e.1 * f))
-            .fold(self.ed, |acc, i| (acc.0 + i.0, acc.1 + i.1));
+            .fold(self.ed, |acc, i| Mask(acc.0 + i.0, acc.1 + i.1));
         let etfd = publics
             .e0
             .iter()
@@ -186,9 +187,9 @@ impl Proof {
                 let mt = -t;
                 (e.0 * mt, e.1 * mt)
             })
-            .fold(efed, |acc, i| (acc.0 + i.0, acc.1 + i.1));
+            .fold(efed, |acc, i| Mask(acc.0 + i.0, acc.1 + i.1));
 
-        let ez = (G * &self.z, publics.h * self.z);
+        let ez = Mask(G * &self.z, publics.h * self.z);
 
         if etfd == ez {
             Ok(())
@@ -205,6 +206,7 @@ mod tests {
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
+    use crate::vtmf::Mask;
 
     #[test]
     fn prove_and_verify_agree() {
@@ -217,14 +219,14 @@ mod tests {
             .into_iter()
             .map(|m| {
                 let r = Scalar::random(&mut rng);
-                (G * &r, h * r + G * &m)
+                Mask(G * &r, h * r + G * &m)
             })
             .collect();
         let (mut e1, mut r): (Vec<_>, Vec<_>) = e0
             .iter()
             .map(|e| {
                 let r = Scalar::random(&mut rng);
-                ((G * &r + e.0, h * r + e.1), r)
+                (Mask(G * &r + e.0, h * r + e.1), r)
             })
             .unzip();
         let pi = &rng.sample(&Shuffles(8));

@@ -11,7 +11,6 @@ use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
     scalar::Scalar,
-    traits::Identity,
 };
 use digest::{ExtendableOutput, Input, XofReader};
 use merlin::Transcript;
@@ -25,6 +24,9 @@ pub use crate::zkp::{
     secret_rotation::Proof as ShiftProof, secret_shuffle::Proof as ShuffleProof,
 };
 
+mod mask;
+pub use mask::Mask;
+
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 /// A verifiable *k*-out-of-*k* threshold masking function
@@ -35,9 +37,6 @@ pub struct Vtmf {
     #[serde(serialize_with = "serialize_flat_map")]
     pki: HashMap<Fingerprint, PublicKey>,
 }
-
-/// A masked value
-pub type Mask = (RistrettoPoint, RistrettoPoint);
 
 /// One party's share of a secret
 pub type SecretShare = RistrettoPoint;
@@ -113,11 +112,6 @@ impl Vtmf {
 }
 
 impl Vtmf {
-    /// Applies a non-secret masking operation
-    pub fn mask_open(&self, m: &Scalar) -> Mask {
-        (RistrettoPoint::identity(), G * m)
-    }
-
     /// Applies the verifiable masking protocol
     pub fn mask(&self, m: &Scalar) -> (Mask, MaskProof) {
         let h = self.pk.point();
@@ -135,7 +129,7 @@ impl Vtmf {
             },
             dlog_eq::Secrets { x: &r },
         );
-        ((c0, c1), proof)
+        (Mask(c0, c1), proof)
     }
 
     /// Verifies the application of the masking protocol
@@ -166,7 +160,7 @@ impl Vtmf {
             },
             mask_1ofn::Secrets { x: &r, i },
         );
-        ((c0, c1), proof)
+        (Mask(c0, c1), proof)
     }
 
     /// Verifies the application of a private masking operation
@@ -204,7 +198,7 @@ impl Vtmf {
 
         let c0 = gr + c.0;
         let c1 = hr + c.1;
-        ((c0, c1), proof)
+        (Mask(c0, c1), proof)
     }
 
     /// Verifies the application of the re-masking protocol
@@ -266,7 +260,7 @@ impl Vtmf {
 
     /// Undoes part of a masking operation
     pub fn unmask(&self, c: Mask, d: SecretShare) -> Mask {
-        (c.0, c.1 - d)
+        Mask(c.0, c.1 - d)
     }
 
     /// Privately undoes a masking operation
@@ -293,7 +287,7 @@ impl Vtmf {
 
             let c1 = G * &r + c.0;
             let c2 = h * r + c.1;
-            ((c1, c2), r)
+            (Mask(c1, c2), r)
         };
 
         let (mut rm, mut r): (Vec<_>, Vec<_>) = m.iter().map(remask).unzip();
@@ -342,7 +336,7 @@ impl Vtmf {
 
             let c1 = G * &r + c.0;
             let c2 = h * r + c.1;
-            ((c1, c2), r)
+            (Mask(c1, c2), r)
         };
 
         let (mut rm, mut r): (Vec<_>, Vec<_>) = m.iter().map(remask).unzip();
@@ -419,7 +413,7 @@ derive_base64_conversions!(Vtmf, Error);
 
 #[cfg(test)]
 mod tests {
-    use super::Vtmf;
+    use super::{Mask, Vtmf};
     use crate::{
         keys::PrivateKey,
         perm::{Permutation, Shuffles},
@@ -548,7 +542,7 @@ mod tests {
         vtmf1.add_key(pk0).unwrap();
 
         let x = Scalar::from(rng.gen_range(0, 16) as u64);
-        let mask = vtmf0.mask_open(&x);
+        let mask = Mask::open(&x);
 
         let open = vtmf1.unmask_open(&mask);
         assert_eq!(open, Some(x));
@@ -697,7 +691,7 @@ mod tests {
 
         let mask0 = vtmf0.mask_random(&mut rng);
         let mask1 = vtmf1.mask_random(&mut rng);
-        let mask = (mask0.0 + mask1.0, mask0.1 + mask1.1);
+        let mask = Mask(mask0.0 + mask1.0, mask0.1 + mask1.1);
 
         let (d0, proof0) = vtmf0.unmask_share(&mask);
         let (d1, proof1) = vtmf1.unmask_share(&mask);

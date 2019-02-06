@@ -1,6 +1,7 @@
 //! Zero-knowledge proof of equality of discrete logarithms
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
+use crate::vtmf::Mask;
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use rand::thread_rng;
@@ -67,7 +68,7 @@ impl Proof {
                 let gm = publics.g * m;
                 let bgm = publics.b - gm;
                 let t1 = bgm * w + publics.h * v;
-                ((v, w), (t0, t1))
+                ((v, w), Mask(t0, t1))
             })
             .unzip();
         transcript.commit_masks(b"t", &t);
@@ -115,7 +116,7 @@ impl Proof {
                 let gm = publics.g * m;
                 let bgm = publics.b - gm;
                 let t1 = bgm * c + publics.h * r;
-                (t0, t1)
+                Mask(t0, t1)
             })
             .collect();
         transcript.commit_masks(b"t", &t);

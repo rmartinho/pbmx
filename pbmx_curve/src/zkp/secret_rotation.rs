@@ -87,7 +87,7 @@ impl Proof {
             .e1
             .iter()
             .zip(t.iter().zip(sa.iter()))
-            .map(|((d, e), (t, a))| (d * a + G * t, e * a + publics.h * t))
+            .map(|(Mask(d, e), (t, a))| Mask(d * a + G * t, e * a + publics.h * t))
             .collect();
         transcript.commit_masks(b"z", &z);
         let v = sa
@@ -118,7 +118,7 @@ impl Proof {
             .e1
             .iter()
             .zip(o.iter().zip(m.iter()))
-            .map(|((d, e), (o, m))| (d * o + G * m, e * o + publics.h * m))
+            .map(|(Mask(d, e), (o, m))| Mask(d * o + G * m, e * o + publics.h * m))
             .collect();
         transcript.commit_masks(b"ff", &ff);
 
@@ -206,13 +206,13 @@ impl Proof {
             .e1
             .iter()
             .zip(self.tau.iter().zip(self.mu.iter()))
-            .map(|((d, e), (t, m))| (d * t + G * m, e * t + publics.h * m))
+            .map(|(Mask(d, e), (t, m))| Mask(d * t + G * m, e * t + publics.h * m))
             .collect();
         let fzl: Vec<_> = self
             .ff
             .iter()
             .zip(self.z.iter())
-            .map(|(f, z)| (f.0 + z.0 * l, f.1 + z.1 * l))
+            .map(|(f, z)| Mask(f.0 + z.0 * l, f.1 + z.1 * l))
             .collect();
 
         let pzea = self
@@ -241,6 +241,7 @@ mod tests {
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
+    use crate::vtmf::Mask;
 
     #[test]
     fn prove_and_verify_agree() {
@@ -253,14 +254,14 @@ mod tests {
             .into_iter()
             .map(|m| {
                 let r = Scalar::random(&mut rng);
-                (G * &r, h * r + G * &m)
+                Mask(G * &r, h * r + G * &m)
             })
             .collect();
         let (mut e1, mut r): (Vec<_>, Vec<_>) = e0
             .iter()
             .map(|e| {
                 let r = Scalar::random(&mut rng);
-                ((G * &r + e.0, h * r + e.1), r)
+                (Mask(G * &r + e.0, h * r + e.1), r)
             })
             .unzip();
         let k = rng.gen_range(0, 8);
