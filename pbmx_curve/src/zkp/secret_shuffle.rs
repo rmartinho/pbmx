@@ -62,6 +62,7 @@ impl Proof {
             .finalize(&mut thread_rng());
 
         let n = publics.e0.len();
+        let gh = Mask(G.basepoint(), *publics.h);
         let com = Pedersen::new(*publics.h, n, &mut rng);
 
         let p2: Vec<_> = secrets
@@ -79,14 +80,11 @@ impl Proof {
         let (cd, rd) = com.commit_to(&d, &mut rng);
         transcript.commit_point(b"cd", &cd);
 
-        let ed = d
-            .iter()
-            .zip(publics.e1.iter())
-            .map(|(d, Mask(e0, e1))| Mask(e0 * d, e1 * d))
-            .fold(
-                Mask(G * &rd, publics.h * rd),
-                |Mask(a1, a2), Mask(e1, e2)| Mask(a1 + e1, a2 + e2),
-            );
+        let ed = gh * rd
+            + d.iter()
+                .zip(publics.e1.iter())
+                .map(|(d, e)| e * d)
+                .sum::<Mask>();
         transcript.commit_mask(b"ed", &ed);
 
         let t = transcript.challenge_scalars(b"t", n);
@@ -150,6 +148,7 @@ impl Proof {
         transcript.commit_masks(b"e1", publics.e1);
 
         let n = publics.e0.len();
+        let gh = Mask(G.basepoint(), *publics.h);
 
         transcript.commit_point(b"c", &self.c);
         transcript.commit_point(b"cd", &self.cd);
@@ -173,23 +172,22 @@ impl Proof {
             m: &m,
         })?;
 
-        let efed = publics
-            .e1
-            .iter()
-            .zip(self.f.iter())
-            .map(|(e, f)| (e.0 * f, e.1 * f))
-            .fold(self.ed, |acc, i| Mask(acc.0 + i.0, acc.1 + i.1));
-        let etfd = publics
-            .e0
-            .iter()
-            .zip(t.iter())
-            .map(|(e, t)| {
-                let mt = -t;
-                (e.0 * mt, e.1 * mt)
-            })
-            .fold(efed, |acc, i| Mask(acc.0 + i.0, acc.1 + i.1));
+        let efed = self.ed
+            + publics
+                .e1
+                .iter()
+                .zip(self.f.iter())
+                .map(|(e, f)| e * f)
+                .sum::<Mask>();
+        let etfd = efed
+            + publics
+                .e0
+                .iter()
+                .zip(t.iter())
+                .map(|(e, t)| e * -t)
+                .sum::<Mask>();
 
-        let ez = Mask(G * &self.z, publics.h * self.z);
+        let ez = gh * self.z;
 
         if etfd == ez {
             Ok(())
@@ -202,31 +200,31 @@ impl Proof {
 #[cfg(test)]
 mod tests {
     use super::{super::random_scalars, Proof, Publics, Secrets, G};
-    use crate::perm::Shuffles;
+    use crate::{perm::Shuffles, vtmf::Mask};
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
-    use crate::vtmf::Mask;
 
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
 
         let h = &RistrettoPoint::random(&mut rng);
+        let gh = Mask(G.basepoint(), *h);
 
         let m = &random_scalars(8, &mut rng);
         let e0: Vec<_> = m
             .into_iter()
             .map(|m| {
                 let r = Scalar::random(&mut rng);
-                Mask(G * &r, h * r + G * &m)
+                gh * r + Mask::open(G * &m)
             })
             .collect();
         let (mut e1, mut r): (Vec<_>, Vec<_>) = e0
             .iter()
             .map(|e| {
                 let r = Scalar::random(&mut rng);
-                (Mask(G * &r + e.0, h * r + e.1), r)
+                (gh * r + e, r)
             })
             .unzip();
         let pi = &rng.sample(&Shuffles(8));

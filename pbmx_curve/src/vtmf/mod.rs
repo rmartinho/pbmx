@@ -413,7 +413,7 @@ derive_base64_conversions!(Vtmf, Error);
 
 #[cfg(test)]
 mod tests {
-    use super::{Mask, Vtmf};
+    use super::{Mask, Vtmf, G};
     use crate::{
         keys::PrivateKey,
         perm::{Permutation, Shuffles},
@@ -542,7 +542,7 @@ mod tests {
         vtmf1.add_key(pk0).unwrap();
 
         let x = Scalar::from(rng.gen_range(0, 16) as u64);
-        let mask = Mask::open(&x);
+        let mask = Mask::open(G * &x);
 
         let open = vtmf1.unmask_open(&mask);
         assert_eq!(open, Some(x));

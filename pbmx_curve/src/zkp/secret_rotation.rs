@@ -6,7 +6,6 @@ use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
     scalar::Scalar,
-    traits::Identity,
 };
 use merlin::Transcript;
 use rand::thread_rng;
@@ -65,6 +64,7 @@ impl Proof {
             .finalize(&mut thread_rng());
 
         let n = publics.e0.len();
+        let gh = Mask(G.basepoint(), *publics.h);
 
         let a = transcript.challenge_scalars(b"a", n);
 
@@ -87,7 +87,7 @@ impl Proof {
             .e1
             .iter()
             .zip(t.iter().zip(sa.iter()))
-            .map(|(Mask(d, e), (t, a))| Mask(d * a + G * t, e * a + publics.h * t))
+            .map(|(de, (t, a))| de * a + gh * t)
             .collect();
         transcript.commit_masks(b"z", &z);
         let v = sa
@@ -118,7 +118,7 @@ impl Proof {
             .e1
             .iter()
             .zip(o.iter().zip(m.iter()))
-            .map(|(Mask(d, e), (o, m))| Mask(d * o + G * m, e * o + publics.h * m))
+            .map(|(de, (o, m))| de * o + gh * m)
             .collect();
         transcript.commit_masks(b"ff", &ff);
 
@@ -167,6 +167,7 @@ impl Proof {
         transcript.commit_masks(b"e1", publics.e1);
 
         let n = publics.e0.len();
+        let gh = Mask(G.basepoint(), *publics.h);
 
         let a = transcript.challenge_scalars(b"a", n);
 
@@ -206,13 +207,13 @@ impl Proof {
             .e1
             .iter()
             .zip(self.tau.iter().zip(self.mu.iter()))
-            .map(|(Mask(d, e), (t, m))| Mask(d * t + G * m, e * t + publics.h * m))
+            .map(|(de, (t, m))| de * t + gh * m)
             .collect();
         let fzl: Vec<_> = self
             .ff
             .iter()
             .zip(self.z.iter())
-            .map(|(f, z)| Mask(f.0 + z.0 * l, f.1 + z.1 * l))
+            .map(|(f, z)| f + z * l)
             .collect();
 
         let pzea = self
@@ -220,13 +221,10 @@ impl Proof {
             .iter()
             .zip(publics.e0.iter())
             .zip(a.iter())
-            .map(|((z, e), a)| (z.0 + e.0 * -a, z.1 + e.1 * -a))
-            .fold(
-                (RistrettoPoint::identity(), RistrettoPoint::identity()),
-                |acc, x| (acc.0 + x.0, acc.1 + x.1),
-            );
-        let gvhv = (G * &self.v, publics.h * self.v);
-        if tr == fhl && dtm == fzl && pzea == gvhv {
+            .map(|((z, e), a)| z + e * -a)
+            .sum::<Mask>();
+        let ghv = gh * self.v;
+        if tr == fhl && dtm == fzl && pzea == ghv {
             Ok(())
         } else {
             Err(())
@@ -237,31 +235,31 @@ impl Proof {
 #[cfg(test)]
 mod tests {
     use super::{super::random_scalars, Proof, Publics, Secrets, G};
-    use crate::perm::Permutation;
+    use crate::{perm::Permutation, vtmf::Mask};
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
-    use crate::vtmf::Mask;
 
     #[test]
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
 
         let h = &RistrettoPoint::random(&mut rng);
+        let gh = Mask(G.basepoint(), *h);
 
         let m = &random_scalars(8, &mut rng);
         let e0: Vec<_> = m
             .into_iter()
             .map(|m| {
                 let r = Scalar::random(&mut rng);
-                Mask(G * &r, h * r + G * &m)
+                gh * r + Mask::open(G * &m)
             })
             .collect();
         let (mut e1, mut r): (Vec<_>, Vec<_>) = e0
             .iter()
             .map(|e| {
                 let r = Scalar::random(&mut rng);
-                (Mask(G * &r + e.0, h * r + e.1), r)
+                (gh * r + e, r)
             })
             .unzip();
         let k = rng.gen_range(0, 8);

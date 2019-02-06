@@ -10,6 +10,10 @@ use curve25519_dalek::scalar::Scalar;
 use pbmx_chain::{payload::Payload, Id};
 use pbmx_curve::vtmf::Mask;
 
+use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_TABLE, ristretto::RistrettoBasepointTable};
+
+const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
+
 pub fn create(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
@@ -23,7 +27,7 @@ pub fn create(m: &ArgMatches) -> Result<()> {
             .collect::<Result<Vec<_>>>()?
             .into_iter()
             .flatten()
-            .map(|i| Mask::open(&Scalar::from(i as u64)))
+            .map(|i| Mask::open(G * &Scalar::from(i as u64)))
             .collect::<Vec<_>>();
         let id = Id::of(&stack).unwrap();
         println!(
