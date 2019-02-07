@@ -7,6 +7,7 @@ use crate::{
 use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_chain::{payload::Payload, Id};
+use pbmx_curve::vtmf::Stack;
 use pbmx_serde::ToBase64;
 use std::{
     io::{stdout, Write},
@@ -21,7 +22,7 @@ pub fn issue(_: &ArgMatches) -> Result<()> {
         if fps.len() == state.vtmf.parties() as usize {
             let shares = state.secrets.shares(id).to_vec();
             let masked = state.stacks.get_by_id(id).unwrap();
-            let stack: Vec<_> = masked
+            let stack: Stack = masked
                 .iter()
                 .zip(shares.iter())
                 .map(|(m, s)| state.vtmf.unmask(*m, *s))

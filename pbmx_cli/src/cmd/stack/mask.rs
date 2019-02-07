@@ -5,6 +5,7 @@ use crate::{
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::{payload::Payload, Id};
+use pbmx_curve::vtmf::Stack;
 
 pub fn mask(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
@@ -12,7 +13,7 @@ pub fn mask(m: &ArgMatches) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;
     let (stack, name) = state.find_stack(&id).ok_or(Error::InvalidData)?;
 
-    let (s, p): (Vec<_>, Vec<_>) = stack.iter().map(|m| state.vtmf.remask(m)).unzip();
+    let (s, p): (Stack, Vec<_>) = stack.iter().map(|m| state.vtmf.remask(m)).unzip();
 
     let id1 = Id::of(&stack.to_vec()).unwrap();
     let id2 = Id::of(&s).unwrap();

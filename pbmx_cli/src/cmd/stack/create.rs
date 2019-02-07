@@ -8,7 +8,7 @@ use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use curve25519_dalek::scalar::Scalar;
 use pbmx_chain::{payload::Payload, Id};
-use pbmx_curve::vtmf::Mask;
+use pbmx_curve::vtmf::{Mask, Stack};
 
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_TABLE, ristretto::RistrettoBasepointTable};
 
@@ -17,7 +17,7 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 pub fn create(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
-    let stack = values_t!(m, "TOKENS", String)
+    let stack: Stack = values_t!(m, "TOKENS", String)
         .unwrap_or_else(|_| vec![])
         .iter()
         .map(|s| parse_indices(s).ok_or(Error::InvalidData))
@@ -25,7 +25,7 @@ pub fn create(m: &ArgMatches) -> Result<()> {
         .into_iter()
         .flatten()
         .map(|i| Mask::open(G * &Scalar::from(i as u64)))
-        .collect::<Vec<_>>();
+        .collect();
     let id = Id::of(&stack).unwrap();
     println!(
         "{} {}",

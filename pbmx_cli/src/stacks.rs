@@ -1,15 +1,13 @@
 use pbmx_chain::Id;
 use pbmx_curve::{
     map,
-    vtmf::{Mask, Vtmf},
+    vtmf::{Mask, Stack, Vtmf},
 };
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
     str::{self, FromStr},
 };
-
-pub type Stack = Vec<Mask>;
 
 #[derive(Clone, Default, Debug)]
 pub struct StackMap {
@@ -30,7 +28,7 @@ impl StackMap {
         self.len() == 0
     }
 
-    pub fn insert(&mut self, stack: Vec<Mask>) {
+    pub fn insert(&mut self, stack: Stack) {
         self.map.insert(Id::of(&stack).unwrap(), stack);
     }
 

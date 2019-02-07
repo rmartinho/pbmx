@@ -7,7 +7,7 @@ use crate::{
 };
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
+    vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
     Error,
 };
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
@@ -237,14 +237,14 @@ pub trait ChainVisitor {
     /// Visits a PublishKey payload
     fn visit_publish_key(&mut self, _chain: &Chain, _block: &Block, _key: &PublicKey) {}
     /// Visits a OpenStack payload
-    fn visit_open_stack(&mut self, _chain: &Chain, _block: &Block, _stack: &[Mask]) {}
+    fn visit_open_stack(&mut self, _chain: &Chain, _block: &Block, _stack: &Stack) {}
     /// Visits a MaskStack payload
     fn visit_mask_stack(
         &mut self,
         _chain: &Chain,
         _block: &Block,
         _source: Id,
-        _stack: &[Mask],
+        _stack: &Stack,
         _proof: &[MaskProof],
     ) {
     }
@@ -254,7 +254,7 @@ pub trait ChainVisitor {
         _chain: &Chain,
         _block: &Block,
         _source: Id,
-        _stack: &[Mask],
+        _stack: &Stack,
         _proof: &ShuffleProof,
     ) {
     }
@@ -264,7 +264,7 @@ pub trait ChainVisitor {
         _chain: &Chain,
         _block: &Block,
         _id: Id,
-        _stack: &[Mask],
+        _stack: &Stack,
         _proof: &ShiftProof,
     ) {
     }
@@ -275,11 +275,11 @@ pub trait ChainVisitor {
         _block: &Block,
         _id: Id,
         _idxs: &[usize],
-        _stack: &[Mask],
+        _stack: &Stack,
     ) {
     }
     /// Visits a PileStack payload
-    fn visit_pile_stack(&mut self, _chain: &Chain, _block: &Block, _ids: &[Id], _stack: &[Mask]) {}
+    fn visit_pile_stack(&mut self, _chain: &Chain, _block: &Block, _ids: &[Id], _stack: &Stack) {}
     /// Visits a NameStack payload
     fn visit_name_stack(&mut self, _chain: &Chain, _block: &Block, _id: Id, _name: &str) {}
     /// Visits a PublishShares payload
@@ -293,8 +293,7 @@ pub trait ChainVisitor {
     ) {
     }
     /// Visits a UnmaskStack payload
-    fn visit_unmask_stack(&mut self, _chain: &Chain, _block: &Block, _source: Id, _stack: &[Mask]) {
-    }
+    fn visit_unmask_stack(&mut self, _chain: &Chain, _block: &Block, _source: Id, _stack: &Stack) {}
     /// Visits a Bytes payload
     fn visit_bytes(&mut self, _chain: &Chain, _block: &Block, _bytes: &[u8]) {}
 }

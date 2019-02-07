@@ -6,6 +6,7 @@ use crate::{
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::{payload::Payload, Id};
+use pbmx_curve::vtmf::Stack;
 
 pub fn take(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
@@ -21,7 +22,7 @@ pub fn take(m: &ArgMatches) -> Result<()> {
         .flatten()
         .collect();
 
-    let tokens: Vec<_> = stack
+    let tokens: Stack = stack
         .iter()
         .enumerate()
         .filter_map(|(i, m)| if indices.contains(&i) { Some(*m) } else { None })

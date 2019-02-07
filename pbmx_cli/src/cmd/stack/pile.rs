@@ -5,6 +5,7 @@ use crate::{
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::{payload::Payload, Id};
+use pbmx_curve::vtmf::Stack;
 
 pub fn pile(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
@@ -21,7 +22,7 @@ pub fn pile(m: &ArgMatches) -> Result<()> {
         .collect::<Result<_>>()?;
     let ids: Vec<_> = stacks.iter().map(|s| Id::of(s).unwrap()).collect();
 
-    let tokens: Vec<_> = stacks.into_iter().flat_map(|s| s.into_iter()).collect();
+    let tokens: Stack = stacks.into_iter().flat_map(|s| s.into_iter()).collect();
 
     let id2 = Id::of(&tokens).unwrap();
     println!(

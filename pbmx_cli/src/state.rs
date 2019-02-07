@@ -15,7 +15,7 @@ use pbmx_chain::{
 };
 use pbmx_curve::{
     keys::{PrivateKey, PublicKey},
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Vtmf},
+    vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack, Vtmf},
 };
 use pbmx_serde::{FromBase64, ToBase64};
 use std::{ffi::OsStr, fs, path::PathBuf};
@@ -80,19 +80,19 @@ impl State {
         Ok(())
     }
 
-    pub fn find_stack(&self, id: &str) -> Option<(&[Mask], bool)> {
+    pub fn find_stack(&self, id: &str) -> Option<(&Stack, bool)> {
         let by_name = self
             .stacks
             .named_stacks()
             .find_map(|(n, s)| if n == id { Some(s) } else { None });
         if let Some(stack) = by_name {
-            Some((&stack, true))
+            Some((stack, true))
         } else {
             self.stacks
                 .ids()
                 .find(|it| it.to_string().starts_with(&id))
                 .and_then(|id| self.stacks.get_by_id(&id))
-                .map(|s| (s.as_slice(), false))
+                .map(|s| (s, false))
         }
     }
 }
@@ -108,12 +108,12 @@ impl ChainVisitor for ChainParser {
         self.vtmf.add_key(pk.clone()).unwrap();
     }
 
-    fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &[Mask]) {
-        self.stacks.insert(stack.to_vec());
+    fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &Stack) {
+        self.stacks.insert(stack.clone());
     }
 
-    fn visit_mask_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &[Mask], _: &[MaskProof]) {
-        self.stacks.insert(stack.to_vec());
+    fn visit_mask_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &Stack, _: &[MaskProof]) {
+        self.stacks.insert(stack.clone());
     }
 
     fn visit_shuffle_stack(
@@ -121,22 +121,22 @@ impl ChainVisitor for ChainParser {
         _: &Chain,
         _: &Block,
         _: Id,
-        stack: &[Mask],
+        stack: &Stack,
         _: &ShuffleProof,
     ) {
-        self.stacks.insert(stack.to_vec());
+        self.stacks.insert(stack.clone());
     }
 
-    fn visit_shift_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &[Mask], _: &ShiftProof) {
-        self.stacks.insert(stack.to_vec());
+    fn visit_shift_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &Stack, _: &ShiftProof) {
+        self.stacks.insert(stack.clone());
     }
 
-    fn visit_take_stack(&mut self, _: &Chain, _: &Block, _: Id, _: &[usize], stack: &[Mask]) {
-        self.stacks.insert(stack.to_vec());
+    fn visit_take_stack(&mut self, _: &Chain, _: &Block, _: Id, _: &[usize], stack: &Stack) {
+        self.stacks.insert(stack.clone());
     }
 
-    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, _: &[Id], stack: &[Mask]) {
-        self.stacks.insert(stack.to_vec());
+    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, _: &[Id], stack: &Stack) {
+        self.stacks.insert(stack.clone());
     }
 
     fn visit_name_stack(&mut self, _: &Chain, _: &Block, id: Id, name: &str) {
@@ -154,7 +154,7 @@ impl ChainVisitor for ChainParser {
         self.secrets.insert(id, block.signer(), shares.to_vec());
     }
 
-    fn visit_unmask_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &[Mask]) {
-        self.stacks.insert(stack.to_vec());
+    fn visit_unmask_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &Stack) {
+        self.stacks.insert(stack.clone());
     }
 }

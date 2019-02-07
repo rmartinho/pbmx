@@ -3,7 +3,7 @@
 use crate::{error::Error, Id};
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
+    vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
 };
 use pbmx_serde::derive_base64_conversions;
 use std::fmt::{self, Display, Formatter};
@@ -15,23 +15,23 @@ pub enum Payload {
     /// A public key payload
     PublishKey(PublicKey),
     /// An open stack payload
-    OpenStack(Vec<Mask>),
+    OpenStack(Stack),
     /// A stack mask payload
-    MaskStack(Id, Vec<Mask>, Vec<MaskProof>),
+    MaskStack(Id, Stack, Vec<MaskProof>),
     /// A stack shuffle payload
     ShuffleStack(Id, Stack, ShuffleProof),
     /// A stack shift payload
-    ShiftStack(Id, Vec<Mask>, ShiftProof),
+    ShiftStack(Id, Stack, ShiftProof),
     /// A stack name payload
     NameStack(Id, String),
     /// A substack payload
-    TakeStack(Id, Vec<usize>, Vec<Mask>),
+    TakeStack(Id, Vec<usize>, Stack),
     /// A stack pile payload
-    PileStacks(Vec<Id>, Vec<Mask>),
+    PileStacks(Vec<Id>, Stack),
     /// A secret share payload
     PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
     /// A stack unmask payload
-    UnmaskStack(Id, Vec<Mask>),
+    UnmaskStack(Id, Stack),
     /// Raw byte payload
     Bytes(Vec<u8>),
 }

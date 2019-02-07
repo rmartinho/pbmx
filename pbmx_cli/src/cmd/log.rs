@@ -8,7 +8,7 @@ use pbmx_chain::{
 };
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Vtmf},
+    vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack, Vtmf},
 };
 
 pub fn log(_: &ArgMatches) -> Result<()> {
@@ -44,7 +44,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         println!("    {} {:16}", "key".green().bold(), pk.fingerprint());
     }
 
-    fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &[Mask]) {
+    fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &Stack) {
         println!(
             "    {} {:16}",
             "stack".green().bold(),
@@ -52,7 +52,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         );
     }
 
-    fn visit_mask_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &[Mask], _: &[MaskProof]) {
+    fn visit_mask_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &Stack, _: &[MaskProof]) {
         println!(
             "    {} {:16} \u{21AC} {:16}",
             "mask".green().bold(),
@@ -66,7 +66,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         _: &Chain,
         _: &Block,
         id: Id,
-        stack: &[Mask],
+        stack: &Stack,
         _: &ShuffleProof,
     ) {
         println!(
@@ -77,7 +77,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         );
     }
 
-    fn visit_shift_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &[Mask], _: &ShiftProof) {
+    fn visit_shift_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &Stack, _: &ShiftProof) {
         println!(
             "    {} {:16} \u{21CB} {:16}",
             "cut".green().bold(),
@@ -86,14 +86,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         );
     }
 
-    fn visit_take_stack(
-        &mut self,
-        _: &Chain,
-        _: &Block,
-        id: Id,
-        indices: &[usize],
-        stack: &[Mask],
-    ) {
+    fn visit_take_stack(&mut self, _: &Chain, _: &Block, id: Id, indices: &[usize], stack: &Stack) {
         println!(
             "    {} {:16}{:?} \u{219B} {:16}",
             "take".green().bold(),
@@ -103,7 +96,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         );
     }
 
-    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, ids: &[Id], stack: &[Mask]) {
+    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, ids: &[Id], stack: &Stack) {
         println!(
             "    {} {:16?} \u{21A3} {:16}",
             "pile".green().bold(),
@@ -127,7 +120,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         println!("    {} {:16}", "secret".green().bold(), id);
     }
 
-    fn visit_unmask_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &[Mask]) {
+    fn visit_unmask_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &Stack) {
         println!(
             "    {} {:16} \u{21BA} {:16}",
             "unmask".green().bold(),
