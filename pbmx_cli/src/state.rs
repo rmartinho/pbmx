@@ -133,8 +133,4 @@ impl ChainVisitor for ChainParser {
         self.stacks
             .add_secret_share(id, block.signer(), shares.to_vec());
     }
-
-    fn visit_unmask_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &Stack) {
-        self.stacks.insert(stack.clone());
-    }
 }

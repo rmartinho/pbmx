@@ -116,15 +116,6 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         println!("    {} {:16}", "secret".green().bold(), id);
     }
 
-    fn visit_unmask_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &Stack) {
-        println!(
-            "    {} {:16} \u{21BA} {:16}",
-            "unmask".green().bold(),
-            id,
-            stack.id()
-        );
-    }
-
     fn visit_bytes(&mut self, _: &Chain, _: &Block, bytes: &[u8]) {
         println!(
             "    {} {}",

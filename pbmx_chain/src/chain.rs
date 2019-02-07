@@ -226,9 +226,6 @@ pub trait ChainVisitor {
             PublishShares(id, shares, proof) => {
                 self.visit_publish_shares(chain, block, *id, shares, proof);
             }
-            UnmaskStack(id, stack) => {
-                self.visit_unmask_stack(chain, block, *id, stack);
-            }
             Bytes(bytes) => {
                 self.visit_bytes(chain, block, bytes);
             }
@@ -292,8 +289,6 @@ pub trait ChainVisitor {
         _proof: &[SecretShareProof],
     ) {
     }
-    /// Visits a UnmaskStack payload
-    fn visit_unmask_stack(&mut self, _chain: &Chain, _block: &Block, _source: Id, _stack: &Stack) {}
     /// Visits a Bytes payload
     fn visit_bytes(&mut self, _chain: &Chain, _block: &Block, _bytes: &[u8]) {}
 }
