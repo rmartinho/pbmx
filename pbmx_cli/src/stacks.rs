@@ -52,8 +52,8 @@ impl StackMap {
     }
 
     pub fn insert(&mut self, stack: Stack) {
-        let old = self.map.insert(stack.id(), StackEntry::from(stack));
-        if old.is_none() {
+        if !self.map.contains_key(&stack.id()) {
+            self.map.insert(stack.id(), StackEntry::from(stack));
             self.len += 1;
         }
     }
