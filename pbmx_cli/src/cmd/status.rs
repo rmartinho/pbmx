@@ -36,7 +36,7 @@ pub fn status(_: &ArgMatches) -> Result<()> {
         println!(
             "   {} {} ({})",
             "Stacks".blue().bold(),
-            state.stacks.named_stacks().count(),
+            state.stacks.names().count(),
             state.stacks.len()
         );
     }

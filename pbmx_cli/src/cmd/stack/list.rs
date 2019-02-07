@@ -7,7 +7,8 @@ pub fn list(m: &ArgMatches) -> Result<()> {
     let state = State::read()?;
 
     let mut named = HashSet::new();
-    for (n, s) in state.stacks.named_stacks() {
+    for n in state.stacks.names() {
+        let s = state.stacks.get_by_name(n).unwrap();
         let id = s.id();
         named.insert(id);
         print!(
@@ -23,7 +24,7 @@ pub fn list(m: &ArgMatches) -> Result<()> {
     }
     if m.is_present("ALL") {
         for id in state.stacks.ids() {
-            if !named.contains(&id) {
+            if !named.contains(id) {
                 let s = state.stacks.get_by_id(&id).unwrap();
                 println!("{} {:4}", format!("{:16}", id).yellow(), s.len());
             }

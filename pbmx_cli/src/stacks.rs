@@ -3,15 +3,17 @@ use pbmx_curve::{
     map,
     vtmf::{Mask, Stack, Vtmf},
 };
+use qp_trie::Trie;
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
-    str::{self, FromStr},
+    str,
 };
 
 #[derive(Clone, Default, Debug)]
 pub struct StackMap {
-    map: HashMap<Id, Stack>,
+    len: usize,
+    map: Trie<Id, Stack>,
     name_map: HashMap<String, Id>,
 }
 
@@ -21,7 +23,7 @@ impl StackMap {
     }
 
     pub fn len(&self) -> usize {
-        self.map.len()
+        self.len
     }
 
     pub fn is_empty(&self) -> bool {
@@ -30,6 +32,7 @@ impl StackMap {
 
     pub fn insert(&mut self, stack: Stack) {
         self.map.insert(stack.id(), stack);
+        self.len += 1;
     }
 
     pub fn set_name(&mut self, id: Id, name: String) {
@@ -40,12 +43,19 @@ impl StackMap {
     }
 
     pub fn get_by_str(&self, s: &str) -> Option<&Stack> {
-        if let Ok(id) = Id::from_str(s) {
-            if let Some(s) = self.get_by_id(&id) {
-                return Some(s);
-            }
-        }
-        self.get_by_name(s)
+        let hex_to_byte =
+            |c| u8::from_str_radix(str::from_utf8(c).map_err(|_| ())?, 16).map_err(|_| ());
+
+        self.get_by_name(s).or_else(|| {
+            let bytes: Vec<_> = s
+                .as_bytes()
+                .chunks(2)
+                .map(hex_to_byte)
+                .collect::<Result<_, _>>()
+                .ok()?;
+            let mut prefixed = self.map.iter_prefix(bytes.as_slice());
+            prefixed.next().xor(prefixed.next()).map(|(_, v)| v)
+        })
     }
 
     pub fn ids(&self) -> impl Iterator<Item = &Id> {
@@ -56,18 +66,16 @@ impl StackMap {
         self.name_map.keys().map(String::as_str)
     }
 
+    pub fn is_name(&self, s: &str) -> bool {
+        self.name_map.contains_key(s)
+    }
+
     pub fn get_by_id(&self, id: &Id) -> Option<&Stack> {
         self.map.get(id)
     }
 
     pub fn get_by_name(&self, name: &str) -> Option<&Stack> {
         self.get_by_id(self.name_map.get(name)?)
-    }
-
-    pub fn named_stacks(&self) -> impl Iterator<Item = (&str, &Stack)> {
-        self.name_map
-            .keys()
-            .map(move |k| (k.as_str(), self.get_by_name(k).unwrap()))
     }
 }
 

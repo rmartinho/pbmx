@@ -1,4 +1,5 @@
 #![feature(try_from)]
+#![feature(option_xor)]
 #![deny(clippy::correctness)]
 #![allow(dead_code)]
 

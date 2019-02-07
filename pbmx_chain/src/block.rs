@@ -81,7 +81,7 @@ impl<'a> Iterator for PayloadIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let id = self.payload_order.next()?;
-        self.payloads.get(&id)
+        self.payloads.get(id)
     }
 }
 

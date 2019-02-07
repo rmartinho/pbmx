@@ -1,7 +1,5 @@
 //! ElGamal encryption scheme for elliptic curves
 
-#![allow(unused_imports)]
-
 use crate::{error::Error, hash::Hash};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -11,9 +9,9 @@ use curve25519_dalek::{
 };
 use digest::Digest;
 use pbmx_serde::{derive_base64_conversions, ToBytes};
-use rand::{distributions::Distribution, thread_rng, CryptoRng, Rng};
-use serde::{de, Deserialize, Deserializer};
+use rand::{thread_rng, CryptoRng, Rng};
 use std::{
+    borrow::Borrow,
     fmt::{self, Debug, Display, Formatter},
     str::{self, FromStr},
 };
@@ -31,8 +29,14 @@ pub struct PublicKey {
 }
 
 /// A public key fingerprint
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
+
+impl Borrow<[u8]> for Fingerprint {
+    fn borrow(&self) -> &[u8] {
+        &self.0
+    }
+}
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
