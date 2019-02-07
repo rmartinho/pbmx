@@ -5,7 +5,7 @@ use crate::{
     },
     error::Result,
     secrets::SecretMap,
-    stacks::StackMap,
+    stacks::{StackEntry, StackMap},
 };
 use pbmx_chain::{
     block::Block,
@@ -80,7 +80,7 @@ impl State {
         Ok(())
     }
 
-    pub fn find_stack(&self, s: &str) -> Option<(&Stack, bool)> {
+    pub fn find_stack(&self, s: &str) -> Option<(&StackEntry, bool)> {
         Some((self.stacks.get_by_str(s)?, self.stacks.is_name(s)))
     }
 }

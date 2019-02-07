@@ -11,11 +11,11 @@ pub fn mask(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
     let id = value_t!(m, "STACK", String)?;
-    let (stack, name) = state.find_stack(&id).ok_or(Error::InvalidData)?;
+    let (e, name) = state.find_stack(&id).ok_or(Error::InvalidData)?;
 
-    let (s, p): (Stack, Vec<_>) = stack.iter().map(|m| state.vtmf.remask(m)).unzip();
+    let (s, p): (Stack, Vec<_>) = e.stack.iter().map(|m| state.vtmf.remask(m)).unzip();
 
-    let id1 = stack.id();
+    let id1 = e.stack.id();
     let id2 = s.id();
     state.payloads.push(Payload::MaskStack(id1, s, p));
     println!(

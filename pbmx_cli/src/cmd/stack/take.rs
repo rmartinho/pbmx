@@ -12,7 +12,7 @@ pub fn take(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
     let id = value_t!(m, "SOURCE", String)?;
-    let (stack, _) = state.find_stack(&id).ok_or(Error::InvalidData)?;
+    let (e, _) = state.find_stack(&id).ok_or(Error::InvalidData)?;
     let indices = values_t!(m, "INDICES", String)?;
     let indices: Vec<_> = indices
         .iter()
@@ -22,13 +22,13 @@ pub fn take(m: &ArgMatches) -> Result<()> {
         .flatten()
         .collect();
 
-    let tokens: Stack = stack
+    let tokens: Stack = e.stack
         .iter()
         .enumerate()
         .filter_map(|(i, m)| if indices.contains(&i) { Some(*m) } else { None })
         .collect();
 
-    let id1 = stack.id();
+    let id1 = e.stack.id();
     let id2 = tokens.id();
     println!(
         "{} {:16}{:?} \u{219B} {:16}",

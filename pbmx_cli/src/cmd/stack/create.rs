@@ -30,7 +30,7 @@ pub fn create(m: &ArgMatches) -> Result<()> {
     println!(
         "{} {}",
         " + Open stack".green().bold(),
-        display_stack_contents(&stack, &state.vtmf)
+        display_stack_contents(&stack.clone().into(), &state.vtmf)
     );
     state.payloads.push(Payload::OpenStack(stack));
     let name = value_t!(m, "NAME", String).ok();

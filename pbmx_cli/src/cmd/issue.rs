@@ -6,39 +6,12 @@ use crate::{
 };
 use clap::ArgMatches;
 use colored::Colorize;
-use pbmx_chain::payload::Payload;
-use pbmx_curve::vtmf::Stack;
 use pbmx_serde::ToBase64;
-use std::{
-    io::{stdout, Write},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
 pub fn issue(_: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
-    for id in state.stacks.ids() {
-        let fps = state.secrets.fingerprints(id);
-        if fps.len() == state.vtmf.parties() as usize {
-            let shares = state.secrets.shares(id).to_vec();
-            let masked = state.stacks.get_by_id(id).unwrap();
-            let stack: Stack = masked
-                .iter()
-                .zip(shares.iter())
-                .map(|(m, s)| state.vtmf.unmask(*m, *s))
-                .collect();
-            println!(
-                "{} {:16} \u{21BA} {:16}",
-                " + Unmask stack".green().bold(),
-                id,
-                stack.id()
-            );
-            state.payloads.push(Payload::UnmaskStack(*id, stack));
-        }
-    }
-
-    print!("{}", " ^ Issue block ".green().bold());
-    stdout().flush()?;
     let block = {
         let mut builder = state.chain.build_block();
         for payload in state.payloads.iter().cloned() {
@@ -52,7 +25,7 @@ pub fn issue(_: &ArgMatches) -> Result<()> {
     let mut path = PathBuf::from(BLOCKS_FOLDER_NAME);
     path.push(block_file);
     file::write_new(path, block.to_base64()?.as_bytes())?;
-    println!("{}", id);
+    println!("{} {:16}", " ^ Issue block".green().bold(), id);
 
     state.payloads.clear();
     state.save_payloads()?;

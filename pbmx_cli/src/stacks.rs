@@ -1,7 +1,8 @@
 use pbmx_chain::Id;
 use pbmx_curve::{
+    keys::Fingerprint,
     map,
-    vtmf::{Mask, Stack, Vtmf},
+    vtmf::{SecretShare, Stack, Vtmf},
 };
 use qp_trie::Trie;
 use std::{
@@ -11,9 +12,26 @@ use std::{
 };
 
 #[derive(Clone, Default, Debug)]
+pub struct StackEntry {
+    pub stack: Stack,
+    pub secret: Vec<SecretShare>,
+    pub fingerprints: Vec<Fingerprint>,
+}
+
+impl From<Stack> for StackEntry {
+    fn from(stack: Stack) -> Self {
+        Self {
+            stack,
+            secret: Vec::new(),
+            fingerprints: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug)]
 pub struct StackMap {
     len: usize,
-    map: Trie<Id, Stack>,
+    map: Trie<Id, StackEntry>,
     name_map: HashMap<String, Id>,
 }
 
@@ -31,8 +49,10 @@ impl StackMap {
     }
 
     pub fn insert(&mut self, stack: Stack) {
-        self.map.insert(stack.id(), stack);
-        self.len += 1;
+        let old = self.map.insert(stack.id(), StackEntry::from(stack));
+        if old.is_none() {
+            self.len += 1;
+        }
     }
 
     pub fn set_name(&mut self, id: Id, name: String) {
@@ -42,7 +62,7 @@ impl StackMap {
             .or_insert(id);
     }
 
-    pub fn get_by_str(&self, s: &str) -> Option<&Stack> {
+    pub fn get_by_str(&self, s: &str) -> Option<&StackEntry> {
         let hex_to_byte =
             |c| u8::from_str_radix(str::from_utf8(c).map_err(|_| ())?, 16).map_err(|_| ());
 
@@ -70,17 +90,17 @@ impl StackMap {
         self.name_map.contains_key(s)
     }
 
-    pub fn get_by_id(&self, id: &Id) -> Option<&Stack> {
+    pub fn get_by_id(&self, id: &Id) -> Option<&StackEntry> {
         self.map.get(id)
     }
 
-    pub fn get_by_name(&self, name: &str) -> Option<&Stack> {
+    pub fn get_by_name(&self, name: &str) -> Option<&StackEntry> {
         self.get_by_id(self.name_map.get(name)?)
     }
 }
 
-struct DisplayStackContents<'a>(&'a [Mask], &'a Vtmf);
-pub fn display_stack_contents<'a>(stack: &'a [Mask], vtmf: &'a Vtmf) -> impl Display + 'a {
+struct DisplayStackContents<'a>(&'a StackEntry, &'a Vtmf);
+pub fn display_stack_contents<'a>(stack: &'a StackEntry, vtmf: &'a Vtmf) -> impl Display + 'a {
     DisplayStackContents(stack, vtmf)
 }
 
@@ -91,7 +111,7 @@ impl<'a> Display for DisplayStackContents<'a> {
         let mut unfinished_seq = false;
         let mut count_encrypted = 0;
         write!(f, "[")?;
-        for m in self.0.iter() {
+        for m in self.0.stack.iter() {
             let u = self.1.unmask_open(m);
             if let Some(token) = map::from_curve(&u) {
                 if count_encrypted > 0 {
