@@ -1,5 +1,8 @@
 use pbmx_chain::Id;
-use pbmx_curve::vtmf::{Mask, Vtmf};
+use pbmx_curve::{
+    map,
+    vtmf::{Mask, Vtmf},
+};
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
@@ -83,7 +86,8 @@ impl<'a> Display for DisplayStackContents<'a> {
         let mut count_encrypted = 0;
         write!(f, "[")?;
         for m in self.0.iter() {
-            if let Some(s) = self.1.unmask_open(m) {
+            let u = self.1.unmask_open(m);
+            if let Some(token) = map::from_curve(&u) {
                 if count_encrypted > 0 {
                     if !first {
                         write!(f, " ")?;
@@ -92,7 +96,6 @@ impl<'a> Display for DisplayStackContents<'a> {
                     first = false;
                     count_encrypted = 0;
                 }
-                let token = s.as_bytes()[0];
                 if let Some(last) = last_in_seq {
                     if last + 1 == token {
                         unfinished_seq = true;

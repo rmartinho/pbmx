@@ -115,12 +115,12 @@ impl Vtmf {
 
 impl Vtmf {
     /// Applies the verifiable masking protocol
-    pub fn mask(&self, m: &Scalar) -> (Mask, MaskProof) {
+    pub fn mask(&self, p: &RistrettoPoint) -> (Mask, MaskProof) {
         let h = self.pk.point();
         let r = Scalar::random(&mut thread_rng());
         let c0 = G * &r;
         let hr = h * r;
-        let c1 = hr + G * m;
+        let c1 = hr + p;
         let proof = MaskProof::create(
             &mut Transcript::new(b"mask"),
             dlog_eq::Publics {
@@ -135,10 +135,10 @@ impl Vtmf {
     }
 
     /// Verifies the application of the masking protocol
-    pub fn verify_mask(&self, m: &Scalar, c: &Mask, proof: &MaskProof) -> Result<(), ()> {
+    pub fn verify_mask(&self, p: &RistrettoPoint, c: &Mask, proof: &MaskProof) -> Result<(), ()> {
         proof.verify(&mut Transcript::new(b"mask"), dlog_eq::Publics {
             a: &c.0,
-            b: &(c.1 - G * m),
+            b: &(c.1 - p),
             g: &G.basepoint(),
             h: &self.pk.point(),
         })
@@ -235,8 +235,8 @@ impl Vtmf {
     }
 
     /// Undoes a non-secret masking operation
-    pub fn unmask_open(&self, m: &Mask) -> Option<Scalar> {
-        unmap_scalar_from(&m.1)
+    pub fn unmask_open(&self, m: &Mask) -> RistrettoPoint {
+        m.1
     }
 }
 
@@ -337,8 +337,8 @@ impl Vtmf {
 impl Vtmf {
     /// Applies a random mask
     pub fn mask_random<R: Rng + CryptoRng>(&self, rng: &mut R) -> Mask {
-        let s = Scalar::random(rng);
-        self.mask(&s).0
+        let p = RistrettoPoint::random(rng);
+        self.mask(&p).0
     }
 
     /// Undoes a random mask
@@ -378,9 +378,10 @@ derive_base64_conversions!(Vtmf, Error);
 
 #[cfg(test)]
 mod tests {
-    use super::{Mask, Vtmf, G};
+    use super::{Mask, Vtmf};
     use crate::{
         keys::PrivateKey,
+        map,
         perm::{Permutation, Shuffles},
     };
     use curve25519_dalek::scalar::Scalar;
@@ -426,9 +427,10 @@ mod tests {
         vtmf0.add_key(pk1).unwrap();
         vtmf1.add_key(pk0).unwrap();
 
-        let x = Scalar::from(rng.gen_range(0, 16) as u64);
-        let (mask, proof) = vtmf0.mask(&x);
-        let verified = vtmf1.verify_mask(&x, &mask, &proof);
+        let x = rng.gen_range(0, 16);
+        let p = map::to_curve(x);
+        let (mask, proof) = vtmf0.mask(&p);
+        let verified = vtmf1.verify_mask(&p, &mask, &proof);
         assert_eq!(verified, Ok(()));
 
         let (d0, proof0) = vtmf0.unmask_share(&mask);
@@ -439,6 +441,7 @@ mod tests {
         let mask0 = vtmf0.unmask(mask, d1);
         let mask0 = vtmf0.unmask_private(mask0);
         let r = vtmf0.unmask_open(&mask0);
+        let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
@@ -446,6 +449,7 @@ mod tests {
         let mask1 = vtmf1.unmask(mask, d0);
         let mask1 = vtmf1.unmask_private(mask1);
         let r = vtmf1.unmask_open(&mask1);
+        let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
     }
 
@@ -464,9 +468,10 @@ mod tests {
         vtmf0.add_key(pk1).unwrap();
         vtmf1.add_key(pk0).unwrap();
 
-        let x = Scalar::from(rng.gen_range(0, 16) as u64);
-        let (mask, proof) = vtmf0.mask(&x);
-        let verified = vtmf1.verify_mask(&x, &mask, &proof);
+        let x = rng.gen_range(0, 16);
+        let p = map::to_curve(x);
+        let (mask, proof) = vtmf0.mask(&p);
+        let verified = vtmf1.verify_mask(&p, &mask, &proof);
         assert_eq!(verified, Ok(()));
 
         let (remask, proof) = vtmf0.remask(&mask);
@@ -481,6 +486,7 @@ mod tests {
         let mask0 = vtmf0.unmask(mask, d1);
         let mask0 = vtmf0.unmask_private(mask0);
         let r = vtmf0.unmask_open(&mask0);
+        let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
@@ -488,6 +494,7 @@ mod tests {
         let mask1 = vtmf1.unmask(mask, d0);
         let mask1 = vtmf1.unmask_private(mask1);
         let r = vtmf1.unmask_open(&mask1);
+        let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
     }
 
@@ -506,10 +513,12 @@ mod tests {
         vtmf0.add_key(pk1).unwrap();
         vtmf1.add_key(pk0).unwrap();
 
-        let x = Scalar::from(rng.gen_range(0, 16) as u64);
-        let mask = Mask::open(G * &x);
+        let x = rng.gen_range(0, 16);
+        let p = map::to_curve(x);
+        let mask = Mask::open(p);
 
         let open = vtmf1.unmask_open(&mask);
+        let open = map::from_curve(&open);
         assert_eq!(open, Some(x));
 
         let (d0, proof0) = vtmf0.unmask_share(&mask);
@@ -520,6 +529,7 @@ mod tests {
         let mask0 = vtmf0.unmask(mask, d1);
         let mask0 = vtmf0.unmask_private(mask0);
         let r = vtmf0.unmask_open(&mask0);
+        let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
@@ -527,6 +537,7 @@ mod tests {
         let mask1 = vtmf1.unmask(mask, d0);
         let mask1 = vtmf1.unmask_private(mask1);
         let r = vtmf1.unmask_open(&mask1);
+        let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
     }
 
@@ -545,8 +556,8 @@ mod tests {
         vtmf1.add_key(pk0).unwrap();
 
         let m: Vec<_> = (0u64..8)
-            .map(Scalar::from)
-            .map(|i| vtmf0.mask(&i).0)
+            .map(map::to_curve)
+            .map(|p| vtmf0.mask(&p).0)
             .collect();
         let pi = thread_rng().sample(&Shuffles(m.len()));
         let (shuffle, proof) = vtmf0.mask_shuffle(&m, &pi);
@@ -561,10 +572,11 @@ mod tests {
                 assert_eq!(verified, Ok(()));
                 let mask1 = vtmf1.unmask(*m, d0);
                 let mask1 = vtmf1.unmask_private(mask1);
-                vtmf1.unmask_open(&mask1).unwrap()
+                let r = vtmf1.unmask_open(&mask1);
+                map::from_curve(&r).unwrap()
             })
             .collect();
-        let mut expected: Vec<_> = (0u64..8).map(Scalar::from).collect();
+        let mut expected: Vec<_> = (0u64..8).collect();
         pi.apply_to(&mut expected);
         assert_eq!(open, expected);
     }
@@ -584,8 +596,8 @@ mod tests {
         vtmf1.add_key(pk0).unwrap();
 
         let m: Vec<_> = (0u64..8)
-            .map(Scalar::from)
-            .map(|i| vtmf0.mask(&i).0)
+            .map(map::to_curve)
+            .map(|p| vtmf0.mask(&p).0)
             .collect();
         let k = thread_rng().gen_range(0, 8);
         let (shift, proof) = vtmf0.mask_shift(&m, k);
@@ -600,10 +612,11 @@ mod tests {
                 assert_eq!(verified, Ok(()));
                 let mask1 = vtmf1.unmask(*m, d0);
                 let mask1 = vtmf1.unmask_private(mask1);
-                vtmf1.unmask_open(&mask1).unwrap()
+                let r = vtmf1.unmask_open(&mask1);
+                map::from_curve(&r).unwrap()
             })
             .collect();
-        let mut expected: Vec<_> = (0u64..8).map(Scalar::from).collect();
+        let mut expected: Vec<_> = (0u64..8).collect();
         let pi = Permutation::shift(8, k);
         pi.apply_to(&mut expected);
         assert_eq!(open, expected);
@@ -652,12 +665,3 @@ mod tests {
         }
     }
 }
-
-fn unmap_scalar_from(point: &RistrettoPoint) -> Option<Scalar> {
-    CURVE_MAP
-        .get(&point.compress().0)
-        .cloned()
-        .map(Scalar::from)
-}
-
-static CURVE_MAP: phf::Map<[u8; 32], u64> = include!(concat!(env!("OUT_DIR"), "/curve_map.rs"));
