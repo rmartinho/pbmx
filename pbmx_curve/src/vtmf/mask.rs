@@ -1,6 +1,7 @@
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar, traits::Identity};
 use std::{
     borrow::Borrow,
+    hash::{Hash, Hasher},
     iter::Sum,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
@@ -13,6 +14,16 @@ impl Mask {
     /// Creates a new open masking
     pub fn open(p: RistrettoPoint) -> Mask {
         Mask(RistrettoPoint::identity(), p)
+    }
+}
+
+impl Hash for Mask {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.0.compress().as_bytes().hash(state);
+        self.1.compress().as_bytes().hash(state);
     }
 }
 

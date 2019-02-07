@@ -9,12 +9,13 @@ use colored::Colorize;
 use curve25519_dalek::scalar::Scalar;
 use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::{Mask, Stack};
+use std::collections::HashMap;
 
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_TABLE, ristretto::RistrettoBasepointTable};
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
-pub fn create(m: &ArgMatches) -> Result<()> {
+pub fn stack(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
     let stack: Stack = values_t!(m, "TOKENS", String)
@@ -30,7 +31,7 @@ pub fn create(m: &ArgMatches) -> Result<()> {
     println!(
         "{} {}",
         " + Open stack".green().bold(),
-        display_stack_contents(&stack.clone().into(), &state.vtmf)
+        display_stack_contents(&stack.clone(), &HashMap::new(), &state.vtmf)
     );
     state.payloads.push(Payload::OpenStack(stack));
     let name = value_t!(m, "NAME", String).ok();

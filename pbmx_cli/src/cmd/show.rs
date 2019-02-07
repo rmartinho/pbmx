@@ -14,7 +14,10 @@ pub fn show(m: &ArgMatches) -> Result<()> {
     if state.stacks.is_name(&id) {
         print!("{} ", id.bold());
     }
-    println!("{}", display_stack_contents(&stack, &state.vtmf));
+    println!(
+        "{}",
+        display_stack_contents(&stack, &state.stacks.secrets, &state.vtmf)
+    );
 
     Ok(())
 }

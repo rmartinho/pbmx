@@ -14,7 +14,7 @@ pub fn shuffle(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
     let id = value_t!(m, "STACK", String)?;
-    let e = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
+    let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
 
     let indices = values_t!(m, "TOKENS", String).ok();
     let perm = if let Some(indices) = indices {
@@ -27,11 +27,11 @@ pub fn shuffle(m: &ArgMatches) -> Result<()> {
             .collect();
         Permutation::try_from(v).map_err(|_| Error::InvalidData)?
     } else {
-        thread_rng().sample(&Shuffles(e.stack.len()))
+        thread_rng().sample(&Shuffles(stack.len()))
     };
-    let (s, proof) = state.vtmf.mask_shuffle(&e.stack, &perm);
+    let (s, proof) = state.vtmf.mask_shuffle(&stack, &perm);
 
-    let id1 = e.stack.id();
+    let id1 = stack.id();
     let id2 = s.id();
     state.payloads.push(Payload::ShuffleStack(id1, s, proof));
     println!(

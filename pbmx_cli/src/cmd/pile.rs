@@ -18,7 +18,7 @@ pub fn pile(m: &ArgMatches) -> Result<()> {
                 .stacks
                 .get_by_str(&id)
                 .ok_or(Error::InvalidData)
-                .map(|x| x.stack.clone())
+                .map(|s| s.clone())
         })
         .collect::<Result<_>>()?;
     let ids: Vec<_> = stacks.iter().map(Stack::id).collect();

@@ -1,41 +1,22 @@
-use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
 use pbmx_chain::Id;
 use pbmx_curve::{
     keys::Fingerprint,
     map,
-    vtmf::{SecretShare, Stack, Vtmf},
+    vtmf::{Mask, SecretShare, Stack, Vtmf},
 };
 use qp_trie::Trie;
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
-    iter, str,
+    str,
 };
-
-#[derive(Clone, Default, Debug)]
-pub struct StackEntry {
-    pub stack: Stack,
-    pub secret: Vec<SecretShare>,
-    pub fingerprints: Vec<Fingerprint>,
-}
-
-impl From<Stack> for StackEntry {
-    fn from(stack: Stack) -> Self {
-        Self {
-            secret: iter::repeat(RistrettoPoint::identity())
-                .take(stack.len())
-                .collect(),
-            stack,
-            fingerprints: Vec::new(),
-        }
-    }
-}
 
 #[derive(Clone, Default, Debug)]
 pub struct StackMap {
     len: usize,
-    map: Trie<Id, StackEntry>,
+    map: Trie<Id, Stack>,
     name_map: HashMap<String, Id>,
+    pub secrets: HashMap<Mask, (SecretShare, Vec<Fingerprint>)>,
 }
 
 impl StackMap {
@@ -53,7 +34,7 @@ impl StackMap {
 
     pub fn insert(&mut self, stack: Stack) {
         if !self.map.contains_key(&stack.id()) {
-            self.map.insert(stack.id(), StackEntry::from(stack));
+            self.map.insert(stack.id(), stack);
             self.len += 1;
         }
     }
@@ -66,14 +47,19 @@ impl StackMap {
     }
 
     pub fn add_secret_share(&mut self, id: Id, owner: Fingerprint, shares: Vec<SecretShare>) {
-        let entry = &mut self.map[&id];
-        for (s0, s1) in entry.secret.iter_mut().zip(shares.iter()) {
-            *s0 += s1;
+        let stack = &mut self.map[&id];
+        for (m, di) in stack.iter().zip(shares.iter()) {
+            self.secrets
+                .entry(*m)
+                .and_modify(|(d, fp)| {
+                    *d += di;
+                    fp.push(owner)
+                })
+                .or_insert_with(|| (*di, vec![owner]));
         }
-        entry.fingerprints.push(owner);
     }
 
-    pub fn get_by_str(&self, s: &str) -> Option<&StackEntry> {
+    pub fn get_by_str(&self, s: &str) -> Option<&Stack> {
         let hex_to_byte =
             |c| u8::from_str_radix(str::from_utf8(c).map_err(|_| ())?, 16).map_err(|_| ());
 
@@ -101,34 +87,45 @@ impl StackMap {
         self.name_map.contains_key(s)
     }
 
-    pub fn get_by_id(&self, id: &Id) -> Option<&StackEntry> {
+    pub fn get_by_id(&self, id: &Id) -> Option<&Stack> {
         self.map.get(id)
     }
 
-    pub fn get_by_name(&self, name: &str) -> Option<&StackEntry> {
+    pub fn get_by_name(&self, name: &str) -> Option<&Stack> {
         self.get_by_id(self.name_map.get(name)?)
     }
 }
 
-struct DisplayStackContents<'a>(&'a StackEntry, &'a Vtmf);
-pub fn display_stack_contents<'a>(stack: &'a StackEntry, vtmf: &'a Vtmf) -> impl Display + 'a {
-    DisplayStackContents(stack, vtmf)
+struct DisplayStackContents<'a>(
+    &'a Stack,
+    &'a HashMap<Mask, (SecretShare, Vec<Fingerprint>)>,
+    &'a Vtmf,
+);
+pub fn display_stack_contents<'a>(
+    stack: &'a Stack,
+    secrets: &'a HashMap<Mask, (SecretShare, Vec<Fingerprint>)>,
+    vtmf: &'a Vtmf,
+) -> impl Display + 'a {
+    DisplayStackContents(stack, secrets, vtmf)
 }
 
 impl<'a> Display for DisplayStackContents<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let my_fp = &self.1.private_key().fingerprint();
         let mut first = true;
         let mut last_in_seq = None;
         let mut unfinished_seq = false;
         let mut count_encrypted = 0;
         write!(f, "[")?;
-        for (m, s) in self.0.stack.iter().zip(self.0.secret.iter()) {
-            let mut m = self.1.unmask(m, s);
-            if !self.0.fingerprints.contains(my_fp) {
-                m = self.1.unmask_private(&m);
+        let my_fp = &self.2.private_key().fingerprint();
+        for m in self.0.iter() {
+            let mut m = *m;
+            if let Some((d, fp)) = self.1.get(&m) {
+                m = self.2.unmask(&m, d);
+                if !fp.contains(my_fp) {
+                    m = self.2.unmask_private(&m);
+                }
             }
-            let u = self.1.unmask_open(&m);
+            let u = self.2.unmask_open(&m);
             if let Some(token) = map::from_curve(&u) {
                 if count_encrypted > 0 {
                     if !first {
