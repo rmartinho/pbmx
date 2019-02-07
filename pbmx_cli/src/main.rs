@@ -16,9 +16,9 @@ mod state;
 
 mod cmd;
 use cmd::{
-    cut::cut, init::init, issue::issue, join::join, log::log, mask::mask, message::message,
-    pile::pile, reset::reset, reveal::reveal, show::show, shuffle::shuffle, stack::stack,
-    stacks::stacks, status::status, take::take,
+    cut::cut, init::init, issue::issue, join::join, list::list, log::log, mask::mask,
+    message::message, pile::pile, reset::reset, reveal::reveal, show::show, shuffle::shuffle,
+    stack::stack, status::status, take::take,
 };
 
 fn main() {
@@ -74,7 +74,7 @@ fn main() {
             (@arg TOKENS: +multiple +use_delimiter "The tokens in the stack")
             (@arg NAME: -n --name +takes_value "Sets the name of the stack")
         )
-        (@subcommand stacks =>
+        (@subcommand list =>
             (about: "Lists existing stacks")
             (@setting DeriveDisplayOrder)
             (@setting ColoredHelp)
@@ -144,7 +144,7 @@ fn main() {
         ("log", Some(sub_m)) => log(sub_m),
         ("message", Some(sub_m)) => message(sub_m),
         ("stack", Some(sub_m)) => stack(sub_m),
-        ("stacks", Some(sub_m)) => stacks(sub_m),
+        ("list", Some(sub_m)) => list(sub_m),
         ("show", Some(sub_m)) => show(sub_m),
         ("mask", Some(sub_m)) => mask(sub_m),
         ("shuffle", Some(sub_m)) => shuffle(sub_m),

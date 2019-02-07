@@ -3,7 +3,7 @@ use clap::ArgMatches;
 use colored::Colorize;
 use std::collections::HashSet;
 
-pub fn stacks(m: &ArgMatches) -> Result<()> {
+pub fn list(m: &ArgMatches) -> Result<()> {
     let state = State::read()?;
 
     let mut named = HashSet::new();
