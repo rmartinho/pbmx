@@ -15,9 +15,10 @@ pub fn pile(m: &ArgMatches) -> Result<()> {
         .iter()
         .map(|id| {
             state
-                .find_stack(&id)
+                .stacks
+                .get_by_str(&id)
                 .ok_or(Error::InvalidData)
-                .map(|x| x.0.stack.clone())
+                .map(|x| x.stack.clone())
         })
         .collect::<Result<_>>()?;
     let ids: Vec<_> = stacks.iter().map(Stack::id).collect();

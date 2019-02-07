@@ -14,7 +14,7 @@ pub fn shuffle(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
     let id = value_t!(m, "STACK", String)?;
-    let (e, name) = state.find_stack(&id).ok_or(Error::InvalidData)?;
+    let e = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
 
     let indices = values_t!(m, "TOKENS", String).ok();
     let perm = if let Some(indices) = indices {
@@ -40,7 +40,7 @@ pub fn shuffle(m: &ArgMatches) -> Result<()> {
         id1,
         id2
     );
-    if name {
+    if state.stacks.is_name(&id) {
         println!("{} {:16} {}", " + Name stack".green().bold(), id2, id);
         state.payloads.push(Payload::NameStack(id2, id.to_string()));
     }

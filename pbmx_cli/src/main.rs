@@ -11,7 +11,6 @@ mod error;
 use self::error::Error;
 mod file;
 mod indices;
-mod secrets;
 mod stacks;
 mod state;
 

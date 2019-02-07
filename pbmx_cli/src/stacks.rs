@@ -1,3 +1,4 @@
+use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
 use pbmx_chain::Id;
 use pbmx_curve::{
     keys::Fingerprint,
@@ -8,7 +9,7 @@ use qp_trie::Trie;
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
-    str,
+    iter, str,
 };
 
 #[derive(Clone, Default, Debug)]
@@ -21,8 +22,10 @@ pub struct StackEntry {
 impl From<Stack> for StackEntry {
     fn from(stack: Stack) -> Self {
         Self {
+            secret: iter::repeat(RistrettoPoint::identity())
+                .take(stack.len())
+                .collect(),
             stack,
-            secret: Vec::new(),
             fingerprints: Vec::new(),
         }
     }
@@ -60,6 +63,14 @@ impl StackMap {
             .entry(name)
             .and_modify(|e| *e = id)
             .or_insert(id);
+    }
+
+    pub fn add_secret_share(&mut self, id: Id, owner: Fingerprint, shares: Vec<SecretShare>) {
+        let entry = &mut self.map[&id];
+        for (s0, s1) in entry.secret.iter_mut().zip(shares.iter()) {
+            *s0 += s1;
+        }
+        entry.fingerprints.push(owner);
     }
 
     pub fn get_by_str(&self, s: &str) -> Option<&StackEntry> {
@@ -106,13 +117,18 @@ pub fn display_stack_contents<'a>(stack: &'a StackEntry, vtmf: &'a Vtmf) -> impl
 
 impl<'a> Display for DisplayStackContents<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let my_fp = &self.1.private_key().fingerprint();
         let mut first = true;
         let mut last_in_seq = None;
         let mut unfinished_seq = false;
         let mut count_encrypted = 0;
         write!(f, "[")?;
-        for m in self.0.stack.iter() {
-            let u = self.1.unmask_open(m);
+        for (m, s) in self.0.stack.iter().zip(self.0.secret.iter()) {
+            let mut m = self.1.unmask(m, s);
+            if !self.0.fingerprints.contains(my_fp) {
+                m = self.1.unmask_private(&m);
+            }
+            let u = self.1.unmask_open(&m);
             if let Some(token) = map::from_curve(&u) {
                 if count_encrypted > 0 {
                     if !first {

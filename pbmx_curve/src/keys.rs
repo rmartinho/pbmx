@@ -177,7 +177,7 @@ impl Display for Fingerprint {
             self.0.iter().take(self.0.len())
         };
         for b in it {
-            write!(f, "{:02X}", b)?;
+            write!(f, "{:02x}", b)?;
         }
         Ok(())
     }

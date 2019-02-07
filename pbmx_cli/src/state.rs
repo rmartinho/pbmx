@@ -4,8 +4,7 @@ use crate::{
         SECRETS_FOLDER_NAME,
     },
     error::Result,
-    secrets::SecretMap,
-    stacks::{StackEntry, StackMap},
+    stacks::StackMap,
 };
 use pbmx_chain::{
     block::Block,
@@ -25,7 +24,6 @@ pub struct State {
     pub vtmf: Vtmf,
     pub chain: Chain,
     pub stacks: StackMap,
-    pub secrets: SecretMap,
     pub payloads: Vec<Payload>,
 }
 
@@ -55,14 +53,12 @@ impl State {
         let mut visitor = ChainParser {
             vtmf: Vtmf::new(sk),
             stacks: StackMap::new(),
-            secrets: SecretMap::new(),
         };
         chain.visit(&mut visitor);
 
         Ok(State {
             vtmf: visitor.vtmf,
             stacks: visitor.stacks,
-            secrets: visitor.secrets,
             chain,
             payloads,
         })
@@ -79,16 +75,11 @@ impl State {
         )?;
         Ok(())
     }
-
-    pub fn find_stack(&self, s: &str) -> Option<(&StackEntry, bool)> {
-        Some((self.stacks.get_by_str(s)?, self.stacks.is_name(s)))
-    }
 }
 
 struct ChainParser {
     vtmf: Vtmf,
     stacks: StackMap,
-    secrets: SecretMap,
 }
 
 impl ChainVisitor for ChainParser {
@@ -139,7 +130,8 @@ impl ChainVisitor for ChainParser {
         shares: &[SecretShare],
         _: &[SecretShareProof],
     ) {
-        self.secrets.insert(id, block.signer(), shares.to_vec());
+        self.stacks
+            .add_secret_share(id, block.signer(), shares.to_vec());
     }
 
     fn visit_unmask_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &Stack) {

@@ -10,8 +10,8 @@ pub fn show(m: &ArgMatches) -> Result<()> {
     let state = State::read()?;
 
     let id = value_t!(m, "STACK", String)?;
-    let (stack, name) = state.find_stack(&id).ok_or(Error::InvalidData)?;
-    if name {
+    let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
+    if state.stacks.is_name(&id) {
         print!("{} ", id.bold());
     }
     println!("{}", display_stack_contents(&stack, &state.vtmf));

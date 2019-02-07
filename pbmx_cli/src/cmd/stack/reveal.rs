@@ -10,7 +10,7 @@ pub fn reveal(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
     let id = value_t!(m, "STACK", String)?;
-    let (e, _) = state.find_stack(&id).ok_or(Error::InvalidData)?;
+    let e = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
 
     let (s, p): (Vec<_>, Vec<_>) = e.stack.iter().map(|m| state.vtmf.unmask_share(m)).unzip();
 

@@ -224,14 +224,14 @@ impl Vtmf {
     }
 
     /// Undoes part of a masking operation
-    pub fn unmask(&self, c: Mask, d: SecretShare) -> Mask {
+    pub fn unmask(&self, c: &Mask, d: &SecretShare) -> Mask {
         Mask(c.0, c.1 - d)
     }
 
     /// Privately undoes a masking operation
-    pub fn unmask_private(&self, c: Mask) -> Mask {
+    pub fn unmask_private(&self, c: &Mask) -> Mask {
         let d = self.unmask_share(&c).0;
-        self.unmask(c, d)
+        self.unmask(c, &d)
     }
 
     /// Undoes a non-secret masking operation
@@ -437,16 +437,16 @@ mod tests {
 
         let verified = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert_eq!(verified, Ok(()));
-        let mask0 = vtmf0.unmask(mask, d1);
-        let mask0 = vtmf0.unmask_private(mask0);
+        let mask0 = vtmf0.unmask(&mask, &d1);
+        let mask0 = vtmf0.unmask_private(&mask0);
         let r = vtmf0.unmask_open(&mask0);
         let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert_eq!(verified, Ok(()));
-        let mask1 = vtmf1.unmask(mask, d0);
-        let mask1 = vtmf1.unmask_private(mask1);
+        let mask1 = vtmf1.unmask(&mask, &d0);
+        let mask1 = vtmf1.unmask_private(&mask1);
         let r = vtmf1.unmask_open(&mask1);
         let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
@@ -482,16 +482,16 @@ mod tests {
 
         let verified = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert_eq!(verified, Ok(()));
-        let mask0 = vtmf0.unmask(mask, d1);
-        let mask0 = vtmf0.unmask_private(mask0);
+        let mask0 = vtmf0.unmask(&mask, &d1);
+        let mask0 = vtmf0.unmask_private(&mask0);
         let r = vtmf0.unmask_open(&mask0);
         let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert_eq!(verified, Ok(()));
-        let mask1 = vtmf1.unmask(mask, d0);
-        let mask1 = vtmf1.unmask_private(mask1);
+        let mask1 = vtmf1.unmask(&mask, &d0);
+        let mask1 = vtmf1.unmask_private(&mask1);
         let r = vtmf1.unmask_open(&mask1);
         let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
@@ -525,16 +525,16 @@ mod tests {
 
         let verified = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert_eq!(verified, Ok(()));
-        let mask0 = vtmf0.unmask(mask, d1);
-        let mask0 = vtmf0.unmask_private(mask0);
+        let mask0 = vtmf0.unmask(&mask, &d1);
+        let mask0 = vtmf0.unmask_private(&mask0);
         let r = vtmf0.unmask_open(&mask0);
         let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert_eq!(verified, Ok(()));
-        let mask1 = vtmf1.unmask(mask, d0);
-        let mask1 = vtmf1.unmask_private(mask1);
+        let mask1 = vtmf1.unmask(&mask, &d0);
+        let mask1 = vtmf1.unmask_private(&mask1);
         let r = vtmf1.unmask_open(&mask1);
         let r = map::from_curve(&r);
         assert_eq!(r, Some(x));
@@ -569,8 +569,8 @@ mod tests {
                 let (d0, proof0) = vtmf0.unmask_share(m);
                 let verified = vtmf1.verify_unmask(m, &fp0, &d0, &proof0);
                 assert_eq!(verified, Ok(()));
-                let mask1 = vtmf1.unmask(*m, d0);
-                let mask1 = vtmf1.unmask_private(mask1);
+                let mask1 = vtmf1.unmask(m, &d0);
+                let mask1 = vtmf1.unmask_private(&mask1);
                 let r = vtmf1.unmask_open(&mask1);
                 map::from_curve(&r).unwrap()
             })
@@ -609,8 +609,8 @@ mod tests {
                 let (d0, proof0) = vtmf0.unmask_share(m);
                 let verified = vtmf1.verify_unmask(m, &fp0, &d0, &proof0);
                 assert_eq!(verified, Ok(()));
-                let mask1 = vtmf1.unmask(*m, d0);
-                let mask1 = vtmf1.unmask_private(mask1);
+                let mask1 = vtmf1.unmask(m, &d0);
+                let mask1 = vtmf1.unmask_private(&mask1);
                 let r = vtmf1.unmask_open(&mask1);
                 map::from_curve(&r).unwrap()
             })
@@ -645,14 +645,14 @@ mod tests {
 
         let verified = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert_eq!(verified, Ok(()));
-        let mask0 = vtmf0.unmask(mask, d1);
-        let mask0 = vtmf0.unmask_private(mask0);
+        let mask0 = vtmf0.unmask(&mask, &d1);
+        let mask0 = vtmf0.unmask_private(&mask0);
         let mut xof0 = vtmf0.unmask_random(&mask0);
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert_eq!(verified, Ok(()));
-        let mask1 = vtmf1.unmask(mask, d0);
-        let mask1 = vtmf1.unmask_private(mask1);
+        let mask1 = vtmf1.unmask(&mask, &d0);
+        let mask1 = vtmf1.unmask_private(&mask1);
         let mut xof1 = vtmf1.unmask_random(&mask1);
 
         let mut buf0 = [0u8; 64].to_vec();

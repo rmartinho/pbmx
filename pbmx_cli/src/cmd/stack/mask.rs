@@ -11,7 +11,7 @@ pub fn mask(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
 
     let id = value_t!(m, "STACK", String)?;
-    let (e, name) = state.find_stack(&id).ok_or(Error::InvalidData)?;
+    let e = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
 
     let (s, p): (Stack, Vec<_>) = e.stack.iter().map(|m| state.vtmf.remask(m)).unzip();
 
@@ -24,7 +24,7 @@ pub fn mask(m: &ArgMatches) -> Result<()> {
         id1,
         id2
     );
-    if name {
+    if state.stacks.is_name(&id) {
         println!("{} {:16} {}", " + Name stack".green().bold(), id2, id);
         state.payloads.push(Payload::NameStack(id2, id.to_string()));
     }
