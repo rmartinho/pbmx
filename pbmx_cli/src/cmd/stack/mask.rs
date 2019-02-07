@@ -4,7 +4,7 @@ use crate::{
 };
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::{payload::Payload, Id};
+use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
 pub fn mask(m: &ArgMatches) -> Result<()> {
@@ -15,8 +15,8 @@ pub fn mask(m: &ArgMatches) -> Result<()> {
 
     let (s, p): (Stack, Vec<_>) = stack.iter().map(|m| state.vtmf.remask(m)).unzip();
 
-    let id1 = Id::of(&stack.to_vec()).unwrap();
-    let id2 = Id::of(&s).unwrap();
+    let id1 = stack.id();
+    let id2 = s.id();
     state.payloads.push(Payload::MaskStack(id1, s, p));
     println!(
         "{} {:16} \u{21AC} {:16}",

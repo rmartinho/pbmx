@@ -4,7 +4,7 @@ use crate::{
 };
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::{payload::Payload, Id};
+use pbmx_chain::payload::Payload;
 
 pub fn reveal(m: &ArgMatches) -> Result<()> {
     let mut state = State::read()?;
@@ -14,7 +14,7 @@ pub fn reveal(m: &ArgMatches) -> Result<()> {
 
     let (s, p): (Vec<_>, Vec<_>) = stack.iter().map(|m| state.vtmf.unmask_share(m)).unzip();
 
-    let id1 = Id::of(&stack.to_vec()).unwrap();
+    let id1 = stack.id();
     state.payloads.push(Payload::PublishShares(id1, s, p));
     println!("{} {:16}", " + Publish secrets".green().bold(), id1,);
 

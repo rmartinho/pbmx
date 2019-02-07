@@ -45,11 +45,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
     }
 
     fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &Stack) {
-        println!(
-            "    {} {:16}",
-            "stack".green().bold(),
-            Id::of(&stack.to_vec()).unwrap()
-        );
+        println!("    {} {:16}", "stack".green().bold(), stack.id());
     }
 
     fn visit_mask_stack(&mut self, _: &Chain, _: &Block, id: Id, stack: &Stack, _: &[MaskProof]) {
@@ -57,7 +53,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
             "    {} {:16} \u{21AC} {:16}",
             "mask".green().bold(),
             id,
-            Id::of(&stack.to_vec()).unwrap()
+            stack.id()
         );
     }
 
@@ -73,7 +69,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
             "    {} {:16} \u{224B} {:16}",
             "shuffle".green().bold(),
             id,
-            Id::of(&stack.to_vec()).unwrap()
+            stack.id()
         );
     }
 
@@ -82,7 +78,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
             "    {} {:16} \u{21CB} {:16}",
             "cut".green().bold(),
             id,
-            Id::of(&stack.to_vec()).unwrap()
+            stack.id()
         );
     }
 
@@ -92,7 +88,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
             "take".green().bold(),
             id,
             indices,
-            Id::of(&stack.to_vec()).unwrap()
+            stack.id()
         );
     }
 
@@ -101,7 +97,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
             "    {} {:16?} \u{21A3} {:16}",
             "pile".green().bold(),
             ids,
-            Id::of(&stack.to_vec()).unwrap()
+            stack.id()
         );
     }
 
@@ -125,7 +121,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
             "    {} {:16} \u{21BA} {:16}",
             "unmask".green().bold(),
             id,
-            Id::of(&stack.to_vec()).unwrap()
+            stack.id()
         );
     }
 

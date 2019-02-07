@@ -6,7 +6,7 @@ use crate::{
 };
 use clap::ArgMatches;
 use colored::Colorize;
-use pbmx_chain::{payload::Payload, Id};
+use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 use pbmx_serde::ToBase64;
 use std::{
@@ -31,7 +31,7 @@ pub fn issue(_: &ArgMatches) -> Result<()> {
                 "{} {:16} \u{21BA} {:16}",
                 " + Unmask stack".green().bold(),
                 id,
-                Id::of(&stack).unwrap()
+                stack.id()
             );
             state.payloads.push(Payload::UnmaskStack(*id, stack));
         }

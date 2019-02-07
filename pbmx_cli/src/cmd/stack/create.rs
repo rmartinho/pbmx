@@ -7,7 +7,7 @@ use crate::{
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use curve25519_dalek::scalar::Scalar;
-use pbmx_chain::{payload::Payload, Id};
+use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::{Mask, Stack};
 
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_TABLE, ristretto::RistrettoBasepointTable};
@@ -26,7 +26,7 @@ pub fn create(m: &ArgMatches) -> Result<()> {
         .flatten()
         .map(|i| Mask::open(G * &Scalar::from(i as u64)))
         .collect();
-    let id = Id::of(&stack).unwrap();
+    let id = stack.id();
     println!(
         "{} {}",
         " + Open stack".green().bold(),

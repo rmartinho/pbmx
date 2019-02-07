@@ -4,7 +4,7 @@ use crate::{
 };
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::{payload::Payload, Id};
+use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
 pub fn pile(m: &ArgMatches) -> Result<()> {
@@ -17,14 +17,14 @@ pub fn pile(m: &ArgMatches) -> Result<()> {
             state
                 .find_stack(&id)
                 .ok_or(Error::InvalidData)
-                .map(|x| x.0.to_vec())
+                .map(|x| x.0.clone())
         })
         .collect::<Result<_>>()?;
-    let ids: Vec<_> = stacks.iter().map(|s| Id::of(s).unwrap()).collect();
+    let ids: Vec<_> = stacks.iter().map(Stack::id).collect();
 
     let tokens: Stack = stacks.into_iter().flat_map(|s| s.into_iter()).collect();
 
-    let id2 = Id::of(&tokens).unwrap();
+    let id2 = tokens.id();
     println!(
         "{} {:?} \u{21A3} {:16}",
         " + Pile stacks".green().bold(),

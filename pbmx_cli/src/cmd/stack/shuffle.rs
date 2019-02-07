@@ -5,7 +5,7 @@ use crate::{
 };
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::{payload::Payload, Id};
+use pbmx_chain::payload::Payload;
 use pbmx_curve::perm::{Permutation, Shuffles};
 use rand::{thread_rng, Rng};
 use std::convert::TryFrom;
@@ -31,8 +31,8 @@ pub fn shuffle(m: &ArgMatches) -> Result<()> {
     };
     let (s, proof) = state.vtmf.mask_shuffle(stack, &perm);
 
-    let id1 = Id::of(&stack.to_vec()).unwrap();
-    let id2 = Id::of(&s).unwrap();
+    let id1 = stack.id();
+    let id2 = s.id();
     state.payloads.push(Payload::ShuffleStack(id1, s, proof));
     println!(
         "{} {:16} \u{224B} {:16}",

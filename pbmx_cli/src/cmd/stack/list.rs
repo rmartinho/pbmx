@@ -1,7 +1,6 @@
 use crate::{error::Result, state::State};
 use clap::ArgMatches;
 use colored::Colorize;
-use pbmx_chain::Id;
 use std::collections::HashSet;
 
 pub fn list(m: &ArgMatches) -> Result<()> {
@@ -9,7 +8,7 @@ pub fn list(m: &ArgMatches) -> Result<()> {
 
     let mut named = HashSet::new();
     for (n, s) in state.stacks.named_stacks() {
-        let id = Id::of(s).unwrap();
+        let id = s.id();
         named.insert(id);
         print!(
             "{} {:4}\t{}",

@@ -5,7 +5,7 @@ use crate::{
 };
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::{payload::Payload, Id};
+use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
 pub fn take(m: &ArgMatches) -> Result<()> {
@@ -28,8 +28,8 @@ pub fn take(m: &ArgMatches) -> Result<()> {
         .filter_map(|(i, m)| if indices.contains(&i) { Some(*m) } else { None })
         .collect();
 
-    let id1 = Id::of(&stack.to_vec()).unwrap();
-    let id2 = Id::of(&tokens).unwrap();
+    let id1 = stack.id();
+    let id2 = tokens.id();
     println!(
         "{} {:16}{:?} \u{219B} {:16}",
         " + Take tokens".green().bold(),

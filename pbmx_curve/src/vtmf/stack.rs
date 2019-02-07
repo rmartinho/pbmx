@@ -1,4 +1,4 @@
-use crate::{vtmf::Mask, Error};
+use crate::{keys::Fingerprint, vtmf::Mask, Error};
 use pbmx_serde::derive_base64_conversions;
 use std::{
     borrow::{Borrow, BorrowMut},
@@ -11,6 +11,13 @@ use std::{
 pub struct Stack(Vec<Mask>);
 
 derive_base64_conversions!(Stack, Error);
+
+impl Stack {
+    /// Gets an ID for this stack
+    pub fn id(&self) -> Fingerprint {
+        Fingerprint::of(self).unwrap()
+    }
+}
 
 impl<T> From<T> for Stack
 where

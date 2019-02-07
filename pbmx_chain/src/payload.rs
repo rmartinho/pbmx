@@ -55,26 +55,15 @@ impl<'a> Display for DisplayShort<'a> {
         use Payload::*;
         match self.0 {
             PublishKey(pk) => write!(f, "publish key {:16}", pk.fingerprint()),
-            OpenStack(stk) => write!(f, "open stack {:16}", Id::of(stk)?),
+            OpenStack(stk) => write!(f, "open stack {:16}", stk.id()),
             NameStack(id, name) => write!(f, "name {:16} {}", id, name),
-            MaskStack(id, stk, _) => {
-                write!(f, "mask {1:16} \u{21AC} {0:16}", id, Id::of(stk).unwrap())
-            }
-            ShuffleStack(id, stk, _) => write!(
-                f,
-                "shuffle {1:16} \u{224B} {0:16}",
-                id,
-                Id::of(stk).unwrap()
-            ),
-            ShiftStack(id, stk, _) => {
-                write!(f, "cut {1:16} \u{21CB} {0:16}", id, Id::of(stk).unwrap())
-            }
-            TakeStack(id, idxs, stk) => {
-                write!(f, "take {:16}{:?} {:16}", id, idxs, Id::of(stk).unwrap())
-            }
-            PileStacks(ids, stk) => write!(f, "pile {:16?} {:16}", ids, Id::of(stk).unwrap()),
+            MaskStack(id, stk, _) => write!(f, "mask {1:16} \u{21AC} {0:16}", id, stk.id()),
+            ShuffleStack(id, stk, _) => write!(f, "shuffle {1:16} \u{224B} {0:16}", id, stk.id()),
+            ShiftStack(id, stk, _) => write!(f, "cut {1:16} \u{21CB} {0:16}", id, stk.id()),
+            TakeStack(id, idxs, stk) => write!(f, "take {:16}{:?} {:16}", id, idxs, stk.id()),
+            PileStacks(ids, stk) => write!(f, "pile {:16?} {:16}", ids, stk.id()),
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
-            UnmaskStack(id, stk) => write!(f, "unmask {:16} {:16}", id, Id::of(stk).unwrap()),
+            UnmaskStack(id, stk) => write!(f, "unmask {:16} {:16}", id, stk.id()),
             Bytes(bytes) => write!(f, "message {}", &String::from_utf8_lossy(bytes)),
         }
     }

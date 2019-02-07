@@ -29,7 +29,7 @@ impl StackMap {
     }
 
     pub fn insert(&mut self, stack: Stack) {
-        self.map.insert(Id::of(&stack).unwrap(), stack);
+        self.map.insert(stack.id(), stack);
     }
 
     pub fn set_name(&mut self, id: Id, name: String) {
