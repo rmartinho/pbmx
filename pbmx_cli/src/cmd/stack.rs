@@ -1,7 +1,7 @@
 use crate::{
     error::{Error, Result},
     indices::parse_indices,
-    stacks::display_stack_contents,
+    stack_map::display_stack_contents,
     state::State,
 };
 use clap::{value_t, ArgMatches};

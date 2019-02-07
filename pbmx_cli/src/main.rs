@@ -8,10 +8,10 @@ extern crate clap;
 
 mod constants;
 mod error;
-use self::error::Error;
+use error::Error;
 mod file;
 mod indices;
-mod stacks;
+mod stack_map;
 mod state;
 
 mod cmd;
@@ -35,6 +35,12 @@ fn main() {
             (@setting DeriveDisplayOrder)
             (@setting ColoredHelp)
             (@arg PATH: +required "The folder to hold game data")
+        )
+        (@subcommand reset =>
+            (about: "Resets the current block")
+        )
+        (@subcommand issue =>
+            (about: "Issues the current block")
         )
         (@subcommand join =>
             (about: "Joins the game")
@@ -126,17 +132,13 @@ fn main() {
             (@setting ColoredHelp)
             (@arg STACK: +required "The name or identifier of the stack")
         )
-        (@subcommand reset =>
-            (about: "Resets the current block")
-        )
-        (@subcommand issue =>
-            (about: "Issues the current block")
-        )
     )
     .get_matches();
 
     match matches.subcommand() {
         ("init", Some(sub_m)) => init(sub_m),
+        ("reset", Some(sub_m)) => reset(sub_m),
+        ("issue", Some(sub_m)) => issue(sub_m),
         ("join", Some(sub_m)) => join(sub_m),
         ("status", Some(sub_m)) => status(sub_m),
         ("log", Some(sub_m)) => log(sub_m),
@@ -150,8 +152,6 @@ fn main() {
         ("take", Some(sub_m)) => take(sub_m),
         ("pile", Some(sub_m)) => pile(sub_m),
         ("reveal", Some(sub_m)) => reveal(sub_m),
-        ("reset", Some(sub_m)) => reset(sub_m),
-        ("issue", Some(sub_m)) => issue(sub_m),
         _ => Err(Error::InvalidSubcommand),
     }
     .unwrap_or_else(|e| e.exit());

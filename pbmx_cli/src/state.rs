@@ -4,7 +4,7 @@ use crate::{
         SECRETS_FOLDER_NAME,
     },
     error::Result,
-    stacks::StackMap,
+    stack_map::StackMap,
 };
 use pbmx_chain::{
     block::Block,
