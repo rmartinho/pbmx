@@ -29,7 +29,7 @@ pub fn shuffle(m: &ArgMatches) -> Result<()> {
     } else {
         thread_rng().sample(&Shuffles(stack.len()))
     };
-    let (s, proof) = state.vtmf.mask_shuffle(stack, &perm);
+    let (s, proof) = state.vtmf.mask_shuffle(&stack.into(), &perm);
 
     let id1 = Id::of(&stack.to_vec()).unwrap();
     let id2 = Id::of(&s).unwrap();

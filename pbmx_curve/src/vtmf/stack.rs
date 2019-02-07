@@ -1,4 +1,5 @@
-use crate::vtmf::Mask;
+use crate::{vtmf::Mask, Error};
+use pbmx_serde::derive_base64_conversions;
 use std::{
     borrow::{Borrow, BorrowMut},
     iter::FromIterator,
@@ -8,6 +9,8 @@ use std::{
 /// A masked stack
 #[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Stack(Vec<Mask>);
+
+derive_base64_conversions!(Stack, Error);
 
 impl<T> From<T> for Stack
 where

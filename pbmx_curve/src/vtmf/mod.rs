@@ -242,7 +242,7 @@ impl Vtmf {
 
 impl Vtmf {
     /// Applies the mask-shuffle protocol for a given permutation
-    pub fn mask_shuffle(&self, m: &[Mask], pi: &Permutation) -> (Vec<Mask>, ShuffleProof) {
+    pub fn mask_shuffle(&self, m: &Stack, pi: &Permutation) -> (Stack, ShuffleProof) {
         let mut rng = thread_rng();
 
         let h = self.pk.point();
@@ -255,7 +255,7 @@ impl Vtmf {
             (Mask(c1, c2), r)
         };
 
-        let (mut rm, mut r): (Vec<_>, Vec<_>) = m.iter().map(remask).unzip();
+        let (mut rm, mut r): (Stack, Vec<_>) = m.iter().map(remask).unzip();
         pi.apply_to(&mut rm);
         pi.apply_to(&mut r);
 
@@ -274,8 +274,8 @@ impl Vtmf {
     /// Verifies the application of the mask-shuffling protocol
     pub fn verify_mask_shuffle(
         &self,
-        m: &[Mask],
-        c: &[Mask],
+        m: &Stack,
+        c: &Stack,
         proof: &ShuffleProof,
     ) -> Result<(), ()> {
         proof.verify(
@@ -291,7 +291,7 @@ impl Vtmf {
 
 impl Vtmf {
     /// Applies the mask-shift protocol for a given permutation
-    pub fn mask_shift(&self, m: &[Mask], k: usize) -> (Vec<Mask>, ShiftProof) {
+    pub fn mask_shift(&self, m: &Stack, k: usize) -> (Stack, ShiftProof) {
         let mut rng = thread_rng();
 
         let h = self.pk.point();
@@ -304,7 +304,7 @@ impl Vtmf {
             (Mask(c1, c2), r)
         };
 
-        let (mut rm, mut r): (Vec<_>, Vec<_>) = m.iter().map(remask).unzip();
+        let (mut rm, mut r): (Stack, Vec<_>) = m.iter().map(remask).unzip();
         let pi = Permutation::shift(m.len(), k);
         pi.apply_to(&mut rm);
         pi.apply_to(&mut r);
@@ -322,7 +322,7 @@ impl Vtmf {
     }
 
     /// Verifies the application of the mask-shifting protocol
-    pub fn verify_mask_shift(&self, m: &[Mask], c: &[Mask], proof: &ShiftProof) -> Result<(), ()> {
+    pub fn verify_mask_shift(&self, m: &Stack, c: &Stack, proof: &ShiftProof) -> Result<(), ()> {
         proof.verify(
             &mut Transcript::new(b"mask_shift"),
             secret_rotation::Publics {
@@ -378,13 +378,12 @@ derive_base64_conversions!(Vtmf, Error);
 
 #[cfg(test)]
 mod tests {
-    use super::{Mask, Vtmf};
+    use super::{Mask, Stack, Vtmf};
     use crate::{
         keys::PrivateKey,
         map,
         perm::{Permutation, Shuffles},
     };
-    use curve25519_dalek::scalar::Scalar;
     use digest::XofReader;
     use pbmx_serde::{FromBase64, ToBase64};
     use rand::{thread_rng, Rng};
@@ -555,7 +554,7 @@ mod tests {
         vtmf0.add_key(pk1).unwrap();
         vtmf1.add_key(pk0).unwrap();
 
-        let m: Vec<_> = (0u64..8)
+        let m: Stack = (0u64..8)
             .map(map::to_curve)
             .map(|p| vtmf0.mask(&p).0)
             .collect();
@@ -595,7 +594,7 @@ mod tests {
         vtmf0.add_key(pk1).unwrap();
         vtmf1.add_key(pk0).unwrap();
 
-        let m: Vec<_> = (0u64..8)
+        let m: Stack = (0u64..8)
             .map(map::to_curve)
             .map(|p| vtmf0.mask(&p).0)
             .collect();

@@ -3,7 +3,7 @@
 use crate::{error::Error, Id};
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
 };
 use pbmx_serde::derive_base64_conversions;
 use std::fmt::{self, Display, Formatter};
@@ -19,7 +19,7 @@ pub enum Payload {
     /// A stack mask payload
     MaskStack(Id, Vec<Mask>, Vec<MaskProof>),
     /// A stack shuffle payload
-    ShuffleStack(Id, Vec<Mask>, ShuffleProof),
+    ShuffleStack(Id, Stack, ShuffleProof),
     /// A stack shift payload
     ShiftStack(Id, Vec<Mask>, ShiftProof),
     /// A stack name payload
