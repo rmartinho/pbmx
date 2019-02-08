@@ -11,6 +11,7 @@ pub enum Error {
     Toml(toml::de::Error),
     InvalidSubcommand,
     InvalidData,
+    InvalidBlock,
 }
 
 impl Error {
@@ -62,6 +63,12 @@ impl Error {
             .exit(),
             Error::InvalidData => clap::Error {
                 message: "Invalid data".into(),
+                kind: clap::ErrorKind::InvalidValue,
+                info: None,
+            }
+            .exit(),
+            Error::InvalidBlock => clap::Error {
+                message: "Invalid block".into(),
                 kind: clap::ErrorKind::InvalidValue,
                 info: None,
             }

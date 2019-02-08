@@ -3,8 +3,8 @@ use crate::{
         BLOCKS_FOLDER_NAME, BLOCK_EXTENSION, CURRENT_BLOCK_FILE_NAME, KEY_FILE_NAME,
         SECRETS_FOLDER_NAME,
     },
-    error::Result,
     stack_map::StackMap,
+    Error, Result,
 };
 use pbmx_chain::{
     block::Block,
@@ -14,6 +14,7 @@ use pbmx_chain::{
 };
 use pbmx_curve::{
     keys::{PrivateKey, PublicKey},
+    map,
     vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack, Vtmf},
 };
 use pbmx_serde::{FromBase64, ToBase64};
@@ -63,15 +64,20 @@ impl State {
         let mut visitor = ChainParser {
             vtmf: Vtmf::new(sk),
             stacks: StackMap::new(),
+            valid: true,
         };
         chain.visit(&mut visitor);
 
-        Ok(State {
-            vtmf: visitor.vtmf,
-            stacks: visitor.stacks,
-            chain,
-            payloads,
-        })
+        if visitor.valid {
+            Ok(State {
+                vtmf: visitor.vtmf,
+                stacks: visitor.stacks,
+                chain,
+                payloads,
+            })
+        } else {
+            Err(Error::InvalidBlock)
+        }
     }
 
     pub fn clear_payloads(&mut self) {
@@ -90,46 +96,137 @@ impl State {
 struct ChainParser {
     vtmf: Vtmf,
     stacks: StackMap,
+    valid: bool,
 }
 
 impl ChainVisitor for ChainParser {
-    fn visit_publish_key(&mut self, _: &Chain, _: &Block, pk: &PublicKey) {
-        self.vtmf.add_key(pk.clone()).unwrap();
+    fn visit_block(&mut self, chain: &Chain, block: &Block) {
+        for payload in block.payloads() {
+            self.visit_payload(chain, block, payload);
+            if !self.valid {
+                break;
+            }
+        }
+    }
+
+    fn visit_publish_key(&mut self, _: &Chain, block: &Block, pk: &PublicKey) {
+        self.valid = self.valid && block.signer() == pk.fingerprint();
+
+        if self.valid {
+            self.vtmf.add_key(pk.clone()).unwrap();
+        }
     }
 
     fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &Stack) {
-        self.stacks.insert(stack.clone());
+        self.valid = self.valid
+            && stack
+                .iter()
+                .all(|m| map::from_curve(&self.vtmf.unmask_open(m)).is_some());
+
+        if self.valid {
+            self.stacks.insert(stack.clone());
+        }
     }
 
-    fn visit_mask_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &Stack, _: &[MaskProof]) {
-        self.stacks.insert(stack.clone());
+    fn visit_mask_stack(
+        &mut self,
+        _: &Chain,
+        _: &Block,
+        id: Id,
+        stack: &Stack,
+        proof: &[MaskProof],
+    ) {
+        self.valid = self.valid
+            && self
+                .stacks
+                .get_by_id(&id)
+                .map(|src| {
+                    src.iter()
+                        .zip(stack.iter())
+                        .zip(proof.iter())
+                        .all(|((a, b), proof)| self.vtmf.verify_remask(a, b, proof).is_ok())
+                })
+                .unwrap_or(false);
+
+        if self.valid {
+            self.stacks.insert(stack.clone());
+        }
     }
 
     fn visit_shuffle_stack(
         &mut self,
         _: &Chain,
         _: &Block,
-        _: Id,
+        id: Id,
         stack: &Stack,
-        _: &ShuffleProof,
+        proof: &ShuffleProof,
     ) {
-        self.stacks.insert(stack.clone());
+        self.valid = self.valid
+            && self
+                .stacks
+                .get_by_id(&id)
+                .map(|src| self.vtmf.verify_mask_shuffle(src, stack, proof).is_ok())
+                .unwrap_or(false);
+
+        if self.valid {
+            self.stacks.insert(stack.clone());
+        }
     }
 
-    fn visit_shift_stack(&mut self, _: &Chain, _: &Block, _: Id, stack: &Stack, _: &ShiftProof) {
-        self.stacks.insert(stack.clone());
+    fn visit_shift_stack(
+        &mut self,
+        _: &Chain,
+        _: &Block,
+        id: Id,
+        stack: &Stack,
+        proof: &ShiftProof,
+    ) {
+        self.valid = self.valid
+            && self
+                .stacks
+                .get_by_id(&id)
+                .map(|src| self.vtmf.verify_mask_shift(src, stack, proof).is_ok())
+                .unwrap_or(false);
+
+        if self.valid {
+            self.stacks.insert(stack.clone());
+        }
     }
 
-    fn visit_take_stack(&mut self, _: &Chain, _: &Block, _: Id, _: &[usize], stack: &Stack) {
-        self.stacks.insert(stack.clone());
+    fn visit_take_stack(&mut self, _: &Chain, _: &Block, id: Id, indices: &[usize], stack: &Stack) {
+        self.valid = self.valid
+            && self
+                .stacks
+                .get_by_id(&id)
+                .map(|src| indices.iter().zip(stack.iter()).all(|(i, x)| src[*i] == *x))
+                .unwrap_or(false);
+
+        if self.valid {
+            self.stacks.insert(stack.clone());
+        }
     }
 
-    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, _: &[Id], stack: &Stack) {
-        self.stacks.insert(stack.clone());
+    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, ids: &[Id], stack: &Stack) {
+        let mut srcs = ids.iter().map(|id| self.stacks.get_by_id(&id));
+        self.valid = self.valid
+            && srcs.all(|x| x.is_some())
+            && srcs
+                .map(Option::unwrap)
+                .flat_map(|stk| stk.iter())
+                .zip(stack.iter())
+                .all(|(a, b)| *a == *b);
+
+        if self.valid {
+            self.stacks.insert(stack.clone());
+        }
     }
 
     fn visit_name_stack(&mut self, _: &Chain, _: &Block, id: Id, name: &str) {
-        self.stacks.set_name(id, name.to_string());
+        self.valid = self.valid && self.stacks.get_by_id(&id).is_some();
+
+        if self.valid {
+            self.stacks.set_name(id, name.to_string());
+        }
     }
 
     fn visit_publish_shares(
@@ -138,9 +235,25 @@ impl ChainVisitor for ChainParser {
         block: &Block,
         id: Id,
         shares: &[SecretShare],
-        _: &[SecretShareProof],
+        proofs: &[SecretShareProof],
     ) {
-        self.stacks
-            .add_secret_share(id, block.signer(), shares.to_vec());
+        self.valid = self.valid
+            && self
+                .stacks
+                .get_by_id(&id)
+                .map(|src| {
+                    src.iter()
+                        .zip(shares.iter())
+                        .zip(proofs.iter())
+                        .all(|((m, s), p)| {
+                            self.vtmf.verify_unmask(m, &block.signer(), s, p).is_ok()
+                        })
+                })
+                .unwrap_or(false);
+
+        if self.valid {
+            self.stacks
+                .add_secret_share(id, block.signer(), shares.to_vec());
+        }
     }
 }

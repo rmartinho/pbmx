@@ -3,4 +3,5 @@
 - use Groth's minimal shuffle
 - merge non-CLI crates together
 - move more toolkit-ish stuff out of CLI
+- save verification checkpoints
 - return blinding factors from VTMF functions so they can be re-combined later
