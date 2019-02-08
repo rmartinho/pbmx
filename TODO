@@ -1,4 +1,4 @@
-- add config for mapping keys<->users, and tokens<->names
+- block-specific logs/tail-like logs
 - rework payloads/interface for additional ops
 - use Groth's minimal shuffle
 - merge non-CLI crates together
