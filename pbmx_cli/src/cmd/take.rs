@@ -9,7 +9,7 @@ use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
 pub fn take(m: &ArgMatches) -> Result<()> {
-    let mut state = State::read()?;
+    let mut state = State::read(true)?;
 
     let id = value_t!(m, "SOURCE", String)?;
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;

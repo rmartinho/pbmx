@@ -16,7 +16,7 @@ use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_TABLE, ristretto::Ristrett
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 pub fn stack(m: &ArgMatches) -> Result<()> {
-    let mut state = State::read()?;
+    let mut state = State::read(false)?;
 
     let stack: Stack = values_t!(m, "TOKENS", String)
         .unwrap_or_else(|_| vec![])

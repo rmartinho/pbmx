@@ -28,7 +28,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn read() -> Result<State> {
+    pub fn read(include_temp: bool) -> Result<State> {
         let mut chain = Chain::new();
         for entry in fs::read_dir(BLOCKS_FOLDER_NAME)? {
             let entry = entry?;
@@ -50,6 +50,16 @@ impl State {
         let mut path = PathBuf::from(SECRETS_FOLDER_NAME);
         path.push(KEY_FILE_NAME);
         let sk = PrivateKey::from_base64(&fs::read_to_string(&path)?)?;
+
+        if include_temp {
+            let mut builder = chain.build_block();
+            for p in payloads.iter().cloned() {
+                builder.add_payload(p);
+            }
+            let block = builder.build(&sk);
+            chain.add_block(block);
+        }
+
         let mut visitor = ChainParser {
             vtmf: Vtmf::new(sk),
             stacks: StackMap::new(),

@@ -7,7 +7,7 @@ use clap::{value_t, ArgMatches};
 use colored::Colorize;
 
 pub fn show(m: &ArgMatches) -> Result<()> {
-    let state = State::read()?;
+    let state = State::read(true)?;
 
     let id = value_t!(m, "STACK", String)?;
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;

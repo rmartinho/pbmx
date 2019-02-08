@@ -4,7 +4,7 @@ use colored::Colorize;
 use pbmx_chain::payload::Payload;
 
 pub fn join(_: &ArgMatches) -> Result<()> {
-    let mut state = State::read()?;
+    let mut state = State::read(false)?;
 
     let key = state.vtmf.public_key();
     let fp = key.fingerprint();

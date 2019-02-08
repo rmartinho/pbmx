@@ -8,7 +8,7 @@ use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
 pub fn pile(m: &ArgMatches) -> Result<()> {
-    let mut state = State::read()?;
+    let mut state = State::read(true)?;
 
     let in_ids = values_t!(m, "STACKS", String)?;
     let stacks: Vec<_> = in_ids

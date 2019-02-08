@@ -4,7 +4,7 @@ use colored::Colorize;
 use std::collections::HashSet;
 
 pub fn list(m: &ArgMatches) -> Result<()> {
-    let state = State::read()?;
+    let state = State::read(true)?;
 
     let mut named = HashSet::new();
     let mut names: Vec<_> = state.stacks.names().collect();

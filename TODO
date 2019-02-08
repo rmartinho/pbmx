@@ -1,4 +1,3 @@
-- apply temp payloads to state
 - add config for mapping keys<->users, and tokens<->names
 - rework payloads/interface for additional ops
 - use Groth's minimal shuffle

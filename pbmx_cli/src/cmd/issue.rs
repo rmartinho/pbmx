@@ -10,7 +10,7 @@ use pbmx_serde::ToBase64;
 use std::path::PathBuf;
 
 pub fn issue(_: &ArgMatches) -> Result<()> {
-    let mut state = State::read()?;
+    let mut state = State::read(false)?;
 
     let block = {
         let mut builder = state.chain.build_block();

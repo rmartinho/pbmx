@@ -12,7 +12,7 @@ use pbmx_curve::{
 };
 
 pub fn log(_: &ArgMatches) -> Result<()> {
-    let state = State::read()?;
+    let state = State::read(false)?;
 
     state.chain.visit(&mut LogPrinter(&state.vtmf));
 

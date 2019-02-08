@@ -7,7 +7,7 @@ use pbmx_chain::payload::Payload;
 use std::{fs, path::PathBuf};
 
 pub fn message(m: &ArgMatches) -> Result<()> {
-    let mut state = State::read()?;
+    let mut state = State::read(false)?;
 
     let data = if let Ok(string) = value_t!(m, "MESSAGE", String) {
         string.into_bytes()

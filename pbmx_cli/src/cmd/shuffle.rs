@@ -11,7 +11,7 @@ use rand::{thread_rng, Rng};
 use std::convert::TryFrom;
 
 pub fn shuffle(m: &ArgMatches) -> Result<()> {
-    let mut state = State::read()?;
+    let mut state = State::read(true)?;
 
     let id = value_t!(m, "STACK", String)?;
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;

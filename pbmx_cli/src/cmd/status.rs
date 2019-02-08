@@ -3,7 +3,7 @@ use clap::ArgMatches;
 use colored::Colorize;
 
 pub fn status(_: &ArgMatches) -> Result<()> {
-    let state = State::read()?;
+    let state = State::read(false)?;
 
     println!("   {}", "Chain".blue().bold());
     println!("    {}  {}", "Blocks".blue().bold(), state.chain.count());
