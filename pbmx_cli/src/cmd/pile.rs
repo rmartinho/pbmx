@@ -1,13 +1,10 @@
-use crate::{
-    error::{Error, Result},
-    state::State,
-};
+use crate::{state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
-pub fn pile(m: &ArgMatches) -> Result<()> {
+pub fn pile(m: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(true)?;
 
     let in_ids = values_t!(m, "STACKS", String)?;

@@ -1,10 +1,9 @@
 use crate::{
     constants::{
-        BLOCKS_FOLDER_NAME, CURRENT_BLOCK_FILE_NAME, IGNORE_FILE_CONTENTS, IGNORE_FILE_NAME,
-        KEY_FILE_NAME, SECRETS_FOLDER_NAME,
+        BLOCKS_FOLDER_NAME, CONFIG_FILE_CONTENTS, CONFIG_FILE_NAME, CURRENT_BLOCK_FILE_NAME,
+        IGNORE_FILE_CONTENTS, IGNORE_FILE_NAME, KEY_FILE_NAME, SECRETS_FOLDER_NAME,
     },
-    error::Result,
-    file,
+    file, Config, Result,
 };
 use clap::{value_t, ArgMatches};
 use pbmx_chain::payload::Payload;
@@ -13,7 +12,7 @@ use pbmx_serde::ToBase64;
 use rand::thread_rng;
 use std::{fs, path::PathBuf};
 
-pub fn init(m: &ArgMatches) -> Result<()> {
+pub fn init(m: &ArgMatches, _: &Config) -> Result<()> {
     let mut path = value_t!(m, "PATH", PathBuf)?;
 
     let mut rng = thread_rng();
@@ -25,6 +24,12 @@ pub fn init(m: &ArgMatches) -> Result<()> {
     {
         path.push(IGNORE_FILE_NAME);
         file::write_new(&path, IGNORE_FILE_CONTENTS)?;
+        path.pop();
+    }
+
+    {
+        path.push(CONFIG_FILE_NAME);
+        file::write_new(&path, CONFIG_FILE_CONTENTS)?;
         path.pop();
     }
 

@@ -6,9 +6,14 @@
 #[macro_use]
 extern crate clap;
 
+#[macro_use]
+extern crate serde_derive;
+
+mod config;
+use config::Config;
 mod constants;
 mod error;
-use error::Error;
+use error::{Error, Result};
 mod file;
 mod indices;
 mod stack_map;
@@ -22,6 +27,8 @@ use cmd::{
 };
 
 fn main() {
+    let cfg = Config::read().unwrap();
+
     let matches = clap_app!(pbmx =>
         (version: crate_version!())
         (author: crate_authors!())
@@ -136,22 +143,22 @@ fn main() {
     .get_matches();
 
     match matches.subcommand() {
-        ("init", Some(sub_m)) => init(sub_m),
-        ("reset", Some(sub_m)) => reset(sub_m),
-        ("issue", Some(sub_m)) => issue(sub_m),
-        ("join", Some(sub_m)) => join(sub_m),
-        ("status", Some(sub_m)) => status(sub_m),
-        ("log", Some(sub_m)) => log(sub_m),
-        ("message", Some(sub_m)) => message(sub_m),
-        ("stack", Some(sub_m)) => stack(sub_m),
-        ("list", Some(sub_m)) => list(sub_m),
-        ("show", Some(sub_m)) => show(sub_m),
-        ("mask", Some(sub_m)) => mask(sub_m),
-        ("shuffle", Some(sub_m)) => shuffle(sub_m),
-        ("cut", Some(sub_m)) => cut(sub_m),
-        ("take", Some(sub_m)) => take(sub_m),
-        ("pile", Some(sub_m)) => pile(sub_m),
-        ("reveal", Some(sub_m)) => reveal(sub_m),
+        ("init", Some(sub_m)) => init(sub_m, &cfg),
+        ("reset", Some(sub_m)) => reset(sub_m, &cfg),
+        ("issue", Some(sub_m)) => issue(sub_m, &cfg),
+        ("join", Some(sub_m)) => join(sub_m, &cfg),
+        ("status", Some(sub_m)) => status(sub_m, &cfg),
+        ("log", Some(sub_m)) => log(sub_m, &cfg),
+        ("message", Some(sub_m)) => message(sub_m, &cfg),
+        ("stack", Some(sub_m)) => stack(sub_m, &cfg),
+        ("list", Some(sub_m)) => list(sub_m, &cfg),
+        ("show", Some(sub_m)) => show(sub_m, &cfg),
+        ("mask", Some(sub_m)) => mask(sub_m, &cfg),
+        ("shuffle", Some(sub_m)) => shuffle(sub_m, &cfg),
+        ("cut", Some(sub_m)) => cut(sub_m, &cfg),
+        ("take", Some(sub_m)) => take(sub_m, &cfg),
+        ("pile", Some(sub_m)) => pile(sub_m, &cfg),
+        ("reveal", Some(sub_m)) => reveal(sub_m, &cfg),
         _ => Err(Error::InvalidSubcommand),
     }
     .unwrap_or_else(|e| e.exit());

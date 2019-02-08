@@ -1,4 +1,4 @@
-use crate::{error::Result, state::State};
+use crate::{state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_chain::{
@@ -11,21 +11,27 @@ use pbmx_curve::{
     vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack, Vtmf},
 };
 
-pub fn log(_: &ArgMatches) -> Result<()> {
+pub fn log(_: &ArgMatches, cfg: &Config) -> Result<()> {
     let state = State::read(false)?;
 
-    state.chain.visit(&mut LogPrinter(&state.vtmf));
+    state.chain.visit(&mut LogPrinter(&state.vtmf, cfg));
 
     Ok(())
 }
 
-struct LogPrinter<'a>(&'a Vtmf);
+struct LogPrinter<'a>(&'a Vtmf, &'a Config);
 
 impl<'a> ChainVisitor for LogPrinter<'a> {
     fn visit_block(&mut self, chain: &Chain, block: &Block) {
         print!("{}", format!("{:16}", block.id()).yellow());
 
-        print!(" {} {:16}", "by".blue().bold(), block.signer());
+        print!(" {}", "by".blue().bold());
+        let fp = block.signer();
+        if let Some(n) = self.1.players.get(&fp) {
+            print!(" {}", n);
+        } else {
+            print!(" {:16}", fp);
+        }
 
         if !block.parent_ids().is_empty() {
             print!(" {}", "ack".blue());
@@ -41,7 +47,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
     }
 
     fn visit_publish_key(&mut self, _: &Chain, _: &Block, pk: &PublicKey) {
-        println!("    {} {:16}", "key".green().bold(), pk.fingerprint());
+        println!("    {} {}", "key".green().bold(), pk.fingerprint());
     }
 
     fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &Stack) {

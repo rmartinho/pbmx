@@ -1,15 +1,15 @@
 use crate::{
     constants::{BLOCKS_FOLDER_NAME, BLOCK_EXTENSION},
-    error::Result,
     file,
     state::State,
+    Config, Result,
 };
 use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_serde::ToBase64;
 use std::path::PathBuf;
 
-pub fn issue(_: &ArgMatches) -> Result<()> {
+pub fn issue(_: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(false)?;
 
     let block = {

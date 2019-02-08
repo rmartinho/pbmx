@@ -1,12 +1,9 @@
-use crate::{
-    error::{Error, Result},
-    state::State,
-};
+use crate::{state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use pbmx_chain::payload::Payload;
 use std::{fs, path::PathBuf};
 
-pub fn message(m: &ArgMatches) -> Result<()> {
+pub fn message(m: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(false)?;
 
     let data = if let Ok(string) = value_t!(m, "MESSAGE", String) {

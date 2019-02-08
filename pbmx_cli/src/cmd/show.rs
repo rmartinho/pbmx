@@ -1,12 +1,8 @@
-use crate::{
-    error::{Error, Result},
-    stack_map::display_stack_contents,
-    state::State,
-};
+use crate::{stack_map::display_stack_contents, state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 
-pub fn show(m: &ArgMatches) -> Result<()> {
+pub fn show(m: &ArgMatches, cfg: &Config) -> Result<()> {
     let state = State::read(true)?;
 
     let id = value_t!(m, "STACK", String)?;
@@ -16,7 +12,7 @@ pub fn show(m: &ArgMatches) -> Result<()> {
     }
     println!(
         "{}",
-        display_stack_contents(&stack, &state.stacks.secrets, &state.vtmf)
+        display_stack_contents(&stack, &state.stacks.secrets, &state.vtmf, cfg)
     );
 
     Ok(())

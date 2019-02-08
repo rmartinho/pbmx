@@ -1,14 +1,10 @@
-use crate::{
-    error::{Error, Result},
-    indices::parse_indices,
-    state::State,
-};
+use crate::{indices::parse_indices, state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
-pub fn take(m: &ArgMatches) -> Result<()> {
+pub fn take(m: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(true)?;
 
     let id = value_t!(m, "SOURCE", String)?;

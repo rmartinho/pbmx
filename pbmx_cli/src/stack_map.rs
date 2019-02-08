@@ -1,3 +1,4 @@
+use crate::Config;
 use pbmx_chain::Id;
 use pbmx_curve::{
     keys::Fingerprint,
@@ -100,13 +101,15 @@ struct DisplayStackContents<'a>(
     &'a Stack,
     &'a HashMap<Mask, (SecretShare, Vec<Fingerprint>)>,
     &'a Vtmf,
+    &'a Config,
 );
 pub fn display_stack_contents<'a>(
     stack: &'a Stack,
     secrets: &'a HashMap<Mask, (SecretShare, Vec<Fingerprint>)>,
     vtmf: &'a Vtmf,
+    config: &'a Config,
 ) -> impl Display + 'a {
-    DisplayStackContents(stack, secrets, vtmf)
+    DisplayStackContents(stack, secrets, vtmf, config)
 }
 
 impl<'a> Display for DisplayStackContents<'a> {
@@ -135,21 +138,33 @@ impl<'a> Display for DisplayStackContents<'a> {
                     first = false;
                     count_encrypted = 0;
                 }
-                if let Some(last) = last_in_seq {
-                    if last + 1 == token {
-                        unfinished_seq = true;
-                    } else {
-                        if unfinished_seq {
-                            write!(f, "-{}", last)?;
-                            unfinished_seq = false;
+                if self.3.tokens.is_empty() {
+                    if let Some(last) = last_in_seq {
+                        if last + 1 == token {
+                            unfinished_seq = true;
+                        } else {
+                            if unfinished_seq {
+                                write!(f, "-{}", last)?;
+                                unfinished_seq = false;
+                            }
+                            write!(f, " {}", token)?;
                         }
-                        write!(f, " {}", token)?;
+                    } else {
+                        if !first {
+                            write!(f, " ")?;
+                        }
+                        write!(f, "{}", token)?;
                     }
                 } else {
                     if !first {
                         write!(f, " ")?;
                     }
-                    write!(f, "{}", token)?;
+                    let s = self.3.tokens.get(&token);
+                    if let Some(s) = s {
+                        write!(f, "{}", s)?;
+                    } else {
+                        write!(f, "{}", token)?;
+                    }
                 }
                 last_in_seq = Some(token);
                 first = false;

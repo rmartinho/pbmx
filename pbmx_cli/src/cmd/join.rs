@@ -1,9 +1,9 @@
-use crate::{error::Result, state::State};
+use crate::{state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_chain::payload::Payload;
 
-pub fn join(_: &ArgMatches) -> Result<()> {
+pub fn join(_: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(false)?;
 
     let key = state.vtmf.public_key();

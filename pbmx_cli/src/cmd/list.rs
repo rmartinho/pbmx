@@ -1,9 +1,9 @@
-use crate::{error::Result, state::State};
+use crate::{state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
 use std::collections::HashSet;
 
-pub fn list(m: &ArgMatches) -> Result<()> {
+pub fn list(m: &ArgMatches, _: &Config) -> Result<()> {
     let state = State::read(true)?;
 
     let mut named = HashSet::new();

@@ -1,8 +1,8 @@
-use crate::{error::Result, state::State};
+use crate::{state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
 
-pub fn status(_: &ArgMatches) -> Result<()> {
+pub fn status(_: &ArgMatches, _: &Config) -> Result<()> {
     let state = State::read(false)?;
 
     println!("   {}", "Chain".blue().bold());
