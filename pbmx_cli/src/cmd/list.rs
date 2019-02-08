@@ -19,9 +19,6 @@ pub fn list(m: &ArgMatches, _: &Config) -> Result<()> {
             stack.len(),
             n.bold()
         );
-        // if !s.fingerprints.is_empty() {
-        //    print!("\t + {}{:16?}", "?".bold(), s.fingerprints);
-        //}
         println!();
     }
     if m.is_present("ALL") {

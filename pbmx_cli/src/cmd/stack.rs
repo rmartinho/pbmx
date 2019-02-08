@@ -11,10 +11,12 @@ use pbmx_curve::{
 use std::collections::HashMap;
 
 pub fn stack(m: &ArgMatches, cfg: &Config) -> Result<()> {
+    let name = value_t!(m, "NAME", String).ok();
+    let stack = values_t!(m, "TOKENS", String).unwrap_or_else(|_| vec![]);
+
     let mut state = State::read(false)?;
 
-    let stack: Stack = values_t!(m, "TOKENS", String)
-        .unwrap_or_else(|_| vec![])
+    let stack: Stack = stack
         .iter()
         .map(|s| parse_indices(s).ok_or(Error::InvalidData))
         .collect::<Result<Vec<_>>>()?
@@ -29,7 +31,6 @@ pub fn stack(m: &ArgMatches, cfg: &Config) -> Result<()> {
         display_stack_contents(&stack.clone(), &HashMap::new(), &state.vtmf, cfg)
     );
     state.payloads.push(Payload::OpenStack(stack));
-    let name = value_t!(m, "NAME", String).ok();
     if let Some(name) = name {
         println!("{} {:16} {}", " + Name stack".green().bold(), id, name);
         state.payloads.push(Payload::NameStack(id, name));

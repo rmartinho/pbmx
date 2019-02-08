@@ -5,9 +5,10 @@ use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
 pub fn mask(m: &ArgMatches, _: &Config) -> Result<()> {
+    let id = value_t!(m, "STACK", String)?;
+
     let mut state = State::read(true)?;
 
-    let id = value_t!(m, "STACK", String)?;
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
 
     let (s, p): (Stack, Vec<_>) = stack.iter().map(|m| state.vtmf.remask(m)).unzip();

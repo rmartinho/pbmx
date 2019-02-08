@@ -3,9 +3,10 @@ use clap::{value_t, ArgMatches};
 use colored::Colorize;
 
 pub fn show(m: &ArgMatches, cfg: &Config) -> Result<()> {
+    let id = value_t!(m, "STACK", String)?;
+
     let state = State::read(true)?;
 
-    let id = value_t!(m, "STACK", String)?;
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
     if state.stacks.is_name(&id) {
         print!("{} ", id.bold());

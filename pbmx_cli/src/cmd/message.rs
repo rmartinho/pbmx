@@ -4,8 +4,6 @@ use pbmx_chain::payload::Payload;
 use std::{fs, path::PathBuf};
 
 pub fn message(m: &ArgMatches, _: &Config) -> Result<()> {
-    let mut state = State::read(false)?;
-
     let data = if let Ok(string) = value_t!(m, "MESSAGE", String) {
         string.into_bytes()
     } else if let Ok(bin) = value_t!(m, "BASE64", String) {
@@ -15,6 +13,8 @@ pub fn message(m: &ArgMatches, _: &Config) -> Result<()> {
     } else {
         return Err(Error::InvalidData);
     };
+
+    let mut state = State::read(false)?;
 
     state.payloads.push(Payload::Bytes(data));
 

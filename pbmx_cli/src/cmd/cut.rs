@@ -5,12 +5,14 @@ use pbmx_chain::payload::Payload;
 use rand::{thread_rng, Rng};
 
 pub fn cut(m: &ArgMatches, _: &Config) -> Result<()> {
+    let id = value_t!(m, "STACK", String)?;
+    let n = value_t!(m, "N", usize);
+
     let mut state = State::read(true)?;
 
-    let id = value_t!(m, "STACK", String)?;
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
+    let n = n.unwrap_or_else(|_| thread_rng().gen_range(0, stack.len()));
 
-    let n = value_t!(m, "N", usize).unwrap_or_else(|_| thread_rng().gen_range(0, stack.len()));
     let (s, proof) = state.vtmf.mask_shift(&stack, n);
 
     let id1 = stack.id();

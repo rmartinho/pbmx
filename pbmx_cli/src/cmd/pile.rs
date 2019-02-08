@@ -5,9 +5,12 @@ use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
 pub fn pile(m: &ArgMatches, _: &Config) -> Result<()> {
+    let in_ids = values_t!(m, "STACKS", String)?;
+    let name = value_t!(m, "TARGET", String).ok();
+    let remove = m.is_present("REMOVE");
+
     let mut state = State::read(true)?;
 
-    let in_ids = values_t!(m, "STACKS", String)?;
     let stacks: Vec<_> = in_ids
         .iter()
         .map(|id| {
@@ -30,10 +33,21 @@ pub fn pile(m: &ArgMatches, _: &Config) -> Result<()> {
         id2
     );
     state.payloads.push(Payload::PileStacks(ids, tokens));
-    let name = value_t!(m, "TARGET", String).ok();
     if let Some(name) = name {
         println!("{} {:16} {}", " + Name stack".green().bold(), id2, name);
         state.payloads.push(Payload::NameStack(id2, name));
+    }
+    if remove {
+        let empty = Stack::default();
+        let id3 = empty.id();
+        for id in in_ids.iter() {
+            if state.stacks.is_name(id) {
+                println!( "{} []", " + Open stack".green().bold());
+                state.payloads.push(Payload::OpenStack(empty.clone()));
+                println!("{} {:16} {}", " + Name stack".green().bold(), id3, id);
+                state.payloads.push(Payload::NameStack(id3, id.clone()));
+            }
+        }
     }
 
     state.save_payloads()?;

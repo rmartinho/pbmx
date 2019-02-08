@@ -4,9 +4,10 @@ use colored::Colorize;
 use pbmx_chain::payload::Payload;
 
 pub fn reveal(m: &ArgMatches, _: &Config) -> Result<()> {
+    let id = value_t!(m, "STACK", String)?;
+
     let mut state = State::read(true)?;
 
-    let id = value_t!(m, "STACK", String)?;
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
 
     let (s, p): (Vec<_>, Vec<_>) = stack.iter().map(|m| state.vtmf.unmask_share(m)).unzip();
