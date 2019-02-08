@@ -25,11 +25,9 @@ pub fn take(m: &ArgMatches, _: &Config) -> Result<()> {
         .flatten()
         .collect();
 
-    if remove {
-        if state.stacks.is_name(&id) {
-            let rev_indices: Vec<_> = (0..stack.len()).filter(|i| !indices.contains(&i)).collect();
-            take_impl(&stack, rev_indices, Some(id), &mut state)?;
-        }
+    if remove && state.stacks.is_name(&id) {
+        let rev_indices: Vec<_> = (0..stack.len()).filter(|i| !indices.contains(&i)).collect();
+        take_impl(&stack, rev_indices, Some(id), &mut state)?;
     }
     take_impl(&stack, indices, target, &mut state)?;
 

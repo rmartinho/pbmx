@@ -53,8 +53,10 @@ impl StackMap {
             self.secrets
                 .entry(*m)
                 .and_modify(|(d, fp)| {
-                    *d += di;
-                    fp.push(owner)
+                    if !fp.contains(&owner) {
+                        *d += di;
+                        fp.push(owner);
+                    }
                 })
                 .or_insert_with(|| (*di, vec![owner]));
         }

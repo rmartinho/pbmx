@@ -25,6 +25,18 @@ pub fn pile(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let tokens: Stack = stacks.into_iter().flat_map(|s| s.into_iter()).collect();
 
+    if remove {
+        let empty = Stack::default();
+        let id3 = empty.id();
+        for id in in_ids.iter() {
+            if state.stacks.is_name(id) {
+                println!("{} []", " + Open stack".green().bold());
+                state.payloads.push(Payload::OpenStack(empty.clone()));
+                println!("{} {:16} {}", " + Name stack".green().bold(), id3, id);
+                state.payloads.push(Payload::NameStack(id3, id.clone()));
+            }
+        }
+    }
     let id2 = tokens.id();
     println!(
         "{} {:?} \u{21A3} {:16}",
@@ -36,18 +48,6 @@ pub fn pile(m: &ArgMatches, _: &Config) -> Result<()> {
     if let Some(name) = name {
         println!("{} {:16} {}", " + Name stack".green().bold(), id2, name);
         state.payloads.push(Payload::NameStack(id2, name));
-    }
-    if remove {
-        let empty = Stack::default();
-        let id3 = empty.id();
-        for id in in_ids.iter() {
-            if state.stacks.is_name(id) {
-                println!( "{} []", " + Open stack".green().bold());
-                state.payloads.push(Payload::OpenStack(empty.clone()));
-                println!("{} {:16} {}", " + Name stack".green().bold(), id3, id);
-                state.payloads.push(Payload::NameStack(id3, id.clone()));
-            }
-        }
     }
 
     state.save_payloads()?;
