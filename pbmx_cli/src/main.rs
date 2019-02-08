@@ -108,7 +108,7 @@ fn main() {
             (@arg ORDER: -o --order [INDICES] +multiple +use_delimiter "Chooses a specific order instead of randomizing")
         )
         (@subcommand cut =>
-            (about: "Cuts a stack (unimplemented)")
+            (about: "Cuts a stack")
             (@setting DeriveDisplayOrder)
             (@setting ColoredHelp)
             (@arg STACK: +required "The name or identifier of the stack")

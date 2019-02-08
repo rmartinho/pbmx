@@ -12,7 +12,7 @@ pub fn shuffle(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
 
-    let indices = values_t!(m, "TOKENS", String).ok();
+    let indices = values_t!(m, "INDICES", String).ok();
     let perm = if let Some(indices) = indices {
         let v: Vec<_> = indices
             .iter()
