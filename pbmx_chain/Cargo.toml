@@ -22,14 +22,6 @@ version = "1.0"
 [dependencies.digest]
 version = "0.8"
 
-[dependencies.ripemd160]
-version = "0.8"
-
-[dependencies.rug]
-version = "1.2"
-default-features = false
-features = ["integer", "serde"]
-
 [dependencies.serde]
 version = "1.0"
 

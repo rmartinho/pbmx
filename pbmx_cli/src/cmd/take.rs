@@ -1,4 +1,8 @@
-use crate::{indices::parse_indices, state::State, Config, Error, Result};
+use crate::{
+    indices::{display_indices, parse_indices},
+    state::State,
+    Config, Error, Result,
+};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::payload::Payload;
@@ -50,10 +54,10 @@ pub fn take_impl(
     let id1 = stack.id();
     let id2 = tokens.id();
     println!(
-        "{} {:16}{:?} \u{219B} {:16}",
+        "{} {:16}{} \u{219B} {:16}",
         " + Take tokens".green().bold(),
         id1,
-        indices,
+        display_indices(&indices),
         id2
     );
     state

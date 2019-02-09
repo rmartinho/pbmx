@@ -1,4 +1,4 @@
-use crate::{state::State, Config, Result};
+use crate::{indices::display_indices, state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_chain::{
@@ -90,10 +90,10 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
 
     fn visit_take_stack(&mut self, _: &Chain, _: &Block, id: Id, indices: &[usize], stack: &Stack) {
         println!(
-            "    {} {:16}{:?} \u{219B} {:16}",
+            "    {} {:16}{} \u{219B} {:16}",
             "take".green().bold(),
             id,
-            indices,
+            display_indices(indices),
             stack.id()
         );
     }
