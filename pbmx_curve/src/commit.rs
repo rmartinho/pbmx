@@ -19,8 +19,14 @@ impl Pedersen {
         Self { h, g }
     }
 
-    /// Creates a new commitment scheme from the given parameters
-    pub fn new<R: Rng + CryptoRng>(h: RistrettoPoint, n: usize, rng: &mut R) -> Self {
+    /// Creates a new commitment scheme with given generators
+    pub fn new(h: RistrettoPoint, g: Vec<RistrettoPoint>) -> Option<Self> {
+        // SAFE: the value is checked before returning
+        unsafe { Self::new_unchecked(h, g) }.validate()
+    }
+
+    /// Creates a new commitment scheme with random generators
+    pub fn random<R: Rng + CryptoRng>(h: RistrettoPoint, n: usize, rng: &mut R) -> Self {
         loop {
             let g = iter::repeat_with(|| RistrettoPoint::random(rng))
                 .take(n)
@@ -128,7 +134,7 @@ mod tests {
     fn pedersen_scheme_commitments_agree_with_validation() {
         let mut rng = thread_rng();
         let h = RistrettoPoint::random(&mut rng);
-        let com = Pedersen::new(h, 3, &mut rng);
+        let com = Pedersen::random(h, 3, &mut rng);
         let m = [
             Scalar::random(&mut rng),
             Scalar::random(&mut rng),
@@ -147,7 +153,7 @@ mod tests {
     fn pedersen_scheme_roundtrips_via_base64() {
         let mut rng = thread_rng();
         let h = RistrettoPoint::random(&mut rng);
-        let original = Pedersen::new(h, 3, &mut rng);
+        let original = Pedersen::random(h, 3, &mut rng);
 
         let exported = original.to_base64().unwrap();
         dbg!(&exported);

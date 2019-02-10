@@ -1,7 +1,7 @@
 //! Groth's verifiable secret shuffle of homomorphic encryptions
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
-use crate::{commit::Pedersen, perm::Permutation, vtmf::Mask, zkp::known_shuffle};
+use crate::{perm::Permutation, vtmf::Mask, zkp::known_shuffle};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -17,7 +17,6 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
     skc: known_shuffle::Proof,
-    com: Pedersen,
     c: RistrettoPoint,
     cd: RistrettoPoint,
     ed: Mask,
@@ -55,15 +54,16 @@ impl Proof {
         transcript.commit_masks(b"e0", publics.e0);
         transcript.commit_masks(b"e1", publics.e1);
 
+        let n = publics.e0.len();
+        let com = transcript.challenge_pedersen(b"com", *publics.h, n);
+
         let mut rng = transcript
             .build_rng()
             .commit_permutation(b"pi", secrets.pi)
             .commit_scalars(b"r", secrets.r)
             .finalize(&mut thread_rng());
 
-        let n = publics.e0.len();
         let gh = Mask(G.basepoint(), *publics.h);
-        let com = Pedersen::new(*publics.h, n, &mut rng);
 
         let p2: Vec<_> = secrets
             .pi
@@ -129,7 +129,6 @@ impl Proof {
 
         Self {
             skc,
-            com,
             c,
             cd,
             ed,
@@ -148,6 +147,8 @@ impl Proof {
         transcript.commit_masks(b"e1", publics.e1);
 
         let n = publics.e0.len();
+        let com = transcript.challenge_pedersen(b"com", *publics.h, n);
+
         let gh = Mask(G.basepoint(), *publics.h);
 
         transcript.commit_point(b"c", &self.c);
@@ -164,10 +165,10 @@ impl Proof {
         let m: Vec<_> = (0..n)
             .map(|i| l * Scalar::from((i + 1) as u64) + t[i])
             .collect();
-        let commit = self.c * l + self.cd + self.com.commit_by(&self.f, &Scalar::zero());
+        let commit = self.c * l + self.cd + com.commit_by(&self.f, &Scalar::zero());
 
         self.skc.verify(transcript, known_shuffle::Publics {
-            com: &self.com,
+            com: &com,
             c: &commit,
             m: &m,
         })?;

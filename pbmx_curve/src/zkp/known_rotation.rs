@@ -177,7 +177,7 @@ mod tests {
         let pi = Permutation::shift(8, k);
         pi.apply_to(&mut mp);
 
-        let com = &Pedersen::new(*h, 1, &mut rng);
+        let com = &Pedersen::random(*h, 1, &mut rng);
         let (c, r): (Vec<_>, Vec<_>) = mp.iter().map(|m| com.commit_to(&[*m], &mut rng)).unzip();
         let publics = Publics { com, m, c: &c };
         let secrets = Secrets { k, r: &r };

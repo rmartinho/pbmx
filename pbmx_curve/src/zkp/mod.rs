@@ -7,7 +7,9 @@ pub mod secret_rotation;
 pub mod secret_shuffle;
 
 use crate::{commit::Pedersen, perm::Permutation, vtmf::Mask};
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use curve25519_dalek::{
+    constants::RISTRETTO_BASEPOINT_TABLE, ristretto::RistrettoPoint, scalar::Scalar,
+};
 use merlin::{Transcript, TranscriptRngBuilder};
 use rand::{CryptoRng, Rng};
 use std::iter;
@@ -23,6 +25,9 @@ trait TranscriptProtocol {
     fn commit_pedersen(&mut self, label: &'static [u8], com: &Pedersen);
     fn challenge_scalar(&mut self, label: &'static [u8]) -> Scalar;
     fn challenge_scalars(&mut self, label: &'static [u8], n: usize) -> Vec<Scalar>;
+    fn challenge_point(&mut self, label: &'static [u8]) -> RistrettoPoint;
+    fn challenge_pedersen(&mut self, label: &'static [u8], h: RistrettoPoint, n: usize)
+        -> Pedersen;
 }
 
 impl TranscriptProtocol for Transcript {
@@ -81,6 +86,30 @@ impl TranscriptProtocol for Transcript {
         iter::repeat_with(|| self.challenge_scalar(label))
             .take(n)
             .collect()
+    }
+
+    fn challenge_point(&mut self, label: &'static [u8]) -> RistrettoPoint {
+        let s = self.challenge_scalar(label);
+        &RISTRETTO_BASEPOINT_TABLE * &s
+    }
+
+    fn challenge_pedersen(
+        &mut self,
+        label: &'static [u8],
+        h: RistrettoPoint,
+        n: usize,
+    ) -> Pedersen {
+        loop {
+            let com = Pedersen::new(
+                h,
+                iter::repeat_with(|| self.challenge_point(label))
+                    .take(n)
+                    .collect(),
+            );
+            if let Some(com) = com {
+                return com;
+            }
+        }
     }
 }
 

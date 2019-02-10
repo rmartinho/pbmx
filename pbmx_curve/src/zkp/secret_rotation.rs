@@ -1,7 +1,7 @@
 //! Hoogh et al's verifiable rotation of homomorphic encryptions
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
-use crate::{commit::Pedersen, perm::Permutation, vtmf::Mask, zkp::known_rotation};
+use crate::{perm::Permutation, vtmf::Mask, zkp::known_rotation};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -16,7 +16,6 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
     skr: known_rotation::Proof,
-    com: Pedersen,
     h: Vec<RistrettoPoint>,
     z: Vec<Mask>,
     v: Scalar,
@@ -57,6 +56,8 @@ impl Proof {
         transcript.commit_masks(b"e0", publics.e0);
         transcript.commit_masks(b"e1", publics.e1);
 
+        let com = transcript.challenge_pedersen(b"com", *publics.h, 1);
+
         let mut rng = transcript
             .build_rng()
             .commit_index(b"k", secrets.k)
@@ -67,8 +68,6 @@ impl Proof {
         let gh = Mask(G.basepoint(), *publics.h);
 
         let a = transcript.challenge_scalars(b"a", n);
-
-        let com = Pedersen::new(*publics.h, 1, &mut rng);
 
         let u = random_scalars(n, &mut rng);
         let t = random_scalars(n, &mut rng);
@@ -145,7 +144,6 @@ impl Proof {
 
         Self {
             skr,
-            com,
             h,
             z,
             v,
@@ -166,6 +164,8 @@ impl Proof {
         transcript.commit_masks(b"e0", publics.e0);
         transcript.commit_masks(b"e1", publics.e1);
 
+        let com = transcript.challenge_pedersen(b"com", *publics.h, 1);
+
         let n = publics.e0.len();
         let gh = Mask(G.basepoint(), *publics.h);
 
@@ -185,7 +185,7 @@ impl Proof {
         transcript.commit_scalars(b"mu", &self.mu);
 
         self.skr.verify(transcript, known_rotation::Publics {
-            com: &self.com,
+            com: &com,
             m: &a,
             c: &self.h,
         })?;
@@ -194,7 +194,7 @@ impl Proof {
             .tau
             .iter()
             .zip(self.rho.iter())
-            .map(|(t, r)| self.com.commit_by(&[*t], r))
+            .map(|(t, r)| com.commit_by(&[*t], r))
             .collect();
         let fhl: Vec<_> = self
             .f

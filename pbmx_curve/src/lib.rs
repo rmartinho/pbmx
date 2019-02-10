@@ -11,7 +11,7 @@
 extern crate serde_derive;
 
 mod hash;
-pub use self::hash::*;
+pub use hash::{Hash, Xof};
 pub mod commit;
 pub mod keys;
 pub mod map;
@@ -20,4 +20,4 @@ pub mod vtmf;
 pub mod zkp;
 
 mod error;
-pub use self::error::{Error, Result};
+pub use error::{Error, Result};

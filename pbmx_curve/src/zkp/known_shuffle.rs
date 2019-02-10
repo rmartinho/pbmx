@@ -184,7 +184,7 @@ mod tests {
         let pi = &rng.sample(&Shuffles(8));
         pi.apply_to(&mut mp);
 
-        let com = &Pedersen::new(*h, 8, &mut rng);
+        let com = &Pedersen::random(*h, 8, &mut rng);
         let (c, r) = com.commit_to(&mp, &mut rng);
         let publics = Publics { com, c: &c, m };
         let secrets = Secrets { pi, r: &r };

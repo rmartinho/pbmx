@@ -1,5 +1,5 @@
 - use Groth's minimal shuffle
-- compression
+- use Bulletproofs
 - wire format versioning
 - block-specific logs/tail-like logs
 - rework payloads/interface for additional ops
