@@ -1,5 +1,8 @@
-- RNG
 - use zkp crate
+- private masking for e.g. bidding
+- subset/superset/disjoint/no suit proofs
+- insert in middle of stack
+- mid-game join/part
 - save verification checkpoints
 - block-specific logs/tail-like logs
 - rework payloads/interface for additional ops
@@ -7,4 +10,5 @@
 - move more toolkit-ish stuff out of CLI
 - return blinding factors from VTMF functions so they can be re-combined later
 - wire format versioning
+- a couple more primitives instead of saving blinding factors?
 - oblivious transfers? 
