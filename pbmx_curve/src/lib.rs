@@ -17,7 +17,7 @@ pub mod keys;
 pub mod map;
 pub mod perm;
 pub mod vtmf;
-pub mod zkp;
+pub mod proofs;
 
 mod error;
 pub use error::{Error, Result};

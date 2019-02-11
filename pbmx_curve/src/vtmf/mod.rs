@@ -5,7 +5,7 @@ use crate::{
     hash::Xof,
     keys::{Fingerprint, PrivateKey, PublicKey},
     perm::Permutation,
-    zkp::{dlog_eq, secret_rotation, secret_shuffle},
+    proofs::{dlog_eq, secret_rotation, secret_shuffle},
 };
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -19,7 +19,7 @@ use rand::{thread_rng, CryptoRng, Rng};
 use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
 
-pub use crate::zkp::{
+pub use crate::proofs::{
     dlog_eq::Proof as MaskProof, secret_rotation::Proof as ShiftProof,
     secret_shuffle::Proof as ShuffleProof,
 };
