@@ -53,8 +53,8 @@ impl Rng {
     }
 
     pub fn is_complete(&self, vtmf: &Vtmf) -> bool {
-        self.entropy_parties().len() == vtmf.parties() as usize
-            && self.secret_parties().len() == vtmf.parties() as usize
+        self.entropy_parties().len() == vtmf.parties()
+            && self.secret_parties().len() == vtmf.parties()
     }
 
     pub fn gen(&self, vtmf: &Vtmf) -> u64 {

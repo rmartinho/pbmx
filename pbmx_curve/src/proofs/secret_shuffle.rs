@@ -1,7 +1,7 @@
 //! Groth's verifiable secret shuffle of homomorphic encryptions
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
-use crate::{perm::Permutation, vtmf::Mask, proofs::known_shuffle};
+use crate::{perm::Permutation, proofs::known_shuffle, vtmf::Mask};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},

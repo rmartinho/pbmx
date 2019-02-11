@@ -8,8 +8,8 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let state = State::read(false)?;
 
     let rng = state.rngs.get(&name).ok_or(Error::InvalidData)?;
-    if rng.entropy_parties().len() < state.vtmf.parties() as usize
-        || rng.secret_parties().len() < state.vtmf.parties() as usize
+    if rng.entropy_parties().len() < state.vtmf.parties()
+        || rng.secret_parties().len() < state.vtmf.parties()
     {
         return Err(Error::InvalidData);
     }

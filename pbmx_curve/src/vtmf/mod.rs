@@ -108,8 +108,8 @@ impl Vtmf {
 
 impl Vtmf {
     /// Gets the number of parties in this VTMF
-    pub fn parties(&self) -> u32 {
-        self.pki.len() as _
+    pub fn parties(&self) -> usize {
+        self.pki.len()
     }
 }
 

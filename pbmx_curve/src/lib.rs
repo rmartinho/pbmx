@@ -9,6 +9,8 @@
 
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate zkp;
 
 mod hash;
 pub use hash::{Hash, Xof};
@@ -16,8 +18,8 @@ pub mod commit;
 pub mod keys;
 pub mod map;
 pub mod perm;
-pub mod vtmf;
 pub mod proofs;
+pub mod vtmf;
 
 mod error;
 pub use error::{Error, Result};

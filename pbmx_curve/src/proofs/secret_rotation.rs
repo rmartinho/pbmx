@@ -1,7 +1,7 @@
 //! Hoogh et al's verifiable rotation of homomorphic encryptions
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
-use crate::{perm::Permutation, vtmf::Mask, proofs::known_rotation};
+use crate::{perm::Permutation, proofs::known_rotation, vtmf::Mask};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
