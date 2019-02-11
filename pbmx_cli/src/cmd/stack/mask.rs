@@ -4,7 +4,7 @@ use colored::Colorize;
 use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
-pub fn mask(m: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;
 
     let mut state = State::read(true)?;

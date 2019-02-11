@@ -26,6 +26,12 @@ version = "2.32"
 [dependencies.colored]
 version = "1.7"
 
+[dependencies.digest]
+version = "0.8"
+
+[dependencies.curve25519-dalek]
+version = "1.0"
+
 [dependencies.qp-trie]
 version = "0.7"
 

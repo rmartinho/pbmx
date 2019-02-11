@@ -3,6 +3,7 @@ use crate::{
         BLOCKS_FOLDER_NAME, BLOCK_EXTENSION, CURRENT_BLOCK_FILE_NAME, KEY_FILE_NAME,
         SECRETS_FOLDER_NAME,
     },
+    random::Rng,
     stack_map::StackMap,
     Error, Result,
 };
@@ -15,16 +16,17 @@ use pbmx_chain::{
 use pbmx_curve::{
     keys::{PrivateKey, PublicKey},
     map,
-    vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack, Vtmf},
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack, Vtmf},
 };
 use pbmx_serde::{FromBase64, ToBase64};
-use std::{ffi::OsStr, fs, path::PathBuf};
+use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf};
 
 #[derive(Debug)]
 pub struct State {
     pub vtmf: Vtmf,
     pub chain: Chain,
     pub stacks: StackMap,
+    pub rngs: HashMap<String, Rng>,
     pub payloads: Vec<Payload>,
 }
 
@@ -64,6 +66,7 @@ impl State {
         let mut visitor = ChainParser {
             vtmf: Vtmf::new(sk),
             stacks: StackMap::new(),
+            rngs: HashMap::new(),
             valid: true,
         };
         chain.visit(&mut visitor);
@@ -72,6 +75,7 @@ impl State {
             Ok(State {
                 vtmf: visitor.vtmf,
                 stacks: visitor.stacks,
+                rngs: visitor.rngs,
                 chain,
                 payloads,
             })
@@ -96,20 +100,21 @@ impl State {
 struct ChainParser {
     vtmf: Vtmf,
     stacks: StackMap,
+    rngs: HashMap<String, Rng>,
     valid: bool,
 }
 
 impl ChainVisitor for ChainParser {
-    fn visit_block(&mut self, chain: &Chain, block: &Block) {
+    fn visit_block(&mut self, block: &Block) {
         for payload in block.payloads() {
-            self.visit_payload(chain, block, payload);
+            self.visit_payload(block, payload);
             if !self.valid {
                 break;
             }
         }
     }
 
-    fn visit_publish_key(&mut self, _: &Chain, block: &Block, pk: &PublicKey) {
+    fn visit_publish_key(&mut self, block: &Block, pk: &PublicKey) {
         self.valid = self.valid && block.signer() == pk.fingerprint();
 
         if self.valid {
@@ -117,7 +122,7 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_open_stack(&mut self, _: &Chain, _: &Block, stack: &Stack) {
+    fn visit_open_stack(&mut self, _: &Block, stack: &Stack) {
         self.valid = self.valid
             && stack
                 .iter()
@@ -128,14 +133,7 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_mask_stack(
-        &mut self,
-        _: &Chain,
-        _: &Block,
-        id: Id,
-        stack: &Stack,
-        proof: &[MaskProof],
-    ) {
+    fn visit_mask_stack(&mut self, _: &Block, id: Id, stack: &Stack, proof: &[MaskProof]) {
         self.valid = self.valid
             && self
                 .stacks
@@ -153,14 +151,7 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_shuffle_stack(
-        &mut self,
-        _: &Chain,
-        _: &Block,
-        id: Id,
-        stack: &Stack,
-        proof: &ShuffleProof,
-    ) {
+    fn visit_shuffle_stack(&mut self, _: &Block, id: Id, stack: &Stack, proof: &ShuffleProof) {
         self.valid = self.valid
             && self
                 .stacks
@@ -173,14 +164,7 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_shift_stack(
-        &mut self,
-        _: &Chain,
-        _: &Block,
-        id: Id,
-        stack: &Stack,
-        proof: &ShiftProof,
-    ) {
+    fn visit_shift_stack(&mut self, _: &Block, id: Id, stack: &Stack, proof: &ShiftProof) {
         self.valid = self.valid
             && self
                 .stacks
@@ -193,7 +177,7 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_take_stack(&mut self, _: &Chain, _: &Block, id: Id, indices: &[usize], stack: &Stack) {
+    fn visit_take_stack(&mut self, _: &Block, id: Id, indices: &[usize], stack: &Stack) {
         self.valid = self.valid
             && self
                 .stacks
@@ -206,7 +190,7 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_pile_stack(&mut self, _: &Chain, _: &Block, ids: &[Id], stack: &Stack) {
+    fn visit_pile_stack(&mut self, _: &Block, ids: &[Id], stack: &Stack) {
         let mut srcs = ids.iter().map(|id| self.stacks.get_by_id(&id));
         self.valid = self.valid
             && srcs.all(|x| x.is_some())
@@ -221,7 +205,7 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_name_stack(&mut self, _: &Chain, _: &Block, id: Id, name: &str) {
+    fn visit_name_stack(&mut self, _: &Block, id: Id, name: &str) {
         self.valid = self.valid && self.stacks.get_by_id(&id).is_some();
 
         if self.valid {
@@ -231,7 +215,6 @@ impl ChainVisitor for ChainParser {
 
     fn visit_publish_shares(
         &mut self,
-        _: &Chain,
         block: &Block,
         id: Id,
         shares: &[SecretShare],
@@ -254,6 +237,51 @@ impl ChainVisitor for ChainParser {
         if self.valid {
             self.stacks
                 .add_secret_share(id, block.signer(), shares.to_vec());
+        }
+    }
+
+    fn visit_random_bound(&mut self, _: &Block, name: &str, bound: u64) {
+        let e = self.rngs.get(name);
+        self.valid = self.valid && e.map(|rng| rng.bound() == bound).unwrap_or(true);
+
+        if self.valid && e.is_none() {
+            self.rngs.insert(name.into(), Rng::new(bound));
+        }
+    }
+
+    fn visit_random_entropy(&mut self, block: &Block, name: &str, entropy: &Mask) {
+        let fp = block.signer();
+        let e = self.rngs.get_mut(name);
+        self.valid = self.valid
+            && e.as_ref()
+                .map(|rng| !rng.entropy_parties().contains(&fp))
+                .unwrap_or(false);
+
+        if self.valid {
+            e.unwrap().add_entropy(fp, entropy);
+        }
+    }
+
+    fn visit_random_reveal(
+        &mut self,
+        block: &Block,
+        name: &str,
+        share: &SecretShare,
+        proof: &SecretShareProof,
+    ) {
+        let fp = block.signer();
+        let vtmf = &self.vtmf;
+        let e = self.rngs.get_mut(name);
+        self.valid = self.valid
+            && e.as_ref()
+                .map(|rng| {
+                    !rng.secret_parties().contains(&fp)
+                        && vtmf.verify_unmask(rng.mask(), &fp, share, proof).is_ok()
+                })
+                .unwrap_or(false);
+
+        if self.valid {
+            e.unwrap().add_secret(fp, share);
         }
     }
 }

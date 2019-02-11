@@ -7,7 +7,7 @@ use crate::{
 };
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
     Error,
 };
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
@@ -186,59 +186,67 @@ pub trait ChainVisitor {
     /// Visits a chain
     fn visit_chain(&mut self, chain: &Chain) {
         for block in chain.blocks() {
-            self.visit_block(chain, block);
+            self.visit_block(block);
         }
     }
     /// Visits a block
-    fn visit_block(&mut self, chain: &Chain, block: &Block) {
+    fn visit_block(&mut self, block: &Block) {
         for payload in block.payloads() {
-            self.visit_payload(chain, block, payload);
+            self.visit_payload(block, payload);
         }
     }
     /// Visits a payload
-    fn visit_payload(&mut self, chain: &Chain, block: &Block, payload: &Payload) {
+    fn visit_payload(&mut self, block: &Block, payload: &Payload) {
         use Payload::*;
         match payload {
             PublishKey(pk) => {
-                self.visit_publish_key(chain, block, pk);
+                self.visit_publish_key(block, pk);
             }
             OpenStack(stk) => {
-                self.visit_open_stack(chain, block, stk);
+                self.visit_open_stack(block, stk);
             }
             MaskStack(id, stk, proof) => {
-                self.visit_mask_stack(chain, block, *id, stk, proof);
+                self.visit_mask_stack(block, *id, stk, proof);
             }
             ShuffleStack(id, stk, proof) => {
-                self.visit_shuffle_stack(chain, block, *id, stk, proof);
+                self.visit_shuffle_stack(block, *id, stk, proof);
             }
             ShiftStack(id, stk, proof) => {
-                self.visit_shift_stack(chain, block, *id, stk, proof);
+                self.visit_shift_stack(block, *id, stk, proof);
             }
             TakeStack(id, idxs, stk) => {
-                self.visit_take_stack(chain, block, *id, idxs, stk);
+                self.visit_take_stack(block, *id, idxs, stk);
             }
             PileStacks(ids, stk) => {
-                self.visit_pile_stack(chain, block, ids, stk);
+                self.visit_pile_stack(block, ids, stk);
             }
             NameStack(id, name) => {
-                self.visit_name_stack(chain, block, *id, name);
+                self.visit_name_stack(block, *id, name);
             }
             PublishShares(id, shares, proof) => {
-                self.visit_publish_shares(chain, block, *id, shares, proof);
+                self.visit_publish_shares(block, *id, shares, proof);
+            }
+            RandomBound(id, bound) => {
+                self.visit_random_bound(block, id, *bound);
+            }
+            RandomEntropy(id, entropy) => {
+                self.visit_random_entropy(block, id, entropy);
+            }
+            RandomReveal(id, share, proof) => {
+                self.visit_random_reveal(block, id, share, proof);
             }
             Bytes(bytes) => {
-                self.visit_bytes(chain, block, bytes);
+                self.visit_bytes(block, bytes);
             }
         }
     }
     /// Visits a PublishKey payload
-    fn visit_publish_key(&mut self, _chain: &Chain, _block: &Block, _key: &PublicKey) {}
+    fn visit_publish_key(&mut self, _block: &Block, _key: &PublicKey) {}
     /// Visits a OpenStack payload
-    fn visit_open_stack(&mut self, _chain: &Chain, _block: &Block, _stack: &Stack) {}
+    fn visit_open_stack(&mut self, _block: &Block, _stack: &Stack) {}
     /// Visits a MaskStack payload
     fn visit_mask_stack(
         &mut self,
-        _chain: &Chain,
         _block: &Block,
         _source: Id,
         _stack: &Stack,
@@ -248,7 +256,6 @@ pub trait ChainVisitor {
     /// Visits a ShuffleStack payload
     fn visit_shuffle_stack(
         &mut self,
-        _chain: &Chain,
         _block: &Block,
         _source: Id,
         _stack: &Stack,
@@ -256,41 +263,37 @@ pub trait ChainVisitor {
     ) {
     }
     /// Visits a ShiftStack payload
-    fn visit_shift_stack(
-        &mut self,
-        _chain: &Chain,
-        _block: &Block,
-        _id: Id,
-        _stack: &Stack,
-        _proof: &ShiftProof,
-    ) {
-    }
+    fn visit_shift_stack(&mut self, _block: &Block, _id: Id, _stack: &Stack, _proof: &ShiftProof) {}
     /// Visits a TakeStack payload
-    fn visit_take_stack(
-        &mut self,
-        _chain: &Chain,
-        _block: &Block,
-        _id: Id,
-        _idxs: &[usize],
-        _stack: &Stack,
-    ) {
-    }
+    fn visit_take_stack(&mut self, _block: &Block, _id: Id, _idxs: &[usize], _stack: &Stack) {}
     /// Visits a PileStack payload
-    fn visit_pile_stack(&mut self, _chain: &Chain, _block: &Block, _ids: &[Id], _stack: &Stack) {}
+    fn visit_pile_stack(&mut self, _block: &Block, _ids: &[Id], _stack: &Stack) {}
     /// Visits a NameStack payload
-    fn visit_name_stack(&mut self, _chain: &Chain, _block: &Block, _id: Id, _name: &str) {}
+    fn visit_name_stack(&mut self, _block: &Block, _id: Id, _name: &str) {}
     /// Visits a PublishShares payload
     fn visit_publish_shares(
         &mut self,
-        _chain: &Chain,
         _block: &Block,
         _id: Id,
         _shares: &[SecretShare],
         _proof: &[SecretShareProof],
     ) {
     }
+    /// Visits a RandomBound payload
+    fn visit_random_bound(&mut self, _block: &Block, _name: &str, _bound: u64) {}
+    /// Visits a RandomEntropy payload
+    fn visit_random_entropy(&mut self, _block: &Block, _name: &str, _entropy: &Mask) {}
+    /// Visits a RandomReveal payload
+    fn visit_random_reveal(
+        &mut self,
+        _block: &Block,
+        _name: &str,
+        _share: &SecretShare,
+        _proof: &SecretShareProof,
+    ) {
+    }
     /// Visits a Bytes payload
-    fn visit_bytes(&mut self, _chain: &Chain, _block: &Block, _bytes: &[u8]) {}
+    fn visit_bytes(&mut self, _block: &Block, _bytes: &[u8]) {}
 }
 
 #[cfg(test)]

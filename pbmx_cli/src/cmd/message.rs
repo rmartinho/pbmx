@@ -3,7 +3,7 @@ use clap::{value_t, ArgMatches};
 use pbmx_chain::payload::Payload;
 use std::{fs, path::PathBuf};
 
-pub fn message(m: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let data = if let Ok(string) = value_t!(m, "MESSAGE", String) {
         string.into_bytes()
     } else if let Ok(bin) = value_t!(m, "BASE64", String) {

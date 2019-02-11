@@ -3,7 +3,7 @@ use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_chain::payload::Payload;
 
-pub fn join(_: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(false)?;
 
     let key = state.vtmf.public_key();

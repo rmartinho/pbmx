@@ -9,7 +9,7 @@ use colored::Colorize;
 use pbmx_serde::ToBase64;
 use std::path::PathBuf;
 
-pub fn issue(_: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(false)?;
 
     let block = {

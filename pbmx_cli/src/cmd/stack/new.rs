@@ -10,7 +10,7 @@ use pbmx_curve::{
 };
 use std::collections::HashMap;
 
-pub fn stack(m: &ArgMatches, cfg: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
     let name = value_t!(m, "NAME", String).ok();
     let stack = values_t!(m, "TOKENS", String).unwrap_or_else(|_| vec![]);
 

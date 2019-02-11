@@ -8,7 +8,7 @@ use colored::Colorize;
 use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
-pub fn take(m: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "SOURCE", String)?;
     let indices = values_t!(m, "INDICES", String)?;
     let target = value_t!(m, "TARGET", String).ok();
@@ -31,15 +31,15 @@ pub fn take(m: &ArgMatches, _: &Config) -> Result<()> {
 
     if remove && state.stacks.is_name(&id) {
         let rev_indices: Vec<_> = (0..stack.len()).filter(|i| !indices.contains(&i)).collect();
-        take_impl(&stack, rev_indices, Some(id), &mut state)?;
+        take(&stack, rev_indices, Some(id), &mut state)?;
     }
-    take_impl(&stack, indices, target, &mut state)?;
+    take(&stack, indices, target, &mut state)?;
 
     state.save_payloads()?;
     Ok(())
 }
 
-pub fn take_impl(
+pub fn take(
     stack: &Stack,
     indices: Vec<usize>,
     target: Option<String>,

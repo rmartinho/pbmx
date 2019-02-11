@@ -1,3 +1,10 @@
-[tokens]
-
+# Map of key fingerprints to player names
 [players]
+# 95786d0d0c3dd1789f5fc84d680927c4f94c4c65 = "alice"
+# 128493507aac20b65af14d9ad713d0f4585b03b5 = "bob"
+
+# Map of token numbers to token names
+[tokens]
+# 1  = "🂡"
+# 2  = "🂢"
+# ...

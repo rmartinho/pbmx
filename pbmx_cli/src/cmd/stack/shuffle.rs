@@ -6,7 +6,7 @@ use pbmx_curve::perm::{Permutation, Shuffles};
 use rand::{thread_rng, Rng};
 use std::convert::TryFrom;
 
-pub fn shuffle(m: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;
     let indices = values_t!(m, "INDICES", String).ok();
 

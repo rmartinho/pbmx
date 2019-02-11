@@ -13,11 +13,6 @@ version = "0.10"
 [dependencies.bincode]
 version = "1.0"
 
-[dependencies.bulletproofs]
-git = "https://github.com/dalek-cryptography/bulletproofs"
-branch = "develop"
-features = ["yoloproofs"]
-
 [dependencies.curve25519-dalek]
 version = "1.0"
 

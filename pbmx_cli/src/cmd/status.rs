@@ -2,7 +2,7 @@ use crate::{state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
 
-pub fn status(_: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
     let state = State::read(false)?;
 
     println!("   {}", "Chain".blue().bold());
@@ -39,6 +39,10 @@ pub fn status(_: &ArgMatches, _: &Config) -> Result<()> {
             state.stacks.names().count(),
             state.stacks.len()
         );
+    }
+
+    if !state.rngs.is_empty() {
+        println!("   {} {}", "Rngs".blue().bold(), state.rngs.len());
     }
 
     if !state.payloads.is_empty() {

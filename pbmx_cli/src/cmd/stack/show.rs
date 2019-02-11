@@ -2,7 +2,7 @@ use crate::{stack_map::display_stack_contents, state::State, Config, Error, Resu
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 
-pub fn show(m: &ArgMatches, cfg: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;
 
     let state = State::read(true)?;

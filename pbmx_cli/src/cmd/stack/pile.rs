@@ -4,7 +4,7 @@ use colored::Colorize;
 use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
 
-pub fn pile(m: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let in_ids = values_t!(m, "STACKS", String)?;
     let name = value_t!(m, "TARGET", String).ok();
     let remove = m.is_present("REMOVE");

@@ -4,7 +4,7 @@ use colored::Colorize;
 use pbmx_chain::payload::Payload;
 use rand::{thread_rng, Rng};
 
-pub fn cut(m: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;
     let n = value_t!(m, "N", usize);
 

@@ -12,7 +12,7 @@ use pbmx_serde::ToBase64;
 use rand::thread_rng;
 use std::{fs, path::PathBuf};
 
-pub fn init(m: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let mut path = value_t!(m, "PATH", PathBuf)?;
 
     let mut rng = thread_rng();

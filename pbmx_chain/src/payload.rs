@@ -3,7 +3,7 @@
 use crate::{error::Error, Id};
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
 };
 use pbmx_serde::derive_base64_conversions;
 use std::fmt::{self, Display, Formatter};
@@ -30,6 +30,12 @@ pub enum Payload {
     PileStacks(Vec<Id>, Stack),
     /// A secret share payload
     PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
+    /// An rng bound payload
+    RandomBound(String, u64),
+    /// An rng entropy payload
+    RandomEntropy(String, Mask),
+    /// An rng reveal payload
+    RandomReveal(String, SecretShare, SecretShareProof),
     /// Raw byte payload
     Bytes(Vec<u8>),
 }
@@ -61,6 +67,9 @@ impl<'a> Display for DisplayShort<'a> {
             TakeStack(id, idxs, stk) => write!(f, "take {:16}{:?} {:16}", id, idxs, stk.id()),
             PileStacks(ids, stk) => write!(f, "pile {:16?} {:16}", ids, stk.id()),
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
+            RandomBound(id, ..) => write!(f, "new rng {}", id),
+            RandomEntropy(id, ..) => write!(f, "add entropy {}", id),
+            RandomReveal(id, ..) => write!(f, "open rng {}", id),
             Bytes(bytes) => write!(f, "message {}", &String::from_utf8_lossy(bytes)),
         }
     }
