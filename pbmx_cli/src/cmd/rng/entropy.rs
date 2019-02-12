@@ -12,7 +12,6 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let fp = state.vtmf.private_key().fingerprint();
     let rng = state.rngs.get(&name).ok_or(Error::InvalidData)?;
     if rng.entropy_parties().contains(&fp) {
-        println!("fofooo");
         return Err(Error::InvalidData);
     }
 

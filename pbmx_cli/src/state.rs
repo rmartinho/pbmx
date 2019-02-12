@@ -245,7 +245,8 @@ impl ChainVisitor for ChainParser {
         self.valid = self.valid && e.map(|rng| rng.bound() == bound).unwrap_or(true);
 
         if self.valid && e.is_none() {
-            self.rngs.insert(name.into(), Rng::new(bound));
+            self.rngs
+                .insert(name.into(), Rng::new(self.vtmf.parties(), bound));
         }
     }
 
@@ -254,7 +255,7 @@ impl ChainVisitor for ChainParser {
         let e = self.rngs.get_mut(name);
         self.valid = self.valid
             && e.as_ref()
-                .map(|rng| !rng.entropy_parties().contains(&fp))
+                .map(|rng| !rng.is_generated() && !rng.entropy_parties().contains(&fp))
                 .unwrap_or(false);
 
         if self.valid {
@@ -275,7 +276,8 @@ impl ChainVisitor for ChainParser {
         self.valid = self.valid
             && e.as_ref()
                 .map(|rng| {
-                    !rng.secret_parties().contains(&fp)
+                    !rng.is_revealed()
+                        && !rng.secret_parties().contains(&fp)
                         && vtmf.verify_unmask(rng.mask(), &fp, share, proof).is_ok()
                 })
                 .unwrap_or(false);

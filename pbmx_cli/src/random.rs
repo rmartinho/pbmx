@@ -8,6 +8,7 @@ use std::iter;
 
 #[derive(Debug)]
 pub struct Rng {
+    parties: usize,
     bound: u64,
     entropy: Mask,
     entropy_fp: Vec<Fingerprint>,
@@ -16,8 +17,9 @@ pub struct Rng {
 }
 
 impl Rng {
-    pub fn new(bound: u64) -> Self {
+    pub fn new(parties: usize, bound: u64) -> Self {
         Self {
+            parties,
             bound,
             entropy: Mask::open(RistrettoPoint::identity()),
             entropy_fp: Vec::new(),
@@ -52,9 +54,12 @@ impl Rng {
         &self.secret_fp
     }
 
-    pub fn is_complete(&self, vtmf: &Vtmf) -> bool {
-        self.entropy_parties().len() == vtmf.parties()
-            && self.secret_parties().len() == vtmf.parties()
+    pub fn is_generated(&self) -> bool {
+        self.entropy_parties().len() == self.parties
+    }
+
+    pub fn is_revealed(&self) -> bool {
+        self.secret_parties().len() == self.parties
     }
 
     pub fn gen(&self, vtmf: &Vtmf) -> u64 {
