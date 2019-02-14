@@ -94,8 +94,9 @@ fn main() {
                 (about: "Shows a stack's details")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
-                (@arg STACK: +required "The name or identifier of the stack")
-                (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data")
+                (@arg STACK: "The name or identifier of the stack (shows all named stacks if none given)")
+                (@arg ALL: -a --all "Include unnamed stacks")
+                (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data (unimplemented)")
             )
             (@subcommand name =>
                 (about: "Names a stack")

@@ -13,13 +13,12 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         let stack = state.stacks.get_by_name(n).unwrap();
         let id = stack.id();
         named.insert(id);
-        print!(
+        println!(
             "{} {:4}\t{}",
             format!("{:16}", id).yellow(),
             stack.len(),
             n.bold()
         );
-        println!();
     }
     if m.is_present("ALL") {
         for id in state.stacks.ids() {
@@ -30,6 +29,5 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         }
     }
 
-    state.save_payloads()?;
     Ok(())
 }

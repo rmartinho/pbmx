@@ -2,7 +2,6 @@
 - subset/superset/disjoint/no suit proofs
 - insert in middle of stack
 - mid-game join/part
-- use zkp crate
 - save verification checkpoints
 - block-specific logs/tail-like logs
 - rework payloads/interface for additional ops
