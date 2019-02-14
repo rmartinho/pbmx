@@ -97,6 +97,13 @@ fn main() {
                 (@arg STACK: +required "The name or identifier of the stack")
                 (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data")
             )
+            (@subcommand name =>
+                (about: "Names a stack")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
+                (@arg ID: +required "The stack ID")
+                (@arg NAME: +required "The name of the stack")
+            )
             (@subcommand mask =>
                 (about: "Remasks a stack")
                 (@setting DeriveDisplayOrder)
