@@ -65,10 +65,6 @@ impl Proof {
         let t1b = publics.b1 * w1 + publics.h * v1;
         let t2a = publics.a2 * w2 + publics.g * v2;
         let t2b = publics.b2 * w2 + publics.h * v2;
-        dbg!(t1a.compress());
-        dbg!(t1b.compress());
-        dbg!(t2a.compress());
-        dbg!(t2b.compress());
 
         transcript.commit_point(b"t1a", &t1a);
         transcript.commit_point(b"t1b", &t1b);
@@ -104,10 +100,6 @@ impl Proof {
         let t1b = publics.b1 * self.c1 + publics.h * self.r1;
         let t2a = publics.a2 * self.c2 + publics.g * self.r2;
         let t2b = publics.b2 * self.c2 + publics.h * self.r2;
-        dbg!(t1a.compress());
-        dbg!(t1b.compress());
-        dbg!(t2a.compress());
-        dbg!(t2b.compress());
 
         transcript.commit_point(b"t1a", &t1a);
         transcript.commit_point(b"t1b", &t1b);
@@ -139,7 +131,7 @@ mod tests {
         let h = &RistrettoPoint::random(&mut rng);
         let x = &Scalar::random(&mut rng);
         let y = &Scalar::random(&mut rng);
-        //dbg!((g, h, x, y));
+        // dbg!((g, h, x, y));
 
         let a1 = &(g * x);
         let b1 = &(h * x);
@@ -161,7 +153,10 @@ mod tests {
         assert_eq!(verified, Ok(()));
 
         // test second
-        let secrets = Secrets { is_first: false, x: y };
+        let secrets = Secrets {
+            is_first: false,
+            x: y,
+        };
         let proof = Proof::create(&mut Transcript::new(b"test"), publics, secrets);
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
         assert_eq!(verified, Ok(()));

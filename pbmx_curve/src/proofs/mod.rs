@@ -4,6 +4,7 @@ pub mod dlog_eq;
 mod dlog_eq_1of2;
 mod known_rotation;
 mod known_shuffle;
+pub mod secret_insert;
 pub mod secret_rotation;
 pub mod secret_shuffle;
 
@@ -21,7 +22,7 @@ trait TranscriptProtocol {
     fn commit_points(&mut self, label: &'static [u8], points: &[RistrettoPoint]);
     fn commit_scalar(&mut self, label: &'static [u8], scalar: &Scalar);
     fn commit_scalars(&mut self, label: &'static [u8], scalars: &[Scalar]);
-    fn commit_mask(&mut self, label: &'static [u8], masks: &Mask);
+    fn commit_mask(&mut self, label: &'static [u8], mask: &Mask);
     fn commit_masks(&mut self, label: &'static [u8], masks: &[Mask]);
     fn commit_pedersen(&mut self, label: &'static [u8], com: &Pedersen);
     fn challenge_scalar(&mut self, label: &'static [u8]) -> Scalar;
@@ -119,6 +120,8 @@ trait TranscriptRngProtocol {
     fn commit_index(self, label: &'static [u8], index: usize) -> Self;
     fn commit_scalar(self, label: &'static [u8], scalar: &Scalar) -> Self;
     fn commit_scalars(self, label: &'static [u8], scalars: &[Scalar]) -> Self;
+    fn commit_mask(self, label: &'static [u8], mask: &Mask) -> Self;
+    fn commit_masks(self, label: &'static [u8], masks: &[Mask]) -> Self;
     fn commit_permutation(self, label: &'static [u8], perm: &Permutation) -> Self;
 }
 
@@ -139,6 +142,20 @@ impl TranscriptRngProtocol for TranscriptRngBuilder {
         let mut builder = self.commit_witness_bytes(b"$vec", &scalars.len().to_le_bytes());
         for s in scalars.iter() {
             builder = builder.commit_scalar(label, s);
+        }
+        builder
+    }
+
+    fn commit_mask(self, label: &'static [u8], mask: &Mask) -> Self {
+        self.commit_witness_bytes(b"$tuple", &[2])
+            .commit_witness_bytes(label, mask.0.compress().as_bytes())
+            .commit_witness_bytes(label, mask.1.compress().as_bytes())
+    }
+
+    fn commit_masks(self, label: &'static [u8], masks: &[Mask]) -> Self {
+        let mut builder = self.commit_witness_bytes(b"$vec", &masks.len().to_le_bytes());
+        for m in masks.iter() {
+            builder = builder.commit_mask(label, m);
         }
         builder
     }
