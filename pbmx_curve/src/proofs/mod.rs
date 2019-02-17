@@ -1,6 +1,7 @@
 //! Zero-knowledge proofs
 
 pub mod dlog_eq;
+mod dlog_eq_1of2;
 mod known_rotation;
 mod known_shuffle;
 pub mod secret_rotation;
@@ -114,6 +115,7 @@ impl TranscriptProtocol for Transcript {
 }
 
 trait TranscriptRngProtocol {
+    fn commit_bit(self, label: &'static [u8], bit: bool) -> Self;
     fn commit_index(self, label: &'static [u8], index: usize) -> Self;
     fn commit_scalar(self, label: &'static [u8], scalar: &Scalar) -> Self;
     fn commit_scalars(self, label: &'static [u8], scalars: &[Scalar]) -> Self;
@@ -121,6 +123,10 @@ trait TranscriptRngProtocol {
 }
 
 impl TranscriptRngProtocol for TranscriptRngBuilder {
+    fn commit_bit(self, label: &'static [u8], bit: bool) -> Self {
+        self.commit_index(label, bit as usize)
+    }
+
     fn commit_index(self, label: &'static [u8], index: usize) -> Self {
         self.commit_witness_bytes(label, &index.to_be_bytes())
     }
