@@ -103,7 +103,7 @@ impl Proof {
                 e1: publics.s2,
             },
             secret_rotation::Secrets {
-                k: secrets.k,
+                k: (n + 1 - secrets.k) % (n + 1),
                 r: secrets.r2,
             },
         );
@@ -253,6 +253,8 @@ mod tests {
         assert_eq!(verified, Ok(()));
 
         // break the proof
+        let mut proof = Proof::create(&mut Transcript::new(b"test"), publics, secrets);
+        proof.s1.pop();
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
         assert_eq!(verified, Err(()));
     }
