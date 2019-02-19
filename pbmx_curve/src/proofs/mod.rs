@@ -4,7 +4,7 @@ pub mod dlog_eq;
 mod dlog_eq_1of2;
 mod known_rotation;
 mod known_shuffle;
-pub mod secret_insert;
+pub mod secret_insertion;
 pub mod secret_rotation;
 pub mod secret_shuffle;
 

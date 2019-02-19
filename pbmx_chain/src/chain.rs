@@ -7,7 +7,10 @@ use crate::{
 };
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
+    vtmf::{
+        InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+        Stack,
+    },
     Error,
 };
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
@@ -214,14 +217,17 @@ pub trait ChainVisitor {
             ShiftStack(id, stk, proof) => {
                 self.visit_shift_stack(block, *id, stk, proof);
             }
+            NameStack(id, name) => {
+                self.visit_name_stack(block, *id, name);
+            }
             TakeStack(id, idxs, stk) => {
                 self.visit_take_stack(block, *id, idxs, stk);
             }
             PileStacks(ids, stk) => {
                 self.visit_pile_stack(block, ids, stk);
             }
-            NameStack(id, name) => {
-                self.visit_name_stack(block, *id, name);
+            InsertToken(id1, id2, stk, proof) => {
+                self.visit_insert_token(*id1, *id2, stk, proof);
             }
             PublishShares(id, shares, proof) => {
                 self.visit_publish_shares(block, *id, shares, proof);
@@ -268,6 +274,8 @@ pub trait ChainVisitor {
     fn visit_take_stack(&mut self, _block: &Block, _id: Id, _idxs: &[usize], _stack: &Stack) {}
     /// Visits a PileStack payload
     fn visit_pile_stack(&mut self, _block: &Block, _ids: &[Id], _stack: &Stack) {}
+    /// Visits a InsertToken payload
+    fn visit_insert_token(&mut self, _id1: Id, _id2: Id, _stack: &Stack, _proof: &InsertProof) {}
     /// Visits a NameStack payload
     fn visit_name_stack(&mut self, _block: &Block, _id: Id, _name: &str) {}
     /// Visits a PublishShares payload

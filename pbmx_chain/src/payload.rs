@@ -3,7 +3,10 @@
 use crate::{error::Error, Id};
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack},
+    vtmf::{
+        InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+        Stack,
+    },
 };
 use pbmx_serde::derive_base64_conversions;
 use std::fmt::{self, Display, Formatter};
@@ -28,6 +31,8 @@ pub enum Payload {
     TakeStack(Id, Vec<usize>, Stack),
     /// A stack pile payload
     PileStacks(Vec<Id>, Stack),
+    /// A insert token payload
+    InsertToken(Id, Id, Stack, InsertProof),
     /// A secret share payload
     PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
     /// An rng bound payload
@@ -66,6 +71,9 @@ impl<'a> Display for DisplayShort<'a> {
             ShiftStack(id, stk, _) => write!(f, "cut {1:16} \u{21CB} {0:16}", id, stk.id()),
             TakeStack(id, idxs, stk) => write!(f, "take {:16}{:?} {:16}", id, idxs, stk.id()),
             PileStacks(ids, stk) => write!(f, "pile {:16?} {:16}", ids, stk.id()),
+            InsertToken(id1, id2, stk, _) => {
+                write!(f, "insert {:16} {:16} {:16}", id1, id2, stk.id())
+            }
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
             RandomBound(id, ..) => write!(f, "new rng {}", id),
             RandomEntropy(id, ..) => write!(f, "add entropy {}", id),

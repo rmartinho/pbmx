@@ -16,7 +16,10 @@ use pbmx_chain::{
 use pbmx_curve::{
     keys::{PrivateKey, PublicKey},
     map,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack, Vtmf},
+    vtmf::{
+        InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+        Stack, Vtmf,
+    },
 };
 use pbmx_serde::{FromBase64, ToBase64};
 use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf};
@@ -199,6 +202,20 @@ impl ChainVisitor for ChainParser {
                 .flat_map(|stk| stk.iter())
                 .zip(stack.iter())
                 .all(|(a, b)| *a == *b);
+
+        if self.valid {
+            self.stacks.insert(stack.clone());
+        }
+    }
+
+    fn visit_insert_token(&mut self, id1: Id, id2: Id, stack: &Stack, proof: &InsertProof) {
+        self.valid = self.valid
+            && self
+                .stacks
+                .get_by_id(&id1)
+                .and_then(|s1| self.stacks.get_by_id(&id2).map(|s2| (s1, s2)))
+                .map(|(s1, s2)| self.vtmf.verify_mask_insert(s1, s2, stack, proof).is_ok())
+                .unwrap_or(false);
 
         if self.valid {
             self.stacks.insert(stack.clone());

@@ -4,7 +4,10 @@ use colored::Colorize;
 use pbmx_chain::{block::Block, chain::ChainVisitor, Id};
 use pbmx_curve::{
     keys::PublicKey,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof, Stack, Vtmf},
+    vtmf::{
+        InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+        Stack, Vtmf,
+    },
 };
 
 pub fn run(_: &ArgMatches, cfg: &Config) -> Result<()> {
@@ -95,6 +98,8 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
             stack.id()
         );
     }
+
+    fn visit_insert_token(&mut self, _: Id, _: Id, _: &Stack, _: &InsertProof) {}
 
     fn visit_name_stack(&mut self, _: &Block, id: Id, name: &str) {
         println!("    {} {:16} {}", "name".green().bold(), id, name);

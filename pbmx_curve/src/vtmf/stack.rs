@@ -8,7 +8,7 @@ use std::{
 
 /// A masked stack
 #[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub struct Stack(Vec<Mask>);
+pub struct Stack(pub(crate) Vec<Mask>);
 
 derive_base64_conversions!(Stack, Error);
 

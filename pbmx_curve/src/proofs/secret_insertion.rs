@@ -32,7 +32,7 @@ pub struct Publics<'a> {
     /// Public key
     pub h: &'a RistrettoPoint,
     /// Token
-    pub c: &'a Mask,
+    pub c: &'a [Mask],
     /// Original
     pub s0: &'a [Mask],
     /// Inserted
@@ -56,7 +56,7 @@ impl Proof {
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"secret_insert");
 
-        transcript.commit_mask(b"c", publics.c);
+        transcript.commit_masks(b"c", publics.c);
         transcript.commit_masks(b"s0", publics.s0);
         transcript.commit_masks(b"s2", publics.s2);
 
@@ -68,10 +68,12 @@ impl Proof {
             .finalize(&mut thread_rng());
 
         let n = publics.s0.len();
+        let n2 = publics.s2.len();
         let gh = Mask(G.basepoint(), *publics.h);
 
+        let k = secrets.k % n;
         let mut s1 = publics.s0.to_vec();
-        let p = Permutation::shift(s1.len(), secrets.k);
+        let p = Permutation::shift(s1.len(), k);
         p.apply_to(&mut s1);
         for (s, r) in s1.iter_mut().zip(secrets.r1.iter()) {
             *s += gh * r;
@@ -85,14 +87,11 @@ impl Proof {
                 e0: publics.s0,
                 e1: &s1,
             },
-            secret_rotation::Secrets {
-                k: secrets.k,
-                r: secrets.r1,
-            },
+            secret_rotation::Secrets { k, r: secrets.r1 },
         );
 
         let mut s1c = s1.clone();
-        s1c.push(*publics.c);
+        s1c.extend_from_slice(publics.c);
         transcript.commit_masks(b"s1c", &s1c);
 
         let rot2 = secret_rotation::Proof::create(
@@ -103,7 +102,7 @@ impl Proof {
                 e1: publics.s2,
             },
             secret_rotation::Secrets {
-                k: (n + 1 - secrets.k) % (n + 1),
+                k: (n2 - secrets.k) % n2,
                 r: secrets.r2,
             },
         );
@@ -111,29 +110,26 @@ impl Proof {
         let mut ir1 = secrets.r1.to_vec();
         p.inverse().apply_to(&mut ir1);
 
-        let is_first = if secrets.k == n {
-            false
-        } else if secrets.k == 0 {
-            true
-        } else {
-            rng.gen()
-        };
+        let coin_flip = rng.gen::<bool>() as u8;
+        let on_top = (secrets.k != n) as u8;
+        let in_middle = (secrets.k != n && secrets.k != 0) as u8;
+        let is_first = u8::conditional_select(&on_top, &coin_flip, in_middle.into());
 
         let top_x = ir1[0] + secrets.r2[0];
-        let bottom_x = ir1[n - 1] + secrets.r2[n];
+        let bottom_x = ir1[n - 1] + secrets.r2[n2 - 1];
 
         let eq_top_bottom = dlog_eq_1of2::Proof::create(
             transcript,
             dlog_eq_1of2::Publics {
                 a1: &(publics.s2[0].0 - publics.s0[0].0),
                 b1: &(publics.s2[0].1 - publics.s0[0].1),
-                a2: &(publics.s2[n].0 - publics.s0[n - 1].0),
-                b2: &(publics.s2[n].1 - publics.s0[n - 1].1),
+                a2: &(publics.s2[n2 - 1].0 - publics.s0[n - 1].0),
+                b2: &(publics.s2[n2 - 1].1 - publics.s0[n - 1].1),
                 g: &G.basepoint(),
                 h: publics.h,
             },
             dlog_eq_1of2::Secrets {
-                is_first,
+                is_first: is_first == 1,
                 x: &Scalar::conditional_select(&bottom_x, &top_x, (is_first as u8).into()),
             },
         );
@@ -151,12 +147,13 @@ impl Proof {
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
         transcript.domain_sep(b"secret_insert");
 
-        transcript.commit_mask(b"c", publics.c);
+        transcript.commit_masks(b"c", publics.c);
         transcript.commit_masks(b"s0", publics.s0);
         transcript.commit_masks(b"s2", publics.s2);
         transcript.commit_masks(b"s1", &self.s1);
 
         let n = publics.s0.len();
+        let n2 = publics.s2.len();
 
         self.rot1.verify(transcript, secret_rotation::Publics {
             h: publics.h,
@@ -165,7 +162,7 @@ impl Proof {
         })?;
 
         let mut s1c = self.s1.clone();
-        s1c.push(*publics.c);
+        s1c.extend_from_slice(publics.c);
         transcript.commit_masks(b"s1c", &s1c);
 
         self.rot2.verify(transcript, secret_rotation::Publics {
@@ -178,8 +175,8 @@ impl Proof {
             .verify(transcript, dlog_eq_1of2::Publics {
                 a1: &(publics.s2[0].0 - publics.s0[0].0),
                 b1: &(publics.s2[0].1 - publics.s0[0].1),
-                a2: &(publics.s2[n].0 - publics.s0[n - 1].0),
-                b2: &(publics.s2[n].1 - publics.s0[n - 1].1),
+                a2: &(publics.s2[n2 - 1].0 - publics.s0[n - 1].0),
+                b2: &(publics.s2[n2 - 1].1 - publics.s0[n - 1].1),
                 g: &G.basepoint(),
                 h: publics.h,
             })
@@ -193,6 +190,7 @@ mod tests {
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
+    use std::iter;
 
     #[test]
     fn prove_and_verify_agree() {
@@ -201,7 +199,9 @@ mod tests {
         let h = &RistrettoPoint::random(&mut rng);
         let gh = Mask(G.basepoint(), *h);
 
-        let c = Mask::open(RistrettoPoint::random(&mut rng));
+        let c: Vec<_> = iter::repeat_with(|| Mask::open(RistrettoPoint::random(&mut rng)))
+            .take(3)
+            .collect();
 
         let m = &random_scalars(8, &mut rng);
         let s0: Vec<_> = m
@@ -218,13 +218,13 @@ mod tests {
                 (gh * r + s, r)
             })
             .unzip();
-        let k = rng.gen_range(0, 8);
+        let k = rng.gen_range(0, 9);
         let p1 = Permutation::shift(8, k);
         p1.apply_to(&mut s1);
         p1.apply_to(&mut r1);
 
         let mut s1c = s1.clone();
-        s1c.push(c);
+        s1c.extend_from_slice(&c);
         let (mut s2, mut r2): (Vec<_>, Vec<_>) = s1c
             .iter()
             .map(|s| {
@@ -232,7 +232,7 @@ mod tests {
                 (gh * r + s, r)
             })
             .unzip();
-        let p2 = Permutation::shift(9, 9 - k);
+        let p2 = Permutation::shift(11, (11 - k) % 11);
         p2.apply_to(&mut s2);
         p2.apply_to(&mut r2);
 
