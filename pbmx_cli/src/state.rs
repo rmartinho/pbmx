@@ -208,7 +208,7 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_insert_token(&mut self, id1: Id, id2: Id, stack: &Stack, proof: &InsertProof) {
+    fn visit_insert_stack(&mut self, id1: Id, id2: Id, stack: &Stack, proof: &InsertProof) {
         self.valid = self.valid
             && self
                 .stacks

@@ -226,8 +226,8 @@ pub trait ChainVisitor {
             PileStacks(ids, stk) => {
                 self.visit_pile_stack(block, ids, stk);
             }
-            InsertToken(id1, id2, stk, proof) => {
-                self.visit_insert_token(*id1, *id2, stk, proof);
+            InsertStack(id1, id2, stk, proof) => {
+                self.visit_insert_stack(*id1, *id2, stk, proof);
             }
             PublishShares(id, shares, proof) => {
                 self.visit_publish_shares(block, *id, shares, proof);
@@ -275,7 +275,7 @@ pub trait ChainVisitor {
     /// Visits a PileStack payload
     fn visit_pile_stack(&mut self, _block: &Block, _ids: &[Id], _stack: &Stack) {}
     /// Visits a InsertToken payload
-    fn visit_insert_token(&mut self, _id1: Id, _id2: Id, _stack: &Stack, _proof: &InsertProof) {}
+    fn visit_insert_stack(&mut self, _id1: Id, _id2: Id, _stack: &Stack, _proof: &InsertProof) {}
     /// Visits a NameStack payload
     fn visit_name_stack(&mut self, _block: &Block, _id: Id, _name: &str) {}
     /// Visits a PublishShares payload

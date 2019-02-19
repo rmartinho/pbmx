@@ -99,7 +99,15 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         );
     }
 
-    fn visit_insert_token(&mut self, _: Id, _: Id, _: &Stack, _: &InsertProof) {}
+    fn visit_insert_stack(&mut self, id1: Id, id2: Id, stack: &Stack, _: &InsertProof) {
+        println!(
+            "    {} {:16} {:16} {:16}",
+            "insert".green().bold(),
+            id1,
+            id2,
+            stack.id()
+        );
+    }
 
     fn visit_name_stack(&mut self, _: &Block, id: Id, name: &str) {
         println!("    {} {:16} {}", "name".green().bold(), id, name);

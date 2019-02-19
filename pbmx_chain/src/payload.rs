@@ -32,7 +32,7 @@ pub enum Payload {
     /// A stack pile payload
     PileStacks(Vec<Id>, Stack),
     /// A insert token payload
-    InsertToken(Id, Id, Stack, InsertProof),
+    InsertStack(Id, Id, Stack, InsertProof),
     /// A secret share payload
     PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
     /// An rng bound payload
@@ -71,7 +71,7 @@ impl<'a> Display for DisplayShort<'a> {
             ShiftStack(id, stk, _) => write!(f, "cut {1:16} \u{21CB} {0:16}", id, stk.id()),
             TakeStack(id, idxs, stk) => write!(f, "take {:16}{:?} {:16}", id, idxs, stk.id()),
             PileStacks(ids, stk) => write!(f, "pile {:16?} {:16}", ids, stk.id()),
-            InsertToken(id1, id2, stk, _) => {
+            InsertStack(id1, id2, stk, _) => {
                 write!(f, "insert {:16} {:16} {:16}", id1, id2, stk.id())
             }
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
