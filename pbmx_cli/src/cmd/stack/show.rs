@@ -36,7 +36,7 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
                 if !named.contains(id) {
                     let stack = state.stacks.get_by_id(&id).unwrap();
                     println!(
-                        "{} {}",
+                        "{:16} {}",
                         id,
                         display_stack_contents(&stack, &state.stacks.secrets, &state.vtmf, cfg)
                     );

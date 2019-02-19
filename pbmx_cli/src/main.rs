@@ -98,6 +98,12 @@ fn main() {
                 (@arg ALL: -a --all "Include unnamed stacks")
                 (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data (unimplemented)")
             )
+            (@subcommand reveal =>
+                (about: "Reveals the secret share of a stack to others")
+                (@setting DeriveDisplayOrder)
+                (@setting ColoredHelp)
+                (@arg STACK: +required "The name or identifier of the stack")
+            )
             (@subcommand name =>
                 (about: "Names a stack")
                 (@setting DeriveDisplayOrder)
@@ -144,11 +150,15 @@ fn main() {
                 (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks")
                 (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
             )
-            (@subcommand reveal =>
-                (about: "Reveals the secret share of a stack to others")
+            (@subcommand insert =>
+                (about: "Insert a stack into another")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
-                (@arg STACK: +required "The name or identifier of the stack")
+                (@arg SOURCE: +required "The name or identifier of the source stack")
+                (@arg TARGET: +required "The name or identifier for the target stack")
+                (@arg INDEX: "The position for insertion in the target stack")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks")
+                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
             )
         )
         (@subcommand rng =>
