@@ -18,9 +18,12 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
         if state.stacks.is_name(&id) {
             print!("{} ", id.bold());
         }
-        println!(
-            "{}",
-            display_stack_contents(&stack, &state.stacks.secrets, &state.vtmf, cfg)
+        print_stack(
+            m.is_present("VERBOSE"),
+            &stack,
+            &state.stacks.secrets,
+            &state.vtmf,
+            cfg,
         );
     } else {
         let mut named = HashSet::new();
@@ -73,7 +76,15 @@ fn print_stack(verbose: bool, stack: &Stack, secrets: &SecretMap, vtmf: &Vtmf, c
                     .unwrap_or_else(|| empty.clone())
             })
             .fold(common, |acc, fps| acc.intersection(&fps).cloned().collect());
-        println!(" {:16?}", common);
+        print!(" $");
+        for fp in common.iter() {
+            if let Some(n) = cfg.players.get(fp) {
+                print!(" {}", n);
+            } else {
+                print!(" {:16}", fp);
+            }
+        }
+        println!();
     } else {
         println!();
     }
