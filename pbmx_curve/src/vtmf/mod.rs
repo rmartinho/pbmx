@@ -111,6 +111,11 @@ impl Vtmf {
     pub fn parties(&self) -> usize {
         self.pki.len()
     }
+
+    /// Gets the number of parties in this VTMF
+    pub fn fingerprints<'a>(&'a self) -> impl Iterator<Item = Fingerprint> + 'a {
+        self.pki.keys().cloned()
+    }
 }
 
 impl Vtmf {

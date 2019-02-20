@@ -1,7 +1,12 @@
-use crate::{stack_map::display_stack_contents, state::State, Config, Error, Result};
+use crate::{
+    stack_map::{display_stack_contents, SecretMap},
+    state::State,
+    Config, Error, Result,
+};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use std::collections::HashSet;
+use pbmx_curve::vtmf::{Stack, Vtmf};
+use std::{collections::HashSet, iter::FromIterator};
 
 pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String).ok();
@@ -25,20 +30,26 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
             let stack = state.stacks.get_by_name(n).unwrap();
             let id = stack.id();
             named.insert(id);
-            println!(
-                "{} {}",
-                n.bold(),
-                display_stack_contents(&stack, &state.stacks.secrets, &state.vtmf, cfg)
+            print!("{} ", n.bold());
+            print_stack(
+                m.is_present("VERBOSE"),
+                &stack,
+                &state.stacks.secrets,
+                &state.vtmf,
+                cfg,
             );
         }
         if m.is_present("ALL") {
             for id in state.stacks.ids() {
                 if !named.contains(id) {
                     let stack = state.stacks.get_by_id(&id).unwrap();
-                    println!(
-                        "{:16} {}",
-                        id,
-                        display_stack_contents(&stack, &state.stacks.secrets, &state.vtmf, cfg)
+                    print!("{:16} ", id);
+                    print_stack(
+                        m.is_present("VERBOSE"),
+                        &stack,
+                        &state.stacks.secrets,
+                        &state.vtmf,
+                        cfg,
                     );
                 }
             }
@@ -46,4 +57,24 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_stack(verbose: bool, stack: &Stack, secrets: &SecretMap, vtmf: &Vtmf, cfg: &Config) {
+    print!("{}", display_stack_contents(stack, secrets, vtmf, cfg));
+    if verbose {
+        let empty = HashSet::new();
+        let common: HashSet<_> = vtmf.fingerprints().collect();
+        let common = stack
+            .iter()
+            .map(|m| {
+                secrets
+                    .get(m)
+                    .map(|(_, fps)| HashSet::from_iter(fps.iter().cloned()))
+                    .unwrap_or_else(|| empty.clone())
+            })
+            .fold(common, |acc, fps| acc.intersection(&fps).cloned().collect());
+        println!(" {:16?}", common);
+    } else {
+        println!();
+    }
 }

@@ -96,7 +96,7 @@ fn main() {
                 (@setting ColoredHelp)
                 (@arg STACK: "The name or identifier of the stack (shows all named stacks if none given)")
                 (@arg ALL: -a --all "Include unnamed stacks")
-                (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data (unimplemented)")
+                (@arg VERBOSE: -v --verbose "Includes more details, e.g. encrypted data")
             )
             (@subcommand reveal =>
                 (about: "Reveals the secret share of a stack to others")

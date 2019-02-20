@@ -12,12 +12,14 @@ use std::{
     str,
 };
 
+pub type SecretMap = HashMap<Mask, (SecretShare, Vec<Fingerprint>)>;
+
 #[derive(Clone, Default, Debug)]
 pub struct StackMap {
     len: usize,
     map: Trie<Id, Stack>,
     name_map: HashMap<String, Id>,
-    pub secrets: HashMap<Mask, (SecretShare, Vec<Fingerprint>)>,
+    pub secrets: SecretMap,
 }
 
 impl StackMap {
