@@ -14,7 +14,7 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
     let name = value_t!(m, "NAME", String).ok();
     let stack = values_t!(m, "TOKENS", String).unwrap_or_else(|_| vec![]);
 
-    let mut state = State::read(false)?;
+    let mut state = State::read(true)?;
 
     let stack: Stack = stack
         .iter()
@@ -25,15 +25,24 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
         .map(|i| Mask::open(map::to_curve(i as u64)))
         .collect();
     let id = stack.id();
-    println!(
-        "{} {}",
-        " + Open stack".green().bold(),
-        display_stack_contents(&stack.clone(), &HashMap::new(), &state.vtmf, cfg)
-    );
-    state.payloads.push(Payload::OpenStack(stack));
+    if !state.stacks.contains(&id) {
+        println!(
+            "{} {}",
+            " + Open stack".green().bold(),
+            display_stack_contents(&stack.clone(), &HashMap::new(), &state.vtmf, cfg)
+        );
+        state.payloads.push(Payload::OpenStack(stack));
+    }
     if let Some(name) = name {
-        println!("{} {:16} {}", " + Name stack".green().bold(), id, name);
-        state.payloads.push(Payload::NameStack(id, name));
+        let name_change = state
+            .stacks
+            .get_by_name(&name)
+            .map(|s| s.id() != id)
+            .unwrap_or(true);
+        if name_change {
+            println!("{} {:16} {}", " + Name stack".green().bold(), id, name);
+            state.payloads.push(Payload::NameStack(id, name));
+        }
     }
 
     state.save_payloads()?;

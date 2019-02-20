@@ -6,12 +6,12 @@ use rand::{thread_rng, Rng};
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;
-    let n = value_t!(m, "N", usize);
+    let n = value_t!(m, "N", usize).ok();
 
     let mut state = State::read(true)?;
 
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
-    let n = n.unwrap_or_else(|_| thread_rng().gen_range(0, stack.len()));
+    let n = n.unwrap_or_else(|| thread_rng().gen_range(0, stack.len()));
 
     let (s, proof) = state.vtmf.mask_shift(&stack, n);
 

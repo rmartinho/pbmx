@@ -40,6 +40,10 @@ impl StackMap {
         }
     }
 
+    pub fn contains(&mut self, id: &Id) -> bool {
+        self.map.contains_key(id)
+    }
+
     pub fn set_name(&mut self, id: Id, name: String) {
         self.name_map
             .entry(name)

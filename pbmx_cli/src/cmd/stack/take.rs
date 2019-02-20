@@ -53,19 +53,28 @@ pub fn take(
 
     let id1 = stack.id();
     let id2 = tokens.id();
-    println!(
-        "{} {:16}{} \u{219B} {:16}",
-        " + Take tokens".green().bold(),
-        id1,
-        display_indices(&indices),
-        id2
-    );
-    state
-        .payloads
-        .push(Payload::TakeStack(id1, indices, tokens));
+    if !state.stacks.contains(&id2) {
+        println!(
+            "{} {:16}{} \u{219B} {:16}",
+            " + Take tokens".green().bold(),
+            id1,
+            display_indices(&indices),
+            id2
+        );
+        state
+            .payloads
+            .push(Payload::TakeStack(id1, indices, tokens));
+    }
     if let Some(target) = target {
-        println!("{} {:16} {}", " + Name stack".green().bold(), id2, target);
-        state.payloads.push(Payload::NameStack(id2, target));
+        let name_change = state
+            .stacks
+            .get_by_name(&target)
+            .map(|s| s.id() != id2)
+            .unwrap_or(true);
+        if name_change {
+            println!("{} {:16} {}", " + Name stack".green().bold(), id2, target);
+            state.payloads.push(Payload::NameStack(id2, target));
+        }
     }
 
     Ok(())

@@ -30,24 +30,42 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         let id3 = empty.id();
         for id in in_ids.iter() {
             if state.stacks.is_name(id) {
-                println!("{} []", " + Open stack".green().bold());
-                state.payloads.push(Payload::OpenStack(empty.clone()));
-                println!("{} {:16} {}", " + Name stack".green().bold(), id3, id);
-                state.payloads.push(Payload::NameStack(id3, id.clone()));
+                if !state.stacks.contains(&id3) {
+                    println!("{} []", " + Open Stack".green().bold());
+                    state.payloads.push(Payload::OpenStack(empty.clone()));
+                }
+                let name_change = state
+                    .stacks
+                    .get_by_name(id)
+                    .map(|s| s.id() != id3)
+                    .unwrap_or(true);
+                if name_change {
+                    println!("{} {:16} {}", " + Name stack".green().bold(), id3, id);
+                    state.payloads.push(Payload::NameStack(id3, id.clone()));
+                }
             }
         }
     }
     let id2 = tokens.id();
-    println!(
-        "{} {:?} \u{21A3} {:16}",
-        " + Pile stacks".green().bold(),
-        in_ids,
-        id2
-    );
-    state.payloads.push(Payload::PileStacks(ids, tokens));
+    if !state.stacks.contains(&id2) {
+        println!(
+            "{} {:?} \u{21A3} {:16}",
+            " + Pile stacks".green().bold(),
+            in_ids,
+            id2
+        );
+        state.payloads.push(Payload::PileStacks(ids, tokens));
+    }
     if let Some(name) = name {
-        println!("{} {:16} {}", " + Name stack".green().bold(), id2, name);
-        state.payloads.push(Payload::NameStack(id2, name));
+        let name_change = state
+            .stacks
+            .get_by_name(&name)
+            .map(|s| s.id() != id2)
+            .unwrap_or(true);
+        if name_change {
+            println!("{} {:16} {}", " + Name stack".green().bold(), id2, name);
+            state.payloads.push(Payload::NameStack(id2, name));
+        }
     }
 
     state.save_payloads()?;
