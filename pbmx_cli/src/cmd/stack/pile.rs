@@ -49,7 +49,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id2 = tokens.id();
     if !state.stacks.contains(&id2) {
         println!(
-            "{} {:?} \u{21A3} {:16}",
+            "{} {:16?} \u{21A3} {:16}",
             " + Pile stacks".green().bold(),
             in_ids,
             id2

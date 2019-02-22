@@ -12,6 +12,8 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "SOURCE", String)?;
     let indices = values_t!(m, "INDICES", String)?;
     let target = value_t!(m, "TARGET", String).ok();
+    let over = value_t!(m, "OVER", String).ok();
+    let under = value_t!(m, "UNDER", String).ok();
     let remove = m.is_present("REMOVE");
 
     let mut state = State::read(true)?;
@@ -31,18 +33,32 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     if remove && state.stacks.is_name(&id) {
         let rev_indices: Vec<_> = (0..stack.len()).filter(|i| !indices.contains(&i)).collect();
-        take(&stack, rev_indices, Some(id), &mut state)?;
+        take(&stack, rev_indices, Some(id), Stacking::Replace, &mut state)?;
     }
-    take(&stack, indices, target, &mut state)?;
+    let stacking = if let Some(over) = over {
+        Stacking::Over(over)
+    } else if let Some(under) = under {
+        Stacking::Under(under)
+    } else {
+        Stacking::Replace
+    };
+    take(&stack, indices, target, stacking, &mut state)?;
 
     state.save_payloads()?;
     Ok(())
 }
 
-pub fn take(
+enum Stacking {
+    Replace,
+    Over(String),
+    Under(String),
+}
+
+fn take(
     stack: &Stack,
     indices: Vec<usize>,
     target: Option<String>,
+    stacking: Stacking,
     state: &mut State,
 ) -> Result<()> {
     let tokens: Stack = stack
@@ -63,17 +79,55 @@ pub fn take(
         );
         state
             .payloads
-            .push(Payload::TakeStack(id1, indices, tokens));
+            .push(Payload::TakeStack(id1, indices, tokens.clone()));
     }
-    if let Some(target) = target {
+    let (name, result) = match stacking {
+        Stacking::Over(over) => {
+            let o = state
+                .stacks
+                .get_by_str(&over)
+                .ok_or(Error::InvalidData)?
+                .clone();
+            let pile: Stack = tokens.iter().chain(o.iter()).cloned().collect();
+            let ids = vec![o.id(), id1];
+            println!(
+                "{} {:16?} \u{21A3} {:16}",
+                " + Pile stacks".green().bold(),
+                ids,
+                pile.id()
+            );
+            state.payloads.push(Payload::PileStacks(ids, pile.clone()));
+            (Some(over), pile)
+        }
+        Stacking::Under(under) => {
+            let u = state
+                .stacks
+                .get_by_str(&under)
+                .ok_or(Error::InvalidData)?
+                .clone();
+            let pile: Stack = u.iter().chain(tokens.iter()).cloned().collect();
+            let ids = vec![id1, u.id()];
+            println!(
+                "{} {:16?} \u{21A3} {:16}",
+                " + Pile stacks".green().bold(),
+                ids,
+                pile.id()
+            );
+            state.payloads.push(Payload::PileStacks(ids, pile.clone()));
+            (Some(under), pile)
+        }
+        Stacking::Replace => (target, tokens),
+    };
+    let id3 = result.id();
+    if let Some(target) = name {
         let name_change = state
             .stacks
             .get_by_name(&target)
-            .map(|s| s.id() != id2)
+            .map(|s| s.id() != id3)
             .unwrap_or(true);
         if name_change {
-            println!("{} {:16} {}", " + Name stack".green().bold(), id2, target);
-            state.payloads.push(Payload::NameStack(id2, target));
+            println!("{} {:16} {}", " + Name stack".green().bold(), id3, target);
+            state.payloads.push(Payload::NameStack(id3, target));
         }
     }
 

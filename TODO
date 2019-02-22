@@ -1,13 +1,22 @@
+# refactoring
+- merge non-CLI crates together
+- move more toolkit-ish stuff out of CLI
+
+# cli improvements
+- take --pile option
+- fine-grained reset
+- save verification checkpoints
+- block-specific logs/tail-like logs
+- save positions/permutations for shuffles, shifts, inserts, etc
+
+# new game features
 - mid-game join/part
 - private masking for e.g. bidding
 - subset/superset/disjoint/no suit proofs
-- save verification checkpoints
-- block-specific logs/tail-like logs
-- rework payloads/interface for additional ops
-- merge non-CLI crates together
-- move more toolkit-ish stuff out of CLI
-- return blinding factors from VTMF functions so they can be re-combined later
-- save positions/permutations for shuffles, shifts, inserts, etc
-- wire format versioning
-- a couple more primitives instead of saving blinding factors?
 - oblivious transfers? 
+
+# primitive improvements
+- return blinding factors from VTMF functions so they can be re-combined later
+- a couple more primitives instead of saving blinding factors?
+- wire format versioning
+

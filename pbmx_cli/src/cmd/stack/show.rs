@@ -77,6 +77,8 @@ fn print_stack(verbose: bool, stack: &Stack, secrets: &SecretMap, vtmf: &Vtmf, c
             })
             .fold(common, |acc, fps| acc.intersection(&fps).cloned().collect());
         print!(" $");
+        let mut common: Vec<_> = common.into_iter().collect();
+        common.sort();
         for fp in common.iter() {
             if let Some(n) = cfg.players.get(fp) {
                 print!(" {}", n);
