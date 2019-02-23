@@ -3,8 +3,7 @@
 - move more toolkit-ish stuff out of CLI
 
 # cli improvements
-- take --pile option
-- fine-grained reset
+- enforce validity in fine-grained reset
 - save verification checkpoints
 - block-specific logs/tail-like logs
 - save positions/permutations for shuffles, shifts, inserts, etc
