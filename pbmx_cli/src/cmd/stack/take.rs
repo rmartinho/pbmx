@@ -69,18 +69,16 @@ fn take(
 
     let id1 = stack.id();
     let id2 = tokens.id();
-    if !state.stacks.contains(&id2) {
-        println!(
-            "{} {:16}{} \u{219B} {:16}",
-            " + Take tokens".green().bold(),
-            id1,
-            display_indices(&indices),
-            id2
-        );
-        state
-            .payloads
-            .push(Payload::TakeStack(id1, indices, tokens.clone()));
-    }
+    println!(
+        "{} {:16}{} \u{219B} {:16}",
+        " + Take tokens".green().bold(),
+        id1,
+        display_indices(&indices),
+        id2
+    );
+    state
+        .payloads
+        .push(Payload::TakeStack(id1, indices, tokens.clone()));
     let (name, result) = match stacking {
         Stacking::Over(over) => {
             let o = state

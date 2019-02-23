@@ -47,15 +47,13 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         }
     }
     let id2 = tokens.id();
-    if !state.stacks.contains(&id2) {
-        println!(
-            "{} {:16?} \u{21A3} {:16}",
-            " + Pile stacks".green().bold(),
-            in_ids,
-            id2
-        );
-        state.payloads.push(Payload::PileStacks(ids, tokens));
-    }
+    println!(
+        "{} {:16?} \u{21A3} {:16}",
+        " + Pile stacks".green().bold(),
+        in_ids,
+        id2
+    );
+    state.payloads.push(Payload::PileStacks(ids, tokens));
     if let Some(name) = name {
         let name_change = state
             .stacks

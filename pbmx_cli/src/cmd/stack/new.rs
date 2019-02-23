@@ -25,14 +25,12 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
         .map(|i| Mask::open(map::to_curve(i as u64)))
         .collect();
     let id = stack.id();
-    if !state.stacks.contains(&id) {
-        println!(
-            "{} {}",
-            " + Open stack".green().bold(),
-            display_stack_contents(&stack.clone(), &HashMap::new(), &state.vtmf, cfg)
-        );
-        state.payloads.push(Payload::OpenStack(stack));
-    }
+    println!(
+        "{} {}",
+        " + Open stack".green().bold(),
+        display_stack_contents(&stack.clone(), &HashMap::new(), &state.vtmf, cfg)
+    );
+    state.payloads.push(Payload::OpenStack(stack));
     if let Some(name) = name {
         let name_change = state
             .stacks
