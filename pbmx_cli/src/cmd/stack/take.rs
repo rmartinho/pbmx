@@ -89,7 +89,7 @@ fn take(
                 .ok_or(Error::InvalidData)?
                 .clone();
             let pile: Stack = tokens.iter().chain(o.iter()).cloned().collect();
-            let ids = vec![o.id(), id1];
+            let ids = vec![o.id(), id2];
             println!(
                 "{} {:16?} \u{21A3} {:16}",
                 " + Pile stacks".green().bold(),
@@ -106,7 +106,7 @@ fn take(
                 .ok_or(Error::InvalidData)?
                 .clone();
             let pile: Stack = u.iter().chain(tokens.iter()).cloned().collect();
-            let ids = vec![id1, u.id()];
+            let ids = vec![id2, u.id()];
             println!(
                 "{} {:16?} \u{21A3} {:16}",
                 " + Pile stacks".green().bold(),
