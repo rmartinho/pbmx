@@ -19,7 +19,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
                 "{} < {} = {}",
                 k.yellow(),
                 rng.bound(),
-                rng.gen(&state.vtmf)
+                rng.gen(&state.vtmf).nth(0).unwrap()
             );
         }
     }

@@ -18,4 +18,4 @@
 - return blinding factors from VTMF functions so they can be re-combined later
 - a couple more primitives instead of saving blinding factors?
 - wire format versioning
-
+- distinguish text/binary messages

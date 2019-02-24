@@ -1,4 +1,5 @@
 #![feature(option_xor)]
+#![feature(box_syntax)]
 #![deny(clippy::correctness)]
 #![allow(dead_code)]
 
@@ -164,7 +165,7 @@ fn main() {
                 (@setting ColoredHelp)
                 (@arg SOURCE: +required "The name or identifier of the source stack")
                 (@arg TARGET: +required "The name or identifier for the target stack")
-                (@arg INDEX: "The position for insertion in the target stack")
+                (@arg INDEX: +required "The position for insertion in the target stack")
                 (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks (default)")
                 (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack")
             )
@@ -202,10 +203,11 @@ fn main() {
                 (@arg NAME: +required "The name of the generator")
             )
             (@subcommand get =>
-                (about: "Gets the generator random number from a generator")
+                (about: "Gets the generated random number from a generator")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
                 (@arg NAME: +required "The name of the generator")
+                (@arg COUNT: "How many numbers to get from the generator")
             )
         )
     )

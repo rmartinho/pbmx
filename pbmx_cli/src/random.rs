@@ -62,7 +62,7 @@ impl Rng {
         self.secret_parties().len() == self.parties
     }
 
-    pub fn gen(&self, vtmf: &Vtmf) -> u64 {
+    pub fn gen(&self, vtmf: &Vtmf) -> impl Iterator<Item = u64> {
         let max = iter::repeat(self.bound)
             .scan(1u64, |s, x| {
                 let (r, overflow) = s.overflowing_mul(x);
@@ -77,13 +77,30 @@ impl Rng {
             .unwrap();
 
         let r = vtmf.unmask(&self.entropy, &self.secret);
-        let mut reader = vtmf.unmask_random(&r);
+        Gen {
+            reader: box vtmf.unmask_random(&r),
+            bound: self.bound,
+            max,
+        }
+    }
+}
+
+struct Gen {
+    reader: Box<dyn XofReader>,
+    bound: u64,
+    max: u64,
+}
+
+impl Iterator for Gen {
+    type Item = u64;
+
+    fn next(&mut self) -> Option<u64> {
         loop {
             let mut buf = [0u8; 8];
-            reader.read(&mut buf);
+            self.reader.read(&mut buf);
             let x = u64::from_be_bytes(buf);
-            if x < max {
-                return x % self.bound;
+            if x < self.max {
+                return Some(x % self.bound);
             }
         }
     }
