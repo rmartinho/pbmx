@@ -232,8 +232,8 @@ pub trait ChainVisitor {
             PublishShares(id, shares, proof) => {
                 self.visit_publish_shares(block, *id, shares, proof);
             }
-            RandomBound(id, bound) => {
-                self.visit_random_bound(block, id, *bound);
+            RandomSpec(id, spec) => {
+                self.visit_random_spec(block, id, spec);
             }
             RandomEntropy(id, entropy) => {
                 self.visit_random_entropy(block, id, entropy);
@@ -287,8 +287,8 @@ pub trait ChainVisitor {
         _proof: &[SecretShareProof],
     ) {
     }
-    /// Visits a RandomBound payload
-    fn visit_random_bound(&mut self, _block: &Block, _name: &str, _bound: u64) {}
+    /// Visits a RandomSpec payload
+    fn visit_random_spec(&mut self, _block: &Block, _name: &str, _spec: &str) {}
     /// Visits a RandomEntropy payload
     fn visit_random_entropy(&mut self, _block: &Block, _name: &str, _entropy: &Mask) {}
     /// Visits a RandomReveal payload

@@ -4,12 +4,12 @@ use pbmx_curve::{
     keys::Fingerprint,
     vtmf::{Mask, SecretShare, Vtmf},
 };
-use std::iter;
+use std::fmt::{self, Debug, Display, Formatter};
 
 #[derive(Debug)]
 pub struct Rng {
     parties: usize,
-    bound: u64,
+    spec: RngSpec,
     entropy: Mask,
     entropy_fp: Vec<Fingerprint>,
     secret: SecretShare,
@@ -17,19 +17,19 @@ pub struct Rng {
 }
 
 impl Rng {
-    pub fn new(parties: usize, bound: u64) -> Self {
-        Self {
+    pub fn new(parties: usize, spec: &str) -> Result<Self, spec::ParseError> {
+        Ok(Self {
             parties,
-            bound,
+            spec: RngSpec::parse(spec)?,
             entropy: Mask::open(RistrettoPoint::identity()),
             entropy_fp: Vec::new(),
             secret: RistrettoPoint::identity(),
             secret_fp: Vec::new(),
-        }
+        })
     }
 
-    pub fn bound(&self) -> u64 {
-        self.bound
+    pub fn spec(&self) -> String {
+        self.spec.to_string()
     }
 
     pub fn mask(&self) -> &Mask {
@@ -62,46 +62,196 @@ impl Rng {
         self.secret_parties().len() == self.parties
     }
 
-    pub fn gen(&self, vtmf: &Vtmf) -> impl Iterator<Item = u64> {
-        let max = iter::repeat(self.bound)
-            .scan(1u64, |s, x| {
-                let (r, overflow) = s.overflowing_mul(x);
-                if overflow {
-                    None
-                } else {
-                    *s = r;
-                    Some(*s)
-                }
-            })
-            .last()
-            .unwrap();
-
+    pub fn gen(&self, vtmf: &Vtmf) -> u64 {
         let r = vtmf.unmask(&self.entropy, &self.secret);
-        Gen {
-            reader: box vtmf.unmask_random(&r),
-            bound: self.bound,
-            max,
-        }
+        let mut reader = vtmf.unmask_random(&r);
+        self.spec.gen(&mut reader)
     }
 }
 
-struct Gen {
-    reader: Box<dyn XofReader>,
-    bound: u64,
-    max: u64,
+pub struct RngSpec(spec::Expr);
+
+impl Display for RngSpec {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
-impl Iterator for Gen {
-    type Item = u64;
+impl Debug for RngSpec {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
 
-    fn next(&mut self) -> Option<u64> {
-        loop {
-            let mut buf = [0u8; 8];
-            self.reader.read(&mut buf);
-            let x = u64::from_be_bytes(buf);
-            if x < self.max {
-                return Some(x % self.bound);
+impl RngSpec {
+    fn parse(input: &str) -> Result<Self, spec::ParseError> {
+        Ok(Self(spec::parse_expr(input)?))
+    }
+
+    fn gen(&self, reader: &mut XofReader) -> u64 {
+        self.0.apply(reader)
+    }
+}
+
+mod spec {
+    use digest::XofReader;
+    use nom::{digit, types::CompleteStr};
+    use std::{iter, str::FromStr};
+    use std::fmt::{self, Display, Formatter};
+
+    #[derive(Debug)]
+    pub struct ParseError;
+
+    impl From<ParseError> for crate::Error {
+        fn from(_: ParseError) -> Self {
+            crate::Error::InvalidData
+        }
+    }
+
+    pub trait Node : Display {
+        fn apply(&self, reader: &mut XofReader) -> u64;
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct Const(u64);
+
+    impl Display for Const {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+
+    impl Node for Const {
+        fn apply(&self, _: &mut XofReader) -> u64 {
+            self.0
+        }
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct Die {
+        n: u64,
+        d: u64,
+        max: u64,
+    }
+
+    impl Display for Die {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            write!(f, "{}d{}", self.n, self.d)
+        }
+    }
+
+    impl Die {
+        fn new(n: u64, d: u64) -> Self {
+            let max = iter::repeat(d)
+                .scan(1u64, |s, x| {
+                    let (r, overflow) = s.overflowing_mul(x);
+                    if overflow {
+                        None
+                    } else {
+                        *s = r;
+                        Some(*s)
+                    }
+                })
+                .last()
+                .unwrap();
+            Self { n, d, max }
+        }
+    }
+
+    impl Node for Die {
+        fn apply(&self, reader: &mut XofReader) -> u64 {
+            let mut sum = 0u64;
+            for _ in 0..self.n {
+                loop {
+                    let mut buf = [0u8; 8];
+                    reader.read(&mut buf);
+                    let x = u64::from_be_bytes(buf);
+                    if x < self.max {
+                        sum += x % self.d;
+                        break;
+                    }
+                }
+            }
+            sum
+        }
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct Op(Die, OpKind, Const);
+
+    impl Display for Op {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            write!(f, "{}{}{}", self.0, self.1, self.2)
+        }
+    }
+
+    impl Node for Op {
+        fn apply(&self, reader: &mut XofReader) -> u64 {
+            let left = self.0.apply(reader);
+            let right = self.2.apply(reader);
+            match self.1 {
+                OpKind::Add => left + right,
+                OpKind::Sub => left - right,
             }
         }
     }
+
+    #[derive(Debug, PartialEq, Eq)]
+    enum OpKind {
+        Add,
+        Sub,
+    }
+
+    impl Display for OpKind {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            write!(f, "{}", match self { OpKind::Add => "+", OpKind::Sub => "-" })
+        }
+    }
+
+    pub type Expr = Box<dyn Node + 'static>;
+
+    pub fn parse_expr(input: &str) -> Result<Expr, ParseError> {
+        expr(CompleteStr(input))
+            .map(|(_, x)| x)
+            .map_err(|_| ParseError)
+    }
+
+    fn make_expr<T: Node + 'static>(t: T) -> Expr {
+        box t
+    }
+
+    named!(number(CompleteStr) -> u64,
+        ws!(map_res!(digit, |s: CompleteStr| u64::from_str(s.0)))
+    );
+    named!(constant(CompleteStr) -> Const,
+        ws!(map!(number, Const))
+    );
+    named!(die(CompleteStr) -> Die,
+        ws!(do_parse!(
+            n: number >>
+            char!('d') >>
+            d: number >>
+            (Die::new(n, d))
+        ))
+    );
+    named!(op_kind(CompleteStr) -> OpKind,
+        ws!(alt!(
+            value!(OpKind::Add, char!('+')) |
+            value!(OpKind::Sub, char!('-'))
+        ))
+    );
+    named!(op(CompleteStr) -> Op,
+        ws!(do_parse!(
+            l: die >>
+            o: op_kind >>
+            r: constant >>
+            (Op(l, o, r))
+        ))
+    );
+    named!(expr(CompleteStr) -> Expr,
+        ws!(alt!(
+            map!(op, make_expr) |
+            map!(die, make_expr)
+        ))
+    );
 }

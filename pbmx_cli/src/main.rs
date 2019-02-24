@@ -7,6 +7,9 @@
 extern crate clap;
 
 #[macro_use]
+extern crate nom;
+
+#[macro_use]
 extern crate serde_derive;
 
 mod config;
@@ -182,7 +185,7 @@ fn main() {
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
                 (@arg NAME: +required "The name of the generator")
-                (@arg BOUND: +required "The upper bound of the number to be generated")
+                (@arg SPEC: +required "The generator specification (e.g. 1d6+2)")
             )
             (@subcommand list =>
                 (about: "Lists existing generators")
@@ -207,7 +210,6 @@ fn main() {
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
                 (@arg NAME: +required "The name of the generator")
-                (@arg COUNT: "How many numbers to get from the generator")
             )
         )
     )

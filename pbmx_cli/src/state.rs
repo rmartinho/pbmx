@@ -257,13 +257,14 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_random_bound(&mut self, _: &Block, name: &str, bound: u64) {
+    fn visit_random_spec(&mut self, _: &Block, name: &str, spec: &str) {
         let e = self.rngs.get(name);
-        self.valid = self.valid && e.map(|rng| rng.bound() == bound).unwrap_or(true);
+        self.valid = self.valid && e.map(|rng| rng.spec() == spec).unwrap_or(true);
 
         if self.valid && e.is_none() {
-            self.rngs
-                .insert(name.into(), Rng::new(self.vtmf.parties(), bound));
+            let rng = Rng::new(self.vtmf.parties(), spec);
+            self.valid = self.valid && rng.is_ok();
+            self.rngs.insert(name.into(), rng.unwrap());
         }
     }
 

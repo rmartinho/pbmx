@@ -1,4 +1,4 @@
-use crate::{state::State, Config, Error, Result};
+use crate::{random::Rng, state::State, Config, Error, Result};
 use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_chain::payload::Payload;
@@ -6,7 +6,7 @@ use rand::thread_rng;
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let name = value_t!(m, "NAME", String)?;
-    let bound = value_t!(m, "BOUND", u64)?;
+    let spec = value_t!(m, "SPEC", String)?;
 
     let mut state = State::read(true)?;
 
@@ -14,15 +14,14 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         return Err(Error::InvalidData);
     }
 
+    let _ = Rng::new(state.vtmf.parties(), &spec)?;
     println!(
-        "{} {} < {}",
+        "{} {}: {}",
         " + Random number generator".green().bold(),
         name,
-        bound
+        spec
     );
-    state
-        .payloads
-        .push(Payload::RandomBound(name.clone(), bound));
+    state.payloads.push(Payload::RandomSpec(name.clone(), spec));
 
     let mask = state.vtmf.mask_random(&mut thread_rng());
 

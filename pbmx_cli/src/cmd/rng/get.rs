@@ -4,7 +4,6 @@ use colored::Colorize;
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let name = value_t!(m, "NAME", String)?;
-    let count = value_t!(m, "COUNT", usize).unwrap_or(1);
 
     let state = State::read(false)?;
 
@@ -15,11 +14,8 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         return Err(Error::InvalidData);
     }
 
-    let numbers = rng.gen(&state.vtmf);
-
-    for n in numbers.take(count) {
-        println!("{} {} = {}", " - Random".green().bold(), name, n);
-    }
+    let n = rng.gen(&state.vtmf);
+    println!("{} {} = {}", " - Random".green().bold(), name, n);
 
     Ok(())
 }

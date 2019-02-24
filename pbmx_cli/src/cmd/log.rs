@@ -123,8 +123,8 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         println!("    {} {:16}", "secret".green().bold(), id);
     }
 
-    fn visit_random_bound(&mut self, _: &Block, id: &str, bound: u64) {
-        println!("    {} {} < {}", "rng".green().bold(), id, bound);
+    fn visit_random_spec(&mut self, _: &Block, id: &str, spec: &str) {
+        println!("    {} {}: {}", "rng".green().bold(), id, spec);
     }
 
     fn visit_random_entropy(&mut self, _: &Block, id: &str, _: &Mask) {

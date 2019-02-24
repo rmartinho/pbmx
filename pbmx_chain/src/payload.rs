@@ -35,8 +35,8 @@ pub enum Payload {
     InsertStack(Id, Id, Stack, InsertProof),
     /// A secret share payload
     PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
-    /// An rng bound payload
-    RandomBound(String, u64),
+    /// An rng specification payload
+    RandomSpec(String, String),
     /// An rng entropy payload
     RandomEntropy(String, Mask),
     /// An rng reveal payload
@@ -75,7 +75,7 @@ impl<'a> Display for DisplayShort<'a> {
                 write!(f, "insert {:16} {:16} {:16}", id1, id2, stk.id())
             }
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
-            RandomBound(id, ..) => write!(f, "new rng {}", id),
+            RandomSpec(id, ..) => write!(f, "new rng {}", id),
             RandomEntropy(id, ..) => write!(f, "add entropy {}", id),
             RandomReveal(id, ..) => write!(f, "open rng {}", id),
             Bytes(bytes) => write!(f, "message {}", &String::from_utf8_lossy(bytes)),

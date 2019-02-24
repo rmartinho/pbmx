@@ -32,6 +32,9 @@ version = "0.8"
 [dependencies.curve25519-dalek]
 version = "1.0"
 
+[dependencies.nom]
+version = "4.2"
+
 [dependencies.qp-trie]
 version = "0.7"
 

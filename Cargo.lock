@@ -181,6 +181,11 @@ version = "0.2.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "memchr"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "merlin"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -201,6 +206,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nom"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "memchr 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "version_check 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "opaque-debug"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -215,6 +229,7 @@ dependencies = [
  "colored 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nom 4.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pbmx_chain 0.1.0",
  "pbmx_curve 0.1.0",
  "pbmx_serde 0.1.0",
@@ -571,6 +586,11 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "version_check"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "void"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -632,8 +652,10 @@ dependencies = [
 "checksum keccak 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "67c21572b4949434e4fc1e1978b99c5f77064153c59d998bf13ecd96fb5ecba7"
 "checksum lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a374c89b9db55895453a74c1e38861d9deec0b01b405a82516e9d5de4820dea1"
 "checksum libc 0.2.46 (registry+https://github.com/rust-lang/crates.io-index)" = "023a4cd09b2ff695f9734c1934145a315594b7986398496841c7031a5a1bbdbd"
+"checksum memchr 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2efc7bc57c883d4a4d6e3246905283d8dae951bb3bd32f49d6ef297f546e1c39"
 "checksum merlin 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6a9e97b439f6d38cbe2a4a4aa93f6770c5305f62761b78b1851406c09c87ee2a"
 "checksum new_debug_unreachable 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0cdc457076c78ab54d5e0d6fa7c47981757f1e34dc39ff92787f217dede586c4"
+"checksum nom 4.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b30adc557058ce00c9d0d7cb3c6e0b5bc6f36e2e2eabe74b0ba726d194abd588"
 "checksum opaque-debug 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "51ecbcb821e1bd256d456fe858aaa7f380b63863eab2eb86eee1bd9f33dd6682"
 "checksum phf 0.7.24 (registry+https://github.com/rust-lang/crates.io-index)" = "b3da44b85f8e8dfaec21adae67f95d93244b2ecf6ad2a692320598dcc8e6dd18"
 "checksum phf_codegen 0.7.24 (registry+https://github.com/rust-lang/crates.io-index)" = "b03e85129e324ad4166b06b2c7491ae27fe3ec353af72e72cd1654c7225d517e"
@@ -673,6 +695,7 @@ dependencies = [
 "checksum unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"
 "checksum unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
 "checksum vec_map 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "05c78687fb1a80548ae3250346c3db86a80a7cdd77bda190189f2d0a0987c81a"
+"checksum version_check 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "914b1a6776c4c929a602fafd8bc742e06365d4bcbe48c30f9cca5824f70dc9dd"
 "checksum void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 "checksum winapi 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "92c1eb33641e276cfa214a0522acad57be5c56b10cb348b3c5117db75f3ac4b0"
 "checksum winapi-i686-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"

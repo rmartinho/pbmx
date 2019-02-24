@@ -9,18 +9,13 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     for k in keys.clone().filter(|x| !x.1).map(|x| x.0) {
         let rng = &state.rngs[k];
-        println!("{} < {}", k.yellow(), rng.bound());
+        println!("{}: {}", k.yellow(), rng.spec());
     }
 
     if m.is_present("ALL") {
         for k in keys.filter(|x| x.1).map(|x| x.0) {
             let rng = &state.rngs[k];
-            println!(
-                "{} < {} = {}",
-                k.yellow(),
-                rng.bound(),
-                rng.gen(&state.vtmf).nth(0).unwrap()
-            );
+            println!("{}: {} = {}", k.yellow(), rng.spec(), rng.gen(&state.vtmf));
         }
     }
 
