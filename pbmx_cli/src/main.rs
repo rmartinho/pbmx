@@ -48,7 +48,7 @@ fn main() {
             (@setting DeriveDisplayOrder)
             (@setting ColoredHelp)
             (@arg LAST: -l --last conflicts_with[INDEX] "Undoes only the latest payload")
-            (@arg INDEX: -p --payload +takes_value +hidden conflicts_with[LAST] "Undoes only the payload with the given index")
+            (@arg INDEX: -p --payload +takes_value +hidden conflicts_with[LAST] "Undoes only the payload with the given index (experimental)")
         )
         (@subcommand issue =>
             (about: "Issues the current block")

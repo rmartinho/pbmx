@@ -96,8 +96,11 @@ impl RngSpec {
 mod spec {
     use digest::XofReader;
     use nom::{digit, types::CompleteStr};
-    use std::{iter, str::FromStr};
-    use std::fmt::{self, Display, Formatter};
+    use std::{
+        fmt::{self, Display, Formatter},
+        iter,
+        str::FromStr,
+    };
 
     #[derive(Debug)]
     pub struct ParseError;
@@ -108,7 +111,7 @@ mod spec {
         }
     }
 
-    pub trait Node : Display {
+    pub trait Node: Display {
         fn apply(&self, reader: &mut XofReader) -> u64;
     }
 
@@ -204,7 +207,14 @@ mod spec {
 
     impl Display for OpKind {
         fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            write!(f, "{}", match self { OpKind::Add => "+", OpKind::Sub => "-" })
+            write!(
+                f,
+                "{}",
+                match self {
+                    OpKind::Add => "+",
+                    OpKind::Sub => "-",
+                }
+            )
         }
     }
 

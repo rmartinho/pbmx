@@ -1,12 +1,15 @@
 # refactoring
 - merge non-CLI crates together
 - move more toolkit-ish stuff out of CLI
+- reduce duplication
 
 # cli improvements
+- less IDs, more names
 - enforce validity in fine-grained reset
 - save verification checkpoints
 - block-specific logs/tail-like logs
 - save positions/permutations for shuffles, shifts, inserts, etc
+- errors
 
 # new game features
 - mid-game join/part

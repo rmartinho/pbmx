@@ -130,7 +130,7 @@ impl Proof {
             },
             dlog_eq_1of2::Secrets {
                 is_first: is_first == 1,
-                x: &Scalar::conditional_select(&bottom_x, &top_x, (is_first as u8).into()),
+                x: &Scalar::conditional_select(&bottom_x, &top_x, is_first.into()),
             },
         );
 

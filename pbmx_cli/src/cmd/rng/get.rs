@@ -5,7 +5,7 @@ use colored::Colorize;
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let name = value_t!(m, "NAME", String)?;
 
-    let state = State::read(false)?;
+    let state = State::read(true)?;
 
     let rng = state.rngs.get(&name).ok_or(Error::InvalidData)?;
     if rng.entropy_parties().len() < state.vtmf.parties()
