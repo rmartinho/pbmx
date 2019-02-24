@@ -14,7 +14,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let target = value_t!(m, "TARGET", String).ok();
     let over = value_t!(m, "OVER", String).ok();
     let under = value_t!(m, "UNDER", String).ok();
-    let remove = m.is_present("REMOVE");
+    let remove = !m.is_present("CLONE");
 
     let mut state = State::read(true)?;
 

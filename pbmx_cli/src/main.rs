@@ -146,8 +146,8 @@ fn main() {
                 (@arg TARGET: -t --to +takes_value conflicts_with[OVER] conflicts_with[UNDER] "The name or identifier for the target stack")
                 (@arg OVER: -o --over +takes_value conflicts_with[UNDER] conflicts_with[TARGET] "Piles the tokens on top of this stack")
                 (@arg UNDER: -u --under +takes_value conflicts_with[OVER] conflicts_with[TARGET] "Piles the tokens at the bottom of this stack")
-                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stack")
-                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stack (default)")
+                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack")
             )
             (@subcommand pile =>
                 (about: "Piles several stacks together")
@@ -155,8 +155,8 @@ fn main() {
                 (@setting ColoredHelp)
                 (@arg STACKS: +required +multiple "The name or identifier of the source stacks, from top to bottom")
                 (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
-                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks")
-                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks (default)")
+                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack")
             )
             (@subcommand insert =>
                 (about: "Insert a stack into another")
@@ -165,8 +165,8 @@ fn main() {
                 (@arg SOURCE: +required "The name or identifier of the source stack")
                 (@arg TARGET: +required "The name or identifier for the target stack")
                 (@arg INDEX: "The position for insertion in the target stack")
-                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks")
-                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack (default)")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks (default)")
+                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack")
             )
         )
         (@subcommand rng =>

@@ -7,7 +7,7 @@ use pbmx_curve::vtmf::Stack;
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let in_ids = values_t!(m, "STACKS", String)?;
     let name = value_t!(m, "TARGET", String).ok();
-    let remove = m.is_present("REMOVE");
+    let remove = !m.is_present("CLONE");
 
     let mut state = State::read(true)?;
 

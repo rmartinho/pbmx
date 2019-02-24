@@ -9,7 +9,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let ids = value_t!(m, "SOURCE", String)?;
     let idt = value_t!(m, "TARGET", String)?;
     let pos = value_t!(m, "INDEX", usize).ok();
-    let remove = m.is_present("REMOVE");
+    let remove = !m.is_present("CLONE");
 
     let mut state = State::read(true)?;
 
