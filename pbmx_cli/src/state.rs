@@ -180,28 +180,42 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_take_stack(&mut self, _: &Block, id: Id, indices: &[usize], stack: &Stack) {
+    fn visit_take_stack(&mut self, _: &Block, id1: Id, indices: &[usize], id2: Id) {
+        let src = self.stacks.get_by_id(&id1);
         self.valid = self.valid
-            && self
-                .stacks
-                .get_by_id(&id)
-                .map(|src| indices.iter().zip(stack.iter()).all(|(i, x)| src[*i] == *x))
+            && src
+                .map(|src| indices.iter().all(|i| *i < src.len()))
                 .unwrap_or(false);
 
+        if !self.valid {
+            return;
+        }
+
+        let src = src.unwrap();
+        let stack: Stack = indices.iter().map(|i| src[*i]).collect();
+        self.valid = self.valid && stack.id() == id2;
+
         if self.valid {
-            self.stacks.insert(stack.clone());
+            self.stacks.insert(stack);
         }
     }
 
-    fn visit_pile_stack(&mut self, _: &Block, ids: &[Id], stack: &Stack) {
-        let mut srcs = ids.iter().map(|id| self.stacks.get_by_id(&id));
-        self.valid = self.valid
-            && srcs.all(|x| x.is_some())
-            && srcs
-                .map(Option::unwrap)
-                .flat_map(|stk| stk.iter())
-                .zip(stack.iter())
-                .all(|(a, b)| *a == *b);
+    fn visit_pile_stack(&mut self, _: &Block, ids: &[Id], id2: Id) {
+        let stacks = &self.stacks;
+        let mut srcs = ids.iter().map(|id| stacks.get_by_id(&id));
+        self.valid = self.valid && srcs.all(|x| x.is_some());
+
+        if !self.valid {
+            return;
+        }
+
+        let stack: Stack = srcs
+            .map(Option::unwrap)
+            .flat_map(|stk| stk.iter())
+            .cloned()
+            .collect();
+
+        self.valid = self.valid && stack.id() == id2;
 
         if self.valid {
             self.stacks.insert(stack.clone());

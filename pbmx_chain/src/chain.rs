@@ -220,11 +220,11 @@ pub trait ChainVisitor {
             NameStack(id, name) => {
                 self.visit_name_stack(block, *id, name);
             }
-            TakeStack(id, idxs, stk) => {
-                self.visit_take_stack(block, *id, idxs, stk);
+            TakeStack(id1, idxs, id2) => {
+                self.visit_take_stack(block, *id1, idxs, *id2);
             }
-            PileStacks(ids, stk) => {
-                self.visit_pile_stack(block, ids, stk);
+            PileStacks(ids, id2) => {
+                self.visit_pile_stack(block, ids, *id2);
             }
             InsertStack(id1, id2, stk, proof) => {
                 self.visit_insert_stack(*id1, *id2, stk, proof);
@@ -271,9 +271,9 @@ pub trait ChainVisitor {
     /// Visits a ShiftStack payload
     fn visit_shift_stack(&mut self, _block: &Block, _id: Id, _stack: &Stack, _proof: &ShiftProof) {}
     /// Visits a TakeStack payload
-    fn visit_take_stack(&mut self, _block: &Block, _id: Id, _idxs: &[usize], _stack: &Stack) {}
+    fn visit_take_stack(&mut self, _block: &Block, _id1: Id, _idxs: &[usize], _id2: Id) {}
     /// Visits a PileStack payload
-    fn visit_pile_stack(&mut self, _block: &Block, _ids: &[Id], _stack: &Stack) {}
+    fn visit_pile_stack(&mut self, _block: &Block, _ids: &[Id], _id2: Id) {}
     /// Visits a InsertToken payload
     fn visit_insert_stack(&mut self, _id1: Id, _id2: Id, _stack: &Stack, _proof: &InsertProof) {}
     /// Visits a NameStack payload

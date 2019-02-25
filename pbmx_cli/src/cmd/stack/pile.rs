@@ -53,7 +53,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         in_ids,
         id2
     );
-    state.payloads.push(Payload::PileStacks(ids, tokens));
+    state.payloads.push(Payload::PileStacks(ids, id2));
     if let Some(name) = name {
         let name_change = state
             .stacks

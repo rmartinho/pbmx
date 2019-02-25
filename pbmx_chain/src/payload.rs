@@ -28,9 +28,9 @@ pub enum Payload {
     /// A stack name payload
     NameStack(Id, String),
     /// A substack payload
-    TakeStack(Id, Vec<usize>, Stack),
+    TakeStack(Id, Vec<usize>, Id),
     /// A stack pile payload
-    PileStacks(Vec<Id>, Stack),
+    PileStacks(Vec<Id>, Id),
     /// A insert token payload
     InsertStack(Id, Id, Stack, InsertProof),
     /// A secret share payload
@@ -69,8 +69,8 @@ impl<'a> Display for DisplayShort<'a> {
             MaskStack(id, stk, _) => write!(f, "mask {1:16} \u{21AC} {0:16}", id, stk.id()),
             ShuffleStack(id, stk, _) => write!(f, "shuffle {1:16} \u{224B} {0:16}", id, stk.id()),
             ShiftStack(id, stk, _) => write!(f, "cut {1:16} \u{21CB} {0:16}", id, stk.id()),
-            TakeStack(id, idxs, stk) => write!(f, "take {:16}{:?} {:16}", id, idxs, stk.id()),
-            PileStacks(ids, stk) => write!(f, "pile {:16?} {:16}", ids, stk.id()),
+            TakeStack(id1, idxs, id2) => write!(f, "take {:16}{:?} {:16}", id1, idxs, id2),
+            PileStacks(ids, id2) => write!(f, "pile {:16?} {:16}", ids, id2),
             InsertStack(id1, id2, stk, _) => {
                 write!(f, "insert {:16} {:16} {:16}", id1, id2, stk.id())
             }

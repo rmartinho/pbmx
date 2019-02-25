@@ -80,22 +80,22 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         );
     }
 
-    fn visit_take_stack(&mut self, _: &Block, id: Id, indices: &[usize], stack: &Stack) {
+    fn visit_take_stack(&mut self, _: &Block, id1: Id, indices: &[usize], id2: Id) {
         println!(
             "    {} {:16}{} \u{219B} {:16}",
             "take".green().bold(),
-            id,
+            id1,
             display_indices(indices),
-            stack.id()
+            id2
         );
     }
 
-    fn visit_pile_stack(&mut self, _: &Block, ids: &[Id], stack: &Stack) {
+    fn visit_pile_stack(&mut self, _: &Block, ids: &[Id], id2: Id) {
         println!(
             "    {} {:16?} \u{21A3} {:16}",
             "pile".green().bold(),
             ids,
-            stack.id()
+            id2
         );
     }
 

@@ -76,9 +76,7 @@ fn take(
         display_indices(&indices),
         id2
     );
-    state
-        .payloads
-        .push(Payload::TakeStack(id1, indices, tokens.clone()));
+    state.payloads.push(Payload::TakeStack(id1, indices, id2));
     let (name, result) = match stacking {
         Stacking::Over(over) => {
             let o = state
@@ -94,7 +92,7 @@ fn take(
                 ids,
                 pile.id()
             );
-            state.payloads.push(Payload::PileStacks(ids, pile.clone()));
+            state.payloads.push(Payload::PileStacks(ids, pile.id()));
             (Some(over), pile)
         }
         Stacking::Under(under) => {
@@ -111,7 +109,7 @@ fn take(
                 ids,
                 pile.id()
             );
-            state.payloads.push(Payload::PileStacks(ids, pile.clone()));
+            state.payloads.push(Payload::PileStacks(ids, pile.id()));
             (Some(under), pile)
         }
         Stacking::Replace => (target, tokens),
