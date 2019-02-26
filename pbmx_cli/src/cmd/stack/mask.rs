@@ -3,6 +3,31 @@ use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_chain::payload::Payload;
 use pbmx_curve::vtmf::Stack;
+use std::iter;
+
+trait IteratorEx: Iterator + Sized {
+    fn unzip3<A, B, C, FromA, FromB, FromC>(self) -> (FromA, FromB, FromC)
+    where
+        FromA: Default + Extend<A>,
+        FromB: Default + Extend<B>,
+        FromC: Default + Extend<C>,
+        Self: Iterator<Item = (A, B, C)>,
+    {
+        let mut r_a = FromA::default();
+        let mut r_b = FromB::default();
+        let mut r_c = FromC::default();
+
+        for (a, b, c) in self {
+            r_a.extend(iter::once(a));
+            r_b.extend(iter::once(b));
+            r_c.extend(iter::once(c));
+        }
+
+        (r_a, r_b, r_c)
+    }
+}
+
+impl<T: Iterator> IteratorEx for T {}
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;
@@ -11,7 +36,8 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
 
-    let (s, p): (Stack, Vec<_>) = stack.iter().map(|m| state.vtmf.remask(m)).unzip();
+    let (s, r, p): (Stack, Vec<_>, Vec<_>) = stack.iter().map(|m| state.vtmf.remask(m)).unzip3();
+    state.save_secrets(&s, r)?;
 
     let id1 = stack.id();
     let id2 = s.id();

@@ -2,6 +2,7 @@
 
 use crate::Error;
 use serde::{de::Deserialize, ser::Serialize};
+use std::{collections::HashMap, hash::Hash};
 
 /// A trait for types that can be serialized to bytes
 pub trait ToBytes {
@@ -98,6 +99,22 @@ where
     }
 }
 
+impl<T, U> ToBytes for HashMap<T, U>
+where
+    T: Serialize + Eq + Hash,
+    U: Serialize,
+{
+    type Error = crate::error::Error;
+
+    fn to_bytes(&self) -> Result<Vec<u8>, Self::Error> {
+        let bytes = bincode::config()
+            .big_endian()
+            .serialize(self)
+            .map_err(crate::error::Error::from)?;
+        Ok(bytes)
+    }
+}
+
 impl<T> FromBytes for Vec<T>
 where
     T: for<'de> Deserialize<'de>,
@@ -116,6 +133,22 @@ where
 impl<T, U> FromBytes for (T, U)
 where
     T: for<'de> Deserialize<'de>,
+    U: for<'de> Deserialize<'de>,
+{
+    type Error = crate::error::Error;
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
+        let x = bincode::config()
+            .big_endian()
+            .deserialize(bytes)
+            .map_err(crate::Error::from)?;
+        Ok(x)
+    }
+}
+
+impl<T, U> FromBytes for HashMap<T, U>
+where
+    T: for<'de> Deserialize<'de> + Eq + Hash,
     U: for<'de> Deserialize<'de>,
 {
     type Error = crate::error::Error;

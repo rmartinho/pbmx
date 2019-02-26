@@ -1,12 +1,13 @@
 use crate::{
     constants::{
         BLOCKS_FOLDER_NAME, BLOCK_EXTENSION, CURRENT_BLOCK_FILE_NAME, KEY_FILE_NAME,
-        SECRETS_FOLDER_NAME,
+        SECRETS_FOLDER_NAME, SECRET_EXTENSION,
     },
     random::Rng,
-    stack_map::StackMap,
+    stack_map::{PrivateSecretMap, StackMap},
     Error, Result,
 };
+use curve25519_dalek::scalar::Scalar;
 use pbmx_chain::{
     block::Block,
     chain::{Chain, ChainVisitor},
@@ -57,6 +58,22 @@ impl State {
         path.push(KEY_FILE_NAME);
         let sk = PrivateKey::from_base64(&fs::read_to_string(&path)?)?;
 
+        let mut stacks = StackMap::new();
+        for entry in fs::read_dir(SECRETS_FOLDER_NAME)? {
+            let entry = entry?;
+            if !entry.file_type()?.is_file() {
+                continue;
+            }
+            let secret_extension = OsStr::new(SECRET_EXTENSION);
+            if let Some(ext) = entry.path().extension() {
+                if ext != secret_extension {
+                    continue;
+                }
+                let secrets = PrivateSecretMap::from_base64(&fs::read_to_string(&entry.path())?)?;
+                stacks.private_secrets.extend(secrets);
+            }
+        }
+
         if include_temp {
             let mut builder = chain.build_block();
             for p in payloads.iter().cloned() {
@@ -68,7 +85,7 @@ impl State {
 
         let mut visitor = ChainParser {
             vtmf: Vtmf::new(sk),
-            stacks: StackMap::new(),
+            stacks,
             rngs: HashMap::new(),
             valid: true,
         };
@@ -89,6 +106,22 @@ impl State {
 
     pub fn clear_payloads(&mut self) {
         self.payloads.clear();
+    }
+
+    pub fn save_secrets(&self, stack: &Stack, secrets: Vec<Scalar>) -> Result<()> {
+        let h = self.vtmf.shared_key().point();
+        let map: PrivateSecretMap = stack
+            .iter()
+            .cloned()
+            .zip(secrets.into_iter())
+            .map(|(m, r)| (m, r * h))
+            .collect();
+
+        let secret_file = format!("{}.{}", stack.id(), SECRET_EXTENSION);
+        let mut path = PathBuf::from(SECRETS_FOLDER_NAME);
+        path.push(secret_file);
+        fs::write(path, &map.to_base64()?.as_bytes())?;
+        Ok(())
     }
 
     pub fn save_payloads(&self) -> Result<()> {

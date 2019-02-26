@@ -1,5 +1,5 @@
 use crate::{
-    stack_map::{display_stack_contents, SecretMap},
+    stack_map::{display_stack_contents, PrivateSecretMap, SecretMap},
     state::State,
     Config, Error, Result,
 };
@@ -22,6 +22,7 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
             m.is_present("VERBOSE"),
             &stack,
             &state.stacks.secrets,
+            &state.stacks.private_secrets,
             &state.vtmf,
             cfg,
         );
@@ -38,6 +39,7 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
                 m.is_present("VERBOSE"),
                 &stack,
                 &state.stacks.secrets,
+                &state.stacks.private_secrets,
                 &state.vtmf,
                 cfg,
             );
@@ -51,6 +53,7 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
                         m.is_present("VERBOSE"),
                         &stack,
                         &state.stacks.secrets,
+                        &state.stacks.private_secrets,
                         &state.vtmf,
                         cfg,
                     );
@@ -62,8 +65,18 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
     Ok(())
 }
 
-fn print_stack(verbose: bool, stack: &Stack, secrets: &SecretMap, vtmf: &Vtmf, cfg: &Config) {
-    print!("{}", display_stack_contents(stack, secrets, vtmf, cfg));
+fn print_stack(
+    verbose: bool,
+    stack: &Stack,
+    secrets: &SecretMap,
+    private_secrets: &PrivateSecretMap,
+    vtmf: &Vtmf,
+    cfg: &Config,
+) {
+    print!(
+        "{}",
+        display_stack_contents(stack, secrets, private_secrets, vtmf, cfg)
+    );
     if verbose {
         let empty = HashSet::new();
         let common: HashSet<_> = vtmf.fingerprints().collect();

@@ -28,7 +28,13 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
     println!(
         "{} {}",
         " + Open stack".green().bold(),
-        display_stack_contents(&stack.clone(), &HashMap::new(), &state.vtmf, cfg)
+        display_stack_contents(
+            &stack.clone(),
+            &HashMap::new(),
+            &HashMap::new(),
+            &state.vtmf,
+            cfg
+        )
     );
     state.payloads.push(Payload::OpenStack(stack));
     if let Some(name) = name {

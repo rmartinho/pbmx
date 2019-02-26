@@ -120,7 +120,7 @@ impl Vtmf {
 
 impl Vtmf {
     /// Applies the verifiable masking protocol
-    pub fn mask(&self, p: &RistrettoPoint) -> (Mask, MaskProof) {
+    pub fn mask(&self, p: &RistrettoPoint) -> (Mask, Scalar, MaskProof) {
         let h = self.pk.point();
         let r = Scalar::random(&mut thread_rng());
         let c0 = G * &r;
@@ -136,7 +136,7 @@ impl Vtmf {
             },
             dlog_eq::Secrets { x: &r },
         );
-        (Mask(c0, c1), proof)
+        (Mask(c0, c1), r, proof)
     }
 
     /// Verifies the application of the masking protocol
@@ -150,7 +150,7 @@ impl Vtmf {
     }
 
     /// Applies the verifiable re-masking protocol
-    pub fn remask(&self, c: &Mask) -> (Mask, MaskProof) {
+    pub fn remask(&self, c: &Mask) -> (Mask, Scalar, MaskProof) {
         let h = self.pk.point();
         let r = Scalar::random(&mut thread_rng());
         let gr = G * &r;
@@ -168,7 +168,7 @@ impl Vtmf {
 
         let c0 = gr + c.0;
         let c1 = hr + c.1;
-        (Mask(c0, c1), proof)
+        (Mask(c0, c1), r, proof)
     }
 
     /// Verifies the application of the re-masking protocol

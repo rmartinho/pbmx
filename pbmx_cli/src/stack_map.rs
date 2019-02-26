@@ -13,6 +13,7 @@ use std::{
 };
 
 pub type SecretMap = HashMap<Mask, (SecretShare, Vec<Fingerprint>)>;
+pub type PrivateSecretMap = HashMap<Mask, SecretShare>;
 
 #[derive(Clone, Default, Debug)]
 pub struct StackMap {
@@ -20,6 +21,7 @@ pub struct StackMap {
     map: Trie<Id, Stack>,
     name_map: HashMap<String, Id>,
     pub secrets: SecretMap,
+    pub private_secrets: PrivateSecretMap,
 }
 
 impl StackMap {
@@ -107,17 +109,19 @@ impl StackMap {
 
 struct DisplayStackContents<'a>(
     &'a Stack,
-    &'a HashMap<Mask, (SecretShare, Vec<Fingerprint>)>,
+    &'a SecretMap,
+    &'a PrivateSecretMap,
     &'a Vtmf,
     &'a Config,
 );
 pub fn display_stack_contents<'a>(
     stack: &'a Stack,
-    secrets: &'a HashMap<Mask, (SecretShare, Vec<Fingerprint>)>,
+    secrets: &'a SecretMap,
+    private_secrets: &'a PrivateSecretMap,
     vtmf: &'a Vtmf,
     config: &'a Config,
 ) -> impl Display + 'a {
-    DisplayStackContents(stack, secrets, vtmf, config)
+    DisplayStackContents(stack, secrets, private_secrets, vtmf, config)
 }
 
 impl<'a> Display for DisplayStackContents<'a> {
@@ -127,16 +131,19 @@ impl<'a> Display for DisplayStackContents<'a> {
         let mut unfinished_seq = false;
         let mut count_encrypted = 0;
         write!(f, "[")?;
-        let my_fp = &self.2.private_key().fingerprint();
+        let my_fp = &self.3.private_key().fingerprint();
         for m in self.0.iter() {
             let mut m = *m;
+            if let Some(d) = self.2.get(&m) {
+                m = self.3.unmask(&m, d);
+            }
             if let Some((d, fp)) = self.1.get(&m) {
-                m = self.2.unmask(&m, d);
+                m = self.3.unmask(&m, d);
                 if !fp.contains(my_fp) {
-                    m = self.2.unmask_private(&m);
+                    m = self.3.unmask_private(&m);
                 }
             }
-            let u = self.2.unmask_open(&m);
+            let u = self.3.unmask_open(&m);
             if let Some(token) = map::from_curve(&u) {
                 if count_encrypted > 0 {
                     if !first {
@@ -146,7 +153,7 @@ impl<'a> Display for DisplayStackContents<'a> {
                     first = false;
                     count_encrypted = 0;
                 }
-                if self.3.tokens.is_empty() {
+                if self.4.tokens.is_empty() {
                     if let Some(last) = last_in_seq {
                         if last + 1 == token {
                             unfinished_seq = true;
@@ -167,7 +174,7 @@ impl<'a> Display for DisplayStackContents<'a> {
                     if !first {
                         write!(f, " ")?;
                     }
-                    let s = self.3.tokens.get(&token);
+                    let s = self.4.tokens.get(&token);
                     if let Some(s) = s {
                         write!(f, "{}", s)?;
                     } else {
