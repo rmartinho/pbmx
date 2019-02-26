@@ -1,11 +1,7 @@
-use crate::{
-    stack_map::{display_stack_contents, PrivateSecretMap, SecretMap},
-    state::State,
-    Config, Error, Result,
-};
+use crate::{stack_map::display_stack_contents, state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_curve::vtmf::{Stack, Vtmf};
+use pbmx_curve::vtmf::Stack;
 use std::{collections::HashSet, iter::FromIterator};
 
 pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
@@ -18,14 +14,7 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
         if state.stacks.is_name(&id) {
             print!("{} ", id.bold());
         }
-        print_stack(
-            m.is_present("VERBOSE"),
-            &stack,
-            &state.stacks.secrets,
-            &state.stacks.private_secrets,
-            &state.vtmf,
-            cfg,
-        );
+        print_stack(m.is_present("VERBOSE"), &stack, &state, cfg);
     } else {
         let mut named = HashSet::new();
         let mut names: Vec<_> = state.stacks.names().collect();
@@ -35,28 +24,14 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
             let id = stack.id();
             named.insert(id);
             print!("{} ", n.bold());
-            print_stack(
-                m.is_present("VERBOSE"),
-                &stack,
-                &state.stacks.secrets,
-                &state.stacks.private_secrets,
-                &state.vtmf,
-                cfg,
-            );
+            print_stack(m.is_present("VERBOSE"), &stack, &state, cfg);
         }
         if m.is_present("ALL") {
             for id in state.stacks.ids() {
                 if !named.contains(id) {
                     let stack = state.stacks.get_by_id(&id).unwrap();
                     print!("{:16} ", id);
-                    print_stack(
-                        m.is_present("VERBOSE"),
-                        &stack,
-                        &state.stacks.secrets,
-                        &state.stacks.private_secrets,
-                        &state.vtmf,
-                        cfg,
-                    );
+                    print_stack(m.is_present("VERBOSE"), &stack, &state, cfg);
                 }
             }
         }
@@ -65,25 +40,26 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
     Ok(())
 }
 
-fn print_stack(
-    verbose: bool,
-    stack: &Stack,
-    secrets: &SecretMap,
-    private_secrets: &PrivateSecretMap,
-    vtmf: &Vtmf,
-    cfg: &Config,
-) {
+fn print_stack(verbose: bool, stack: &Stack, state: &State, cfg: &Config) {
     print!(
         "{}",
-        display_stack_contents(stack, secrets, private_secrets, vtmf, cfg)
+        display_stack_contents(
+            stack,
+            &state.stacks.secrets,
+            &state.stacks.private_secrets,
+            &state.vtmf,
+            cfg
+        )
     );
     if verbose {
         let empty = HashSet::new();
-        let common: HashSet<_> = vtmf.fingerprints().collect();
+        let common: HashSet<_> = state.vtmf.fingerprints().collect();
         let common = stack
             .iter()
             .map(|m| {
-                secrets
+                state
+                    .stacks
+                    .secrets
                     .get(m)
                     .map(|(_, fps)| HashSet::from_iter(fps.iter().cloned()))
                     .unwrap_or_else(|| empty.clone())
@@ -93,7 +69,7 @@ fn print_stack(
         let mut common: Vec<_> = common.into_iter().collect();
         common.sort();
         for fp in common.iter() {
-            if let Some(n) = cfg.players.get(fp) {
+            if let Some(n) = state.names.get(fp) {
                 print!(" {}", n);
             } else {
                 print!(" {:16}", fp);

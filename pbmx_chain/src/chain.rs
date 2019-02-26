@@ -202,8 +202,8 @@ pub trait ChainVisitor {
     fn visit_payload(&mut self, block: &Block, payload: &Payload) {
         use Payload::*;
         match payload {
-            PublishKey(pk) => {
-                self.visit_publish_key(block, pk);
+            PublishKey(name, pk) => {
+                self.visit_publish_key(block, name, pk);
             }
             OpenStack(stk) => {
                 self.visit_open_stack(block, stk);
@@ -247,7 +247,7 @@ pub trait ChainVisitor {
         }
     }
     /// Visits a PublishKey payload
-    fn visit_publish_key(&mut self, _block: &Block, _key: &PublicKey) {}
+    fn visit_publish_key(&mut self, _block: &Block, _name: &str, _key: &PublicKey) {}
     /// Visits a OpenStack payload
     fn visit_open_stack(&mut self, _block: &Block, _stack: &Stack) {}
     /// Visits a MaskStack payload
@@ -320,7 +320,7 @@ mod test {
         let pk = sk.public_key();
         let mut chain = Chain::new();
         let mut gen = chain.build_block();
-        gen.add_payload(Payload::PublishKey(pk));
+        gen.add_payload(Payload::PublishKey("foo".into(), pk));
         chain.add_block(gen.build(&sk));
         let gid = chain.roots[0];
         let mut b0 = chain.build_block();
@@ -351,7 +351,7 @@ mod test {
         let pk = sk.public_key();
         let mut chain = Chain::new();
         let mut gen = chain.build_block();
-        gen.add_payload(Payload::PublishKey(pk));
+        gen.add_payload(Payload::PublishKey("foo".into(), pk));
         chain.add_block(gen.build(&sk));
         let mut b0 = chain.build_block();
         b0.add_payload(Payload::Bytes(vec![0, 1, 2, 3, 4]));

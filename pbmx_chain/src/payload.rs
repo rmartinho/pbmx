@@ -16,7 +16,7 @@ use std::fmt::{self, Display, Formatter};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Payload {
     /// A public key payload
-    PublishKey(PublicKey),
+    PublishKey(String, PublicKey),
     /// An open stack payload
     OpenStack(Stack),
     /// A stack mask payload
@@ -63,7 +63,7 @@ impl<'a> Display for DisplayShort<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         use Payload::*;
         match self.0 {
-            PublishKey(pk) => write!(f, "publish key {:16}", pk.fingerprint()),
+            PublishKey(name, pk) => write!(f, "publish key {} {:16}", name, pk.fingerprint()),
             OpenStack(stk) => write!(f, "open stack {:16}", stk.id()),
             NameStack(id, name) => write!(f, "name {:16} {}", id, name),
             MaskStack(id, stk, _) => write!(f, "mask {1:16} \u{21AC} {0:16}", id, stk.id()),

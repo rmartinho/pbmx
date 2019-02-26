@@ -41,7 +41,7 @@ fn main() {
             (about: "Initializes a new game folder")
             (@setting DeriveDisplayOrder)
             (@setting ColoredHelp)
-            (@arg PATH: +required "The folder to hold game data")
+            (@arg PATH: "The folder to hold game data (default: current folder)")
         )
         (@subcommand reset =>
             (about: "Resets the current block")
@@ -59,6 +59,7 @@ fn main() {
             (about: "Joins the game")
             (@setting DeriveDisplayOrder)
             (@setting ColoredHelp)
+            (@arg NAME: +required "Your player name")
         )
         (@subcommand status =>
             (about: "Displays the game status")

@@ -497,7 +497,7 @@ mod tests {
 
         let x = rng.gen_range(0, 16);
         let p = map::to_curve(x);
-        let (mask, proof) = vtmf0.mask(&p);
+        let (mask, _, proof) = vtmf0.mask(&p);
         let verified = vtmf1.verify_mask(&p, &mask, &proof);
         assert_eq!(verified, Ok(()));
 
@@ -538,11 +538,11 @@ mod tests {
 
         let x = rng.gen_range(0, 16);
         let p = map::to_curve(x);
-        let (mask, proof) = vtmf0.mask(&p);
+        let (mask, _, proof) = vtmf0.mask(&p);
         let verified = vtmf1.verify_mask(&p, &mask, &proof);
         assert_eq!(verified, Ok(()));
 
-        let (remask, proof) = vtmf0.remask(&mask);
+        let (remask, _, proof) = vtmf0.remask(&mask);
         let verified = vtmf1.verify_remask(&mask, &remask, &proof);
         assert_eq!(verified, Ok(()));
 

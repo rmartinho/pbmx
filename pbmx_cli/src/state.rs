@@ -15,7 +15,7 @@ use pbmx_chain::{
     Id,
 };
 use pbmx_curve::{
-    keys::{PrivateKey, PublicKey},
+    keys::{Fingerprint, PrivateKey, PublicKey},
     map,
     vtmf::{
         InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
@@ -31,6 +31,7 @@ pub struct State {
     pub chain: Chain,
     pub stacks: StackMap,
     pub rngs: HashMap<String, Rng>,
+    pub names: HashMap<Fingerprint, String>,
     pub payloads: Vec<Payload>,
 }
 
@@ -87,6 +88,7 @@ impl State {
             vtmf: Vtmf::new(sk),
             stacks,
             rngs: HashMap::new(),
+            names: HashMap::new(),
             valid: true,
         };
         chain.visit(&mut visitor);
@@ -96,6 +98,7 @@ impl State {
                 vtmf: visitor.vtmf,
                 stacks: visitor.stacks,
                 rngs: visitor.rngs,
+                names: visitor.names,
                 chain,
                 payloads,
             })
@@ -137,6 +140,7 @@ struct ChainParser {
     vtmf: Vtmf,
     stacks: StackMap,
     rngs: HashMap<String, Rng>,
+    names: HashMap<Fingerprint, String>,
     valid: bool,
 }
 
@@ -150,11 +154,12 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_publish_key(&mut self, block: &Block, pk: &PublicKey) {
+    fn visit_publish_key(&mut self, block: &Block, name: &str, pk: &PublicKey) {
         self.valid = self.valid && block.signer() == pk.fingerprint();
 
         if self.valid {
             self.vtmf.add_key(pk.clone()).unwrap();
+            self.names.insert(pk.fingerprint(), name.to_string());
         }
     }
 

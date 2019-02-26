@@ -13,7 +13,7 @@ use rand::thread_rng;
 use std::{fs, path::PathBuf};
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
-    let mut path = value_t!(m, "PATH", PathBuf)?;
+    let mut path = value_t!(m, "PATH", PathBuf).unwrap_or_else(|_| PathBuf::from("."));
 
     let mut rng = thread_rng();
     let sk = PrivateKey::random(&mut rng);

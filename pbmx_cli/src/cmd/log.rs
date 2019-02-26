@@ -6,19 +6,19 @@ use pbmx_curve::{
     keys::PublicKey,
     vtmf::{
         InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-        Stack, Vtmf,
+        Stack,
     },
 };
 
 pub fn run(_: &ArgMatches, cfg: &Config) -> Result<()> {
     let state = State::read(false)?;
 
-    state.chain.visit(&mut LogPrinter(&state.vtmf, cfg));
+    state.chain.visit(&mut LogPrinter(&state, cfg));
 
     Ok(())
 }
 
-struct LogPrinter<'a>(&'a Vtmf, &'a Config);
+struct LogPrinter<'a>(&'a State, &'a Config);
 
 impl<'a> ChainVisitor for LogPrinter<'a> {
     fn visit_block(&mut self, block: &Block) {
@@ -26,7 +26,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
 
         print!(" {}", "by".blue().bold());
         let fp = block.signer();
-        if let Some(n) = self.1.players.get(&fp) {
+        if let Some(n) = self.0.names.get(&fp) {
             print!(" {}", n);
         } else {
             print!(" {:16}", fp);
@@ -45,8 +45,8 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         }
     }
 
-    fn visit_publish_key(&mut self, _: &Block, pk: &PublicKey) {
-        println!("    {} {}", "key".green().bold(), pk.fingerprint());
+    fn visit_publish_key(&mut self, _: &Block, name: &str, pk: &PublicKey) {
+        println!("    {} {} {}", "key".green().bold(), name, pk.fingerprint());
     }
 
     fn visit_open_stack(&mut self, _: &Block, stack: &Stack) {

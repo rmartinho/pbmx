@@ -3,14 +3,16 @@ use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_chain::payload::Payload;
 
-pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
+pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
+    let name = value_t!(m, "NAME", String)?;
+
     let mut state = State::read(false)?;
 
     let key = state.vtmf.public_key();
     let fp = key.fingerprint();
-    state.payloads.push(Payload::PublishKey(key));
 
-    println!("{} {}", " + Publish key ".green().bold(), fp);
+    println!("{} {} {}", " + Publish key ".green().bold(), &name, fp);
+    state.payloads.push(Payload::PublishKey(name, key));
 
     state.save_payloads()?;
     Ok(())
