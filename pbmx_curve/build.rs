@@ -1,7 +1,5 @@
 //! Generates a Ristretto rainbow table for small values
 
-#![feature(iter_unfold)]
-
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, traits::Identity,
 };

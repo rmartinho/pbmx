@@ -1,6 +1,3 @@
-#![feature(iter_unfold)]
-#![feature(try_from)]
-#![feature(proc_macro_hygiene)]
 #![allow(clippy::many_single_char_names)]
 #![warn(missing_docs)]
 #![deny(clippy::correctness)]
