@@ -26,7 +26,8 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     } else {
         thread_rng().sample(&Shuffles(stack.len()))
     };
-    let (s, proof) = state.vtmf.mask_shuffle(&stack, &perm);
+    let (s, r, proof) = state.vtmf.mask_shuffle(&stack, &perm);
+    state.save_secrets(&s, r)?;
 
     let id1 = stack.id();
     let id2 = s.id();

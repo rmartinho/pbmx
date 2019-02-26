@@ -18,12 +18,15 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
                 .stacks
                 .get_by_str(&id)
                 .ok_or(Error::InvalidData)
-                .map(|s| s.clone())
+                .map(Clone::clone)
         })
         .collect::<Result<_>>()?;
     let ids: Vec<_> = stacks.iter().map(Stack::id).collect();
 
-    let tokens: Stack = stacks.into_iter().flat_map(|s| s.into_iter()).collect();
+    let tokens: Stack = stacks
+        .into_iter()
+        .flat_map(IntoIterator::into_iter)
+        .collect();
 
     if remove {
         let empty = Stack::default();

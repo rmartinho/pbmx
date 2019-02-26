@@ -13,7 +13,7 @@ use std::{
 };
 
 pub type SecretMap = HashMap<Mask, (SecretShare, Vec<Fingerprint>)>;
-pub type PrivateSecretMap = HashMap<Mask, SecretShare>;
+pub type PrivateSecretMap = HashMap<Mask, Mask>;
 
 #[derive(Clone, Default, Debug)]
 pub struct StackMap {
@@ -134,8 +134,8 @@ impl<'a> Display for DisplayStackContents<'a> {
         let my_fp = &self.3.private_key().fingerprint();
         for m in self.0.iter() {
             let mut m = *m;
-            if let Some(d) = self.2.get(&m) {
-                m = self.3.unmask(&m, d);
+            while let Some(d) = self.2.get(&m) {
+                m -= d;
             }
             if let Some((d, fp)) = self.1.get(&m) {
                 m = self.3.unmask(&m, d);

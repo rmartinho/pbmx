@@ -17,7 +17,7 @@ use merlin::Transcript;
 use pbmx_serde::{derive_base64_conversions, serialize_flat_map};
 use rand::{thread_rng, CryptoRng, Rng};
 use serde::{de, Deserialize, Deserializer};
-use std::collections::HashMap;
+use std::{collections::HashMap, iter};
 
 pub use crate::proofs::{
     dlog_eq::Proof as MaskProof, secret_insertion::Proof as InsertProof,
@@ -247,7 +247,7 @@ impl Vtmf {
 
 impl Vtmf {
     /// Applies the mask-shuffle protocol for a given permutation
-    pub fn mask_shuffle(&self, m: &Stack, pi: &Permutation) -> (Stack, ShuffleProof) {
+    pub fn mask_shuffle(&self, m: &Stack, pi: &Permutation) -> (Stack, Vec<Scalar>, ShuffleProof) {
         let mut rng = thread_rng();
 
         let h = self.pk.point();
@@ -273,7 +273,7 @@ impl Vtmf {
             },
             secret_shuffle::Secrets { pi: &pi, r: &r },
         );
-        (rm, proof)
+        (rm, r, proof)
     }
 
     /// Verifies the application of the mask-shuffling protocol
@@ -296,7 +296,7 @@ impl Vtmf {
 
 impl Vtmf {
     /// Applies the mask-shift protocol for a given permutation
-    pub fn mask_shift(&self, m: &Stack, k: usize) -> (Stack, ShiftProof) {
+    pub fn mask_shift(&self, m: &Stack, k: usize) -> (Stack, Vec<Scalar>, ShiftProof) {
         let mut rng = thread_rng();
 
         let h = self.pk.point();
@@ -312,7 +312,7 @@ impl Vtmf {
             },
             secret_rotation::Secrets { k, r: &r },
         );
-        (rm, proof)
+        (rm, r, proof)
     }
 
     /// Verifies the application of the mask-shifting protocol
@@ -354,7 +354,12 @@ impl Vtmf {
 
 impl Vtmf {
     /// Performs a masked insertion operation
-    pub fn mask_insert(&self, c: &Stack, s0: &Stack, k: usize) -> (Stack, InsertProof) {
+    pub fn mask_insert(
+        &self,
+        c: &Stack,
+        s0: &Stack,
+        k: usize,
+    ) -> (Stack, Vec<Scalar>, InsertProof) {
         let mut rng = thread_rng();
 
         let n = s0.len();
@@ -380,7 +385,14 @@ impl Vtmf {
                 r2: &r2,
             },
         );
-        (s2, proof)
+        let mut r = r1;
+        r.extend(iter::repeat(Scalar::zero()).take(r2.len() - r.len()));
+        let pr = Permutation::shift(r.len(), n2 - k);
+        pr.apply_to(&mut r);
+        for (r, r2) in r.iter_mut().zip(r2.iter()) {
+            *r += r2;
+        }
+        (s2, r, proof)
     }
 
     /// Verifies a masked insertion operation
@@ -628,7 +640,7 @@ mod tests {
             .map(|p| vtmf0.mask(&p).0)
             .collect();
         let pi = thread_rng().sample(&Shuffles(m.len()));
-        let (shuffle, proof) = vtmf0.mask_shuffle(&m, &pi);
+        let (shuffle, _, proof) = vtmf0.mask_shuffle(&m, &pi);
         let verified = vtmf1.verify_mask_shuffle(&m, &shuffle, &proof);
         assert_eq!(verified, Ok(()));
 
@@ -668,7 +680,7 @@ mod tests {
             .map(|p| vtmf0.mask(&p).0)
             .collect();
         let k = thread_rng().gen_range(0, 8);
-        let (shift, proof) = vtmf0.mask_shift(&m, k);
+        let (shift, _, proof) = vtmf0.mask_shift(&m, k);
         let verified = vtmf1.verify_mask_shift(&m, &shift, &proof);
         assert_eq!(verified, Ok(()));
 
@@ -754,7 +766,7 @@ mod tests {
             .map(map::to_curve)
             .map(|p| vtmf0.mask(&p).0)
             .collect();
-        let (inserted, proof) = vtmf0.mask_insert(&c, &m, k);
+        let (inserted, _, proof) = vtmf0.mask_insert(&c, &m, k);
         let verified = vtmf1.verify_mask_insert(&c, &m, &inserted, &proof);
         assert_eq!(verified, Ok(()));
 

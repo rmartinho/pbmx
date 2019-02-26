@@ -16,11 +16,12 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let s1 = state.stacks.get_by_str(&ids).ok_or(Error::InvalidData)?;
     let s2 = state.stacks.get_by_str(&idt).ok_or(Error::InvalidData)?;
     let pos = pos.unwrap_or_else(|| thread_rng().gen_range(0, s1.len() + 1));
-    if pos > s1.len() + 1 {
+    if pos > s2.len() + 1 {
         return Err(Error::InvalidData);
     }
 
-    let (s3, proof) = state.vtmf.mask_insert(&s1, &s2, pos);
+    let (s3, r, proof) = state.vtmf.mask_insert(&s1, &s2, pos);
+    state.save_secrets(&s3, r)?;
 
     let id1 = s1.id();
     let id2 = s2.id();

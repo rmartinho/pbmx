@@ -7,7 +7,7 @@ use crate::{
     stack_map::{PrivateSecretMap, StackMap},
     Error, Result,
 };
-use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
 use pbmx_chain::{
     block::Block,
     chain::{Chain, ChainVisitor},
@@ -112,12 +112,12 @@ impl State {
     }
 
     pub fn save_secrets(&self, stack: &Stack, secrets: Vec<Scalar>) -> Result<()> {
-        let h = self.vtmf.shared_key().point();
+        let base_mask = Mask(RISTRETTO_BASEPOINT_POINT, self.vtmf.shared_key().point());
         let map: PrivateSecretMap = stack
             .iter()
             .cloned()
             .zip(secrets.into_iter())
-            .map(|(m, r)| (m, r * h))
+            .map(|(m, r)| (m, r * base_mask))
             .collect();
 
         let secret_file = format!("{}.{}", stack.id(), SECRET_EXTENSION);

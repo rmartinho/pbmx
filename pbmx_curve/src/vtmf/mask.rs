@@ -10,7 +10,7 @@ use std::{
 
 /// A masked value
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Mask(pub(crate) RistrettoPoint, pub(crate) RistrettoPoint);
+pub struct Mask(pub RistrettoPoint, pub RistrettoPoint);
 
 derive_base64_conversions!(Mask, Error);
 
@@ -21,6 +21,13 @@ impl Mask {
     }
 }
 
+impl Identity for Mask {
+    fn identity() -> Self {
+        Mask(RistrettoPoint::identity(), RistrettoPoint::identity())
+    }
+}
+
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for Mask {
     fn hash<H>(&self, state: &mut H)
     where
@@ -48,6 +55,7 @@ impl<'a, 'b> Add<&'b Mask> for &'a Mask {
 impl<'b> Add<&'b Mask> for Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn add(self, rhs: &'b Mask) -> Mask {
         &self + rhs
     }
@@ -56,6 +64,7 @@ impl<'b> Add<&'b Mask> for Mask {
 impl<'a> Add<Mask> for &'a Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn add(self, rhs: Mask) -> Mask {
         self + &rhs
     }
@@ -64,6 +73,7 @@ impl<'a> Add<Mask> for &'a Mask {
 impl Add<Mask> for Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn add(self, rhs: Mask) -> Mask {
         &self + &rhs
     }
@@ -77,6 +87,7 @@ impl<'b> AddAssign<&'b Mask> for Mask {
 }
 
 impl AddAssign<Mask> for Mask {
+    #[allow(clippy::op_ref)]
     fn add_assign(&mut self, rhs: Mask) {
         *self += &rhs;
     }
@@ -93,6 +104,7 @@ impl<'a, 'b> Sub<&'b Mask> for &'a Mask {
 impl<'b> Sub<&'b Mask> for Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn sub(self, rhs: &'b Mask) -> Mask {
         &self - rhs
     }
@@ -101,6 +113,7 @@ impl<'b> Sub<&'b Mask> for Mask {
 impl<'a> Sub<Mask> for &'a Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn sub(self, rhs: Mask) -> Mask {
         self - &rhs
     }
@@ -109,6 +122,7 @@ impl<'a> Sub<Mask> for &'a Mask {
 impl Sub<Mask> for Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn sub(self, rhs: Mask) -> Mask {
         &self - &rhs
     }
@@ -122,6 +136,7 @@ impl<'b> SubAssign<&'b Mask> for Mask {
 }
 
 impl SubAssign<Mask> for Mask {
+    #[allow(clippy::op_ref)]
     fn sub_assign(&mut self, rhs: Mask) {
         *self -= &rhs;
     }
@@ -135,10 +150,7 @@ where
     where
         I: Iterator<Item = T>,
     {
-        iter.fold(
-            Mask(RistrettoPoint::identity(), RistrettoPoint::identity()),
-            |acc, item| acc + item.borrow(),
-        )
+        iter.fold(Mask::identity(), |acc, item| acc + item.borrow())
     }
 }
 
@@ -153,6 +165,7 @@ impl<'a> Neg for &'a Mask {
 impl Neg for Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn neg(self) -> Mask {
         -&self
     }
@@ -177,6 +190,7 @@ impl<'a, 'b> Mul<&'b Mask> for &'a Scalar {
 impl<'b> Mul<&'b Scalar> for Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, rhs: &'b Scalar) -> Mask {
         &self * rhs
     }
@@ -185,6 +199,7 @@ impl<'b> Mul<&'b Scalar> for Mask {
 impl<'b> Mul<&'b Mask> for Scalar {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, rhs: &'b Mask) -> Mask {
         &self * rhs
     }
@@ -193,6 +208,7 @@ impl<'b> Mul<&'b Mask> for Scalar {
 impl<'a> Mul<Scalar> for &'a Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, rhs: Scalar) -> Mask {
         self * &rhs
     }
@@ -201,6 +217,7 @@ impl<'a> Mul<Scalar> for &'a Mask {
 impl<'a> Mul<Mask> for &'a Scalar {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, rhs: Mask) -> Mask {
         self * &rhs
     }
@@ -209,6 +226,7 @@ impl<'a> Mul<Mask> for &'a Scalar {
 impl Mul<Scalar> for Mask {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, rhs: Scalar) -> Mask {
         &self * &rhs
     }
@@ -217,6 +235,7 @@ impl Mul<Scalar> for Mask {
 impl Mul<Mask> for Scalar {
     type Output = Mask;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, rhs: Mask) -> Mask {
         &self * &rhs
     }

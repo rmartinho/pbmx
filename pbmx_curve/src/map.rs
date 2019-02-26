@@ -18,4 +18,5 @@ pub fn from_curve(point: &RistrettoPoint) -> Option<u64> {
     CURVE_MAP.get(&point.compress().0).cloned()
 }
 
+#[allow(clippy::unreadable_literal)]
 static CURVE_MAP: phf::Map<[u8; 32], u64> = include!(concat!(env!("OUT_DIR"), "/curve_map.rs"));

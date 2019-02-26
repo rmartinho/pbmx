@@ -13,7 +13,8 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
     let n = n.unwrap_or_else(|| thread_rng().gen_range(0, stack.len()));
 
-    let (s, proof) = state.vtmf.mask_shift(&stack, n);
+    let (s, r, proof) = state.vtmf.mask_shift(&stack, n);
+    state.save_secrets(&s, r)?;
 
     let id1 = stack.id();
     let id2 = s.id();
