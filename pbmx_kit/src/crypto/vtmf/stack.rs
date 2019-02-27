@@ -1,4 +1,4 @@
-use crate::crypto::{keys::Fingerprint, vtmf::Mask, Error};
+use crate::crypto::{keys::Fingerprint, vtmf::Mask};
 use std::{
     borrow::{Borrow, BorrowMut},
     iter::FromIterator,
@@ -9,7 +9,7 @@ use std::{
 #[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Stack(pub(crate) Vec<Mask>);
 
-derive_base64_conversions!(Stack, Error);
+derive_base64_conversions!(Stack);
 
 impl Stack {
     /// Gets an ID for this stack

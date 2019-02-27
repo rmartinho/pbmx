@@ -160,7 +160,7 @@ impl ChainVisitor for ChainParser {
         self.valid = self.valid && block.signer() == pk.fingerprint();
 
         if self.valid {
-            self.vtmf.add_key(pk.clone()).unwrap();
+            self.vtmf.add_key(pk.clone());
             self.names.insert(pk.fingerprint(), name.to_string());
         }
     }

@@ -1,52 +1,38 @@
 //! Serialization/deserialization
 
-use crate::serde::Error;
+use crate::{Error, Result};
 use serde::{de::Deserialize, ser::Serialize};
 use std::{collections::HashMap, hash::Hash};
 
 /// A trait for types that can be serialized to bytes
 pub trait ToBytes {
-    /// Error type
-    type Error;
-
     /// Serializes to bytes
-    fn to_bytes(&self) -> Result<Vec<u8>, Self::Error>;
+    fn to_bytes(&self) -> Result<Vec<u8>>;
 }
 
 /// A trait for types that can be deserialized from bytes
 pub trait FromBytes: Sized {
-    /// Error type
-    type Error;
-
     /// Deserializes from bytes
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error>;
+    fn from_bytes(bytes: &[u8]) -> Result<Self>;
 }
 
 /// A trait for types that can be serialized to base64
 pub trait ToBase64 {
-    /// Error type
-    type Error;
-
     /// Serializes to base64
-    fn to_base64(&self) -> Result<String, Self::Error>;
+    fn to_base64(&self) -> Result<String>;
 }
 
 /// A trait for types that can be deserialized from base64
 pub trait FromBase64: Sized {
-    /// Error type
-    type Error;
-
     /// Deserializes from base64
-    fn from_base64(string: &str) -> Result<Self, Self::Error>;
+    fn from_base64(string: &str) -> Result<Self>;
 }
 
 impl<T> ToBase64 for T
 where
     T: ToBytes,
 {
-    type Error = T::Error;
-
-    fn to_base64(&self) -> Result<String, Self::Error> {
+    fn to_base64(&self) -> Result<String> {
         Ok(base64::encode_config(
             &self.to_bytes()?,
             base64::URL_SAFE_NO_PAD,
@@ -57,12 +43,10 @@ where
 impl<T> FromBase64 for T
 where
     T: FromBytes,
-    T::Error: From<Error>,
 {
-    type Error = T::Error;
-
-    fn from_base64(string: &str) -> Result<Self, Self::Error> {
-        let bytes = base64::decode_config(string, base64::URL_SAFE_NO_PAD).map_err(Error::from)?;
+    fn from_base64(string: &str) -> Result<Self> {
+        let bytes =
+            base64::decode_config(string, base64::URL_SAFE_NO_PAD).map_err(|_| Error::Decoding)?;
         let x = Self::from_bytes(&bytes)?;
         Ok(x)
     }
@@ -72,10 +56,11 @@ impl<T> ToBytes for Vec<T>
 where
     T: Serialize,
 {
-    type Error = crate::serde::Error;
-
-    fn to_bytes(&self) -> Result<Vec<u8>, Self::Error> {
-        let bytes = bincode::config().big_endian().serialize(self)?;
+    fn to_bytes(&self) -> Result<Vec<u8>> {
+        let bytes = bincode::config()
+            .big_endian()
+            .serialize(self)
+            .map_err(|_| Error::Encoding)?;
         Ok(bytes)
     }
 }
@@ -85,10 +70,11 @@ where
     T: Serialize,
     U: Serialize,
 {
-    type Error = crate::serde::Error;
-
-    fn to_bytes(&self) -> Result<Vec<u8>, Self::Error> {
-        let bytes = bincode::config().big_endian().serialize(self)?;
+    fn to_bytes(&self) -> Result<Vec<u8>> {
+        let bytes = bincode::config()
+            .big_endian()
+            .serialize(self)
+            .map_err(|_| Error::Encoding)?;
         Ok(bytes)
     }
 }
@@ -98,10 +84,11 @@ where
     T: Serialize + Eq + Hash,
     U: Serialize,
 {
-    type Error = crate::serde::Error;
-
-    fn to_bytes(&self) -> Result<Vec<u8>, Self::Error> {
-        let bytes = bincode::config().big_endian().serialize(self)?;
+    fn to_bytes(&self) -> Result<Vec<u8>> {
+        let bytes = bincode::config()
+            .big_endian()
+            .serialize(self)
+            .map_err(|_| Error::Encoding)?;
         Ok(bytes)
     }
 }
@@ -110,10 +97,11 @@ impl<T> FromBytes for Vec<T>
 where
     T: for<'de> Deserialize<'de>,
 {
-    type Error = crate::serde::Error;
-
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let x = bincode::config().big_endian().deserialize(bytes)?;
+    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        let x = bincode::config()
+            .big_endian()
+            .deserialize(bytes)
+            .map_err(|_| Error::Decoding)?;
         Ok(x)
     }
 }
@@ -123,13 +111,11 @@ where
     T: for<'de> Deserialize<'de>,
     U: for<'de> Deserialize<'de>,
 {
-    type Error = crate::serde::Error;
-
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let x = bincode::config()
             .big_endian()
             .deserialize(bytes)
-            .map_err(crate::serde::Error::from)?;
+            .map_err(|_| Error::Decoding)?;
         Ok(x)
     }
 }
@@ -139,10 +125,11 @@ where
     T: for<'de> Deserialize<'de> + Eq + Hash,
     U: for<'de> Deserialize<'de>,
 {
-    type Error = crate::serde::Error;
-
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let x = bincode::config().big_endian().deserialize(bytes)?;
+    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        let x = bincode::config()
+            .big_endian()
+            .deserialize(bytes)
+            .map_err(|_| Error::Decoding)?;
         Ok(x)
     }
 }

@@ -1,7 +1,7 @@
 //! Block payloads
 
 use crate::{
-    chain::{Error, Id},
+    chain::Id,
     crypto::{
         keys::PublicKey,
         vtmf::{
@@ -84,4 +84,4 @@ impl<'a> Display for DisplayShort<'a> {
     }
 }
 
-derive_base64_conversions!(Payload, Error);
+derive_base64_conversions!(Payload);

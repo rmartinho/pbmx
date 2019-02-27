@@ -1,7 +1,7 @@
 //! PBMX chain blocks
 
 use crate::{
-    chain::{payload::Payload, Error, Id},
+    chain::{payload::Payload, Id},
     crypto::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         Hash,
@@ -176,7 +176,7 @@ impl BlockRaw {
         )
     }
 }
-derive_base64_conversions!(Block, Error);
+derive_base64_conversions!(Block);
 
 /// A block signature
 pub type Signature = (RistrettoPoint, Scalar);

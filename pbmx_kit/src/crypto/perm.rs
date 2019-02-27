@@ -1,6 +1,6 @@
 //! Permutation-related utilities
 
-use crate::crypto::{Error, ErrorKind};
+use crate::error::InvalidPermutationError;
 use rand::{distributions::Distribution, seq::SliceRandom, Rng};
 use std::{convert::TryFrom, ops::Deref};
 
@@ -79,12 +79,14 @@ impl From<Permutation> for Vec<usize> {
 }
 
 impl TryFrom<Vec<usize>> for Permutation {
-    type Error = Error;
+    type Error = InvalidPermutationError;
 
     fn try_from(v: Vec<usize>) -> Result<Self, Self::Error> {
         let mut o = v.clone();
         o.sort();
-        ensure!(o.into_iter().eq(0..v.len()), ErrorKind::NonPermutation);
+        if o.into_iter().ne(0..v.len()) {
+            return Err(InvalidPermutationError);
+        };
 
         Ok(Self(v))
     }

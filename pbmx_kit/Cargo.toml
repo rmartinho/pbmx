@@ -16,9 +16,6 @@ version = "1.0"
 [dependencies.digest]
 version = "0.8"
 
-[dependencies.error-chain]
-version = "0.12"
-
 [dependencies.merlin]
 version = "1.0"
 

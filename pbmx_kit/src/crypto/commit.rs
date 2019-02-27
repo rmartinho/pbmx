@@ -1,6 +1,5 @@
 //! Pedersen commitment scheme
 
-use crate::crypto::Error;
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar, traits::MultiscalarMul};
 use rand::{CryptoRng, Rng};
 use serde::{de, Deserialize, Deserializer};
@@ -120,7 +119,7 @@ impl PedersenRaw {
     }
 }
 
-derive_base64_conversions!(Pedersen, Error);
+derive_base64_conversions!(Pedersen);
 
 #[cfg(test)]
 mod tests {

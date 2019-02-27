@@ -1,9 +1,6 @@
 //! ElGamal encryption scheme for elliptic curves
 
-use crate::{
-    crypto::{hash::Hash, Error, ErrorKind},
-    serde::ToBytes,
-};
+use crate::{crypto::hash::Hash, serde::ToBytes, Error};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -135,7 +132,7 @@ fn point_to_scalar(x: &RistrettoPoint) -> Scalar {
 
 impl Fingerprint {
     /// Gets the fingerprint of some object
-    pub fn of<T>(x: &T) -> Result<Fingerprint, T::Error>
+    pub fn of<T>(x: &T) -> Result<Fingerprint, Error>
     where
         T: ToBytes,
     {
@@ -161,8 +158,8 @@ impl AsRef<[u8]> for Fingerprint {
     }
 }
 
-derive_base64_conversions!(PrivateKey, Error);
-derive_base64_conversions!(PublicKey, Error);
+derive_base64_conversions!(PrivateKey);
+derive_base64_conversions!(PublicKey);
 
 impl Display for Fingerprint {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -197,12 +194,12 @@ impl FromStr for Fingerprint {
             .as_bytes()
             .chunks(2)
             .map(|c| u8::from_str_radix(str::from_utf8(c).unwrap(), 16))
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, _>>()
+            .map_err(|_| Error::Decoding)?;
 
-        ensure!(
-            bytes.len() == FINGERPRINT_SIZE,
-            ErrorKind::InvalidFingerprint
-        );
+        if bytes.len() != FINGERPRINT_SIZE {
+            return Err(Error::Decoding);
+        }
 
         let mut fp = Fingerprint([0; FINGERPRINT_SIZE]);
         fp.0.copy_from_slice(&bytes);

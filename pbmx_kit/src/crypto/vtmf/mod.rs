@@ -6,7 +6,6 @@ use crate::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         perm::Permutation,
         proofs::{dlog_eq, secret_insertion, secret_rotation, secret_shuffle},
-        Error,
     },
     serde::serialize_flat_map,
 };
@@ -72,14 +71,13 @@ impl Vtmf {
     }
 
     /// Add a public key to the VTMF
-    pub fn add_key(&mut self, pk: PublicKey) -> Result<(), Error> {
+    pub fn add_key(&mut self, pk: PublicKey) {
         let fp = pk.fingerprint();
         if self.pki.contains_key(&fp) {
-            return Ok(());
+            return;
         }
         self.pk.combine(&pk);
         self.pki.insert(fp, pk);
-        Ok(())
     }
 
     unsafe fn new_unchecked(sk: PrivateKey, pk: PublicKey, pki: Vec<PublicKey>) -> Self {
@@ -457,85 +455,16 @@ impl VtmfRaw {
     }
 }
 
-derive_base64_conversions!(Vtmf, Error);
-
 #[cfg(test)]
 mod tests {
     use super::{Mask, Stack, Vtmf};
-    use crate::{
-        crypto::{
-            keys::PrivateKey,
-            map,
-            perm::{Permutation, Shuffles},
-        },
-        serde::{FromBase64, ToBase64},
+    use crate::crypto::{
+        keys::PrivateKey,
+        map,
+        perm::{Permutation, Shuffles},
     };
     use digest::XofReader;
     use rand::{thread_rng, Rng};
-
-    #[test]
-    fn vtmf_roundtrips_via_base64() {
-        let mut rng = thread_rng();
-        let sk0 = PrivateKey::random(&mut rng);
-        let sk1 = PrivateKey::random(&mut rng);
-        let sk2 = PrivateKey::random(&mut rng);
-        let pk1 = sk1.public_key();
-        let pk2 = sk2.public_key();
-
-        let mut original = Vtmf::new(sk0);
-        original.add_key(pk1).unwrap();
-        original.add_key(pk2).unwrap();
-
-        let exported = original.to_base64().unwrap();
-        dbg!(&exported);
-
-        let recovered = Vtmf::from_base64(&exported).unwrap();
-
-        assert_eq!(original.sk, recovered.sk);
-        assert_eq!(original.pk, recovered.pk);
-        assert_eq!(original.pki, recovered.pki);
-    }
-
-    #[test]
-    fn vtmf_masking_and_unmasking_work() {
-        let mut rng = thread_rng();
-        let sk0 = PrivateKey::random(&mut rng);
-        let sk1 = PrivateKey::random(&mut rng);
-        let pk0 = sk0.public_key();
-        let pk1 = sk1.public_key();
-
-        let mut vtmf0 = Vtmf::new(sk0);
-        let mut vtmf1 = Vtmf::new(sk1);
-        let fp0 = pk0.fingerprint();
-        let fp1 = pk1.fingerprint();
-        vtmf0.add_key(pk1).unwrap();
-        vtmf1.add_key(pk0).unwrap();
-
-        let x = rng.gen_range(0, 16);
-        let p = map::to_curve(x);
-        let (mask, _, proof) = vtmf0.mask(&p);
-        let verified = vtmf1.verify_mask(&p, &mask, &proof);
-        assert_eq!(verified, Ok(()));
-
-        let (d0, proof0) = vtmf0.unmask_share(&mask);
-        let (d1, proof1) = vtmf1.unmask_share(&mask);
-
-        let verified = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
-        assert_eq!(verified, Ok(()));
-        let mask0 = vtmf0.unmask(&mask, &d1);
-        let mask0 = vtmf0.unmask_private(&mask0);
-        let r = vtmf0.unmask_open(&mask0);
-        let r = map::from_curve(&r);
-        assert_eq!(r, Some(x));
-
-        let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
-        assert_eq!(verified, Ok(()));
-        let mask1 = vtmf1.unmask(&mask, &d0);
-        let mask1 = vtmf1.unmask_private(&mask1);
-        let r = vtmf1.unmask_open(&mask1);
-        let r = map::from_curve(&r);
-        assert_eq!(r, Some(x));
-    }
 
     #[test]
     fn vtmf_masking_remasking_and_unmasking_work() {
@@ -549,8 +478,8 @@ mod tests {
         let mut vtmf1 = Vtmf::new(sk1);
         let fp0 = pk0.fingerprint();
         let fp1 = pk1.fingerprint();
-        vtmf0.add_key(pk1).unwrap();
-        vtmf1.add_key(pk0).unwrap();
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
 
         let x = rng.gen_range(0, 16);
         let p = map::to_curve(x);
@@ -594,8 +523,8 @@ mod tests {
         let mut vtmf1 = Vtmf::new(sk1);
         let fp0 = pk0.fingerprint();
         let fp1 = pk1.fingerprint();
-        vtmf0.add_key(pk1).unwrap();
-        vtmf1.add_key(pk0).unwrap();
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
 
         let x = rng.gen_range(0, 16);
         let p = map::to_curve(x);
@@ -636,8 +565,8 @@ mod tests {
         let mut vtmf0 = Vtmf::new(sk0);
         let mut vtmf1 = Vtmf::new(sk1);
         let fp0 = pk0.fingerprint();
-        vtmf0.add_key(pk1).unwrap();
-        vtmf1.add_key(pk0).unwrap();
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
 
         let m: Stack = (0u64..8)
             .map(map::to_curve)
@@ -676,8 +605,8 @@ mod tests {
         let mut vtmf0 = Vtmf::new(sk0);
         let mut vtmf1 = Vtmf::new(sk1);
         let fp0 = pk0.fingerprint();
-        vtmf0.add_key(pk1).unwrap();
-        vtmf1.add_key(pk0).unwrap();
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
 
         let m: Stack = (0u64..8)
             .map(map::to_curve)
@@ -718,8 +647,8 @@ mod tests {
         let mut vtmf1 = Vtmf::new(sk1);
         let fp0 = pk0.fingerprint();
         let fp1 = pk1.fingerprint();
-        vtmf0.add_key(pk1).unwrap();
-        vtmf1.add_key(pk0).unwrap();
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
 
         let mask0 = vtmf0.mask_random(&mut rng);
         let mask1 = vtmf1.mask_random(&mut rng);
@@ -759,8 +688,8 @@ mod tests {
         let mut vtmf0 = Vtmf::new(sk0);
         let mut vtmf1 = Vtmf::new(sk1);
         let fp0 = pk0.fingerprint();
-        vtmf0.add_key(pk1).unwrap();
-        vtmf1.add_key(pk0).unwrap();
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
 
         let c: Stack = (10u64..13)
             .map(map::to_curve)

@@ -1,4 +1,3 @@
-use crate::crypto::Error;
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar, traits::Identity};
 use std::{
     borrow::Borrow,
@@ -11,7 +10,7 @@ use std::{
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Mask(pub RistrettoPoint, pub RistrettoPoint);
 
-derive_base64_conversions!(Mask, Error);
+derive_base64_conversions!(Mask);
 
 impl Mask {
     /// Creates a new open masking

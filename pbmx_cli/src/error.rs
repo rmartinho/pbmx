@@ -5,9 +5,7 @@ pub enum Error {
     Io(std::io::Error),
     Num(std::num::ParseIntError),
     Clap(clap::Error),
-    Crypto(pbmx_kit::crypto::Error),
-    Chain(pbmx_kit::chain::Error),
-    Serde(pbmx_kit::serde::Error),
+    Pbmx(pbmx_kit::Error),
     Toml(toml::de::Error),
     InvalidSubcommand,
     InvalidData,
@@ -31,21 +29,9 @@ impl Error {
             }
             .exit(),
             Error::Clap(e) => e.exit(),
-            Error::Crypto(e) => clap::Error {
-                message: format!("{:?}", e),
-                kind: clap::ErrorKind::Io,
-                info: None,
-            }
-            .exit(),
-            Error::Chain(e) => clap::Error {
-                message: format!("{:?}", e),
-                kind: clap::ErrorKind::Io,
-                info: None,
-            }
-            .exit(),
-            Error::Serde(e) => clap::Error {
-                message: format!("{:?}", e),
-                kind: clap::ErrorKind::Io,
+            Error::Pbmx(e) => clap::Error {
+                message: format!("{}", e),
+                kind: clap::ErrorKind::InvalidValue,
                 info: None,
             }
             .exit(),
@@ -95,21 +81,9 @@ impl From<std::num::ParseIntError> for Error {
     }
 }
 
-impl From<pbmx_kit::crypto::Error> for Error {
-    fn from(e: pbmx_kit::crypto::Error) -> Self {
-        Error::Crypto(e)
-    }
-}
-
-impl From<pbmx_kit::chain::Error> for Error {
-    fn from(e: pbmx_kit::chain::Error) -> Self {
-        Error::Chain(e)
-    }
-}
-
-impl From<pbmx_kit::serde::Error> for Error {
-    fn from(e: pbmx_kit::serde::Error) -> Self {
-        Error::Serde(e)
+impl From<pbmx_kit::Error> for Error {
+    fn from(e: pbmx_kit::Error) -> Self {
+        Error::Pbmx(e)
     }
 }
 

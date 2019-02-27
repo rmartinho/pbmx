@@ -12,7 +12,6 @@ use crate::{
             InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
             Stack,
         },
-        Error,
     },
     serde::serialize_flat_map,
 };
@@ -136,7 +135,7 @@ impl ChainRaw {
     }
 }
 
-derive_base64_conversions!(Chain, Error);
+derive_base64_conversions!(Chain);
 
 struct Blocks<'a> {
     roots: Vec<Id>,

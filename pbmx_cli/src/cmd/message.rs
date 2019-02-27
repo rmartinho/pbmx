@@ -8,7 +8,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         string.into_bytes()
     } else if let Ok(bin) = value_t!(m, "BASE64", String) {
         base64::decode_config(&bin, base64::URL_SAFE_NO_PAD)
-            .map_err(pbmx_kit::serde::Error::from)?
+            .map_err(|_| pbmx_kit::Error::Decoding)?
     } else if let Ok(path) = value_t!(m, "FILE", PathBuf) {
         fs::read(path)?
     } else {

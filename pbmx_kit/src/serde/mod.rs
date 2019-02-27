@@ -4,8 +4,6 @@
 mod macros;
 mod bytes;
 pub use self::bytes::{FromBase64, FromBytes, ToBase64, ToBytes};
-mod error;
-pub use self::error::{Error, ErrorKind, Result};
 
 use serde::ser::{Serialize, Serializer};
 use std::{
