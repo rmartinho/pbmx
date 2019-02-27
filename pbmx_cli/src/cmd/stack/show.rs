@@ -1,7 +1,7 @@
 use crate::{stack_map::display_stack_contents, state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_curve::vtmf::Stack;
+use pbmx_kit::crypto::vtmf::Stack;
 use std::{collections::HashSet, iter::FromIterator};
 
 pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {

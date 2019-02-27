@@ -1,6 +1,6 @@
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
 use digest::XofReader;
-use pbmx_curve::{
+use pbmx_kit::crypto::{
     keys::Fingerprint,
     vtmf::{Mask, SecretShare, Vtmf},
 };

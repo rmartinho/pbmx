@@ -5,14 +5,8 @@ authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
 edition = "2018"
 description = "Secure play-by-mail toolkit"
 
-[dependencies.pbmx_chain]
-path = "../pbmx_chain"
-
-[dependencies.pbmx_curve]
-path = "../pbmx_curve"
-
-[dependencies.pbmx_serde]
-path = "../pbmx_serde"
+[dependencies.pbmx_kit]
+path = "../pbmx_kit"
 
 [dependencies.base64]
 version = "0.10"

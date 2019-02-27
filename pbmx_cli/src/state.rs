@@ -8,21 +8,23 @@ use crate::{
     Error, Result,
 };
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
-use pbmx_chain::{
-    block::Block,
-    chain::{Chain, ChainVisitor},
-    payload::Payload,
-    Id,
-};
-use pbmx_curve::{
-    keys::{Fingerprint, PrivateKey, PublicKey},
-    map,
-    vtmf::{
-        InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-        Stack, Vtmf,
+use pbmx_kit::{
+    chain::{
+        block::Block,
+        chain::{Chain, ChainVisitor},
+        payload::Payload,
+        Id,
     },
+    crypto::{
+        keys::{Fingerprint, PrivateKey, PublicKey},
+        map,
+        vtmf::{
+            InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+            Stack, Vtmf,
+        },
+    },
+    serde::{FromBase64, ToBase64},
 };
-use pbmx_serde::{FromBase64, ToBase64};
 use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf};
 
 #[derive(Debug)]

@@ -1,8 +1,7 @@
 use crate::{state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::payload::Payload;
-use pbmx_curve::vtmf::Stack;
+use pbmx_kit::{chain::payload::Payload, crypto::vtmf::Stack};
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let in_ids = values_t!(m, "STACKS", String)?;

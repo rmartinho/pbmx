@@ -1,7 +1,7 @@
 use crate::{state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::payload::Payload;
+use pbmx_kit::chain::payload::Payload;
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "STACK", String)?;

@@ -1,8 +1,10 @@
 use crate::{indices::parse_indices, state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::payload::Payload;
-use pbmx_curve::perm::{Permutation, Shuffles};
+use pbmx_kit::{
+    chain::payload::Payload,
+    crypto::perm::{Permutation, Shuffles},
+};
 use rand::{thread_rng, Rng};
 use std::convert::TryFrom;
 

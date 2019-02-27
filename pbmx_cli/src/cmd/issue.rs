@@ -6,7 +6,7 @@ use crate::{
 };
 use clap::ArgMatches;
 use colored::Colorize;
-use pbmx_serde::ToBase64;
+use pbmx_kit::serde::ToBase64;
 use std::path::PathBuf;
 
 pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {

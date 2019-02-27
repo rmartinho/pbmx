@@ -5,9 +5,9 @@ pub enum Error {
     Io(std::io::Error),
     Num(std::num::ParseIntError),
     Clap(clap::Error),
-    Crypto(pbmx_curve::Error),
-    Chain(pbmx_chain::Error),
-    Serde(pbmx_serde::Error),
+    Crypto(pbmx_kit::crypto::Error),
+    Chain(pbmx_kit::chain::Error),
+    Serde(pbmx_kit::serde::Error),
     Toml(toml::de::Error),
     InvalidSubcommand,
     InvalidData,
@@ -95,20 +95,20 @@ impl From<std::num::ParseIntError> for Error {
     }
 }
 
-impl From<pbmx_curve::Error> for Error {
-    fn from(e: pbmx_curve::Error) -> Self {
+impl From<pbmx_kit::crypto::Error> for Error {
+    fn from(e: pbmx_kit::crypto::Error) -> Self {
         Error::Crypto(e)
     }
 }
 
-impl From<pbmx_chain::Error> for Error {
-    fn from(e: pbmx_chain::Error) -> Self {
+impl From<pbmx_kit::chain::Error> for Error {
+    fn from(e: pbmx_kit::chain::Error) -> Self {
         Error::Chain(e)
     }
 }
 
-impl From<pbmx_serde::Error> for Error {
-    fn from(e: pbmx_serde::Error) -> Self {
+impl From<pbmx_kit::serde::Error> for Error {
+    fn from(e: pbmx_kit::serde::Error) -> Self {
         Error::Serde(e)
     }
 }

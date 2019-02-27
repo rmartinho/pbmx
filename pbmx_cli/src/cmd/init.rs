@@ -6,9 +6,7 @@ use crate::{
     file, Config, Result,
 };
 use clap::{value_t, ArgMatches};
-use pbmx_chain::payload::Payload;
-use pbmx_curve::keys::PrivateKey;
-use pbmx_serde::ToBase64;
+use pbmx_kit::{chain::payload::Payload, crypto::keys::PrivateKey, serde::ToBase64};
 use rand::thread_rng;
 use std::{fs, path::PathBuf};
 

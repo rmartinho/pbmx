@@ -1,12 +1,14 @@
 use crate::{indices::display_indices, state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
-use pbmx_chain::{block::Block, chain::ChainVisitor, Id};
-use pbmx_curve::{
-    keys::PublicKey,
-    vtmf::{
-        InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-        Stack,
+use pbmx_kit::{
+    chain::{block::Block, chain::ChainVisitor, Id},
+    crypto::{
+        keys::PublicKey,
+        vtmf::{
+            InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+            Stack,
+        },
     },
 };
 

@@ -1,7 +1,7 @@
 use crate::{state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
-use pbmx_chain::payload::Payload;
+use pbmx_kit::chain::payload::Payload;
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let name = value_t!(m, "NAME", String)?;

@@ -1,9 +1,11 @@
 use crate::Config;
-use pbmx_chain::Id;
-use pbmx_curve::{
-    keys::Fingerprint,
-    map,
-    vtmf::{Mask, SecretShare, Stack, Vtmf},
+use pbmx_kit::{
+    chain::Id,
+    crypto::{
+        keys::Fingerprint,
+        map,
+        vtmf::{Mask, SecretShare, Stack, Vtmf},
+    },
 };
 use qp_trie::Trie;
 use std::{

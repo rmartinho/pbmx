@@ -3,10 +3,12 @@ use crate::{
 };
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_chain::payload::Payload;
-use pbmx_curve::{
-    map,
-    vtmf::{Mask, Stack},
+use pbmx_kit::{
+    chain::payload::Payload,
+    crypto::{
+        map,
+        vtmf::{Mask, Stack},
+    },
 };
 use std::collections::HashMap;
 
