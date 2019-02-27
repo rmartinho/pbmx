@@ -1,7 +1,10 @@
 //! PBMX chain blocks
 
 use crate::{
-    chain::{payload::Payload, Id},
+    chain::{
+        payload::{Payload, PayloadVisitor},
+        Id,
+    },
     crypto::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         Hash,
@@ -72,6 +75,11 @@ impl Block {
             payloads: &self.payloads,
         }
     }
+
+    /// Visits this block
+    pub fn visit<V: BlockVisitor>(&self, v: &mut V) {
+        v.visit_block(self);
+    }
 }
 
 struct PayloadIter<'a> {
@@ -119,7 +127,7 @@ impl BlockBuilder {
         let sig = sk.sign(&m);
         Block {
             acks: self.acks,
-            payload_order: self.payloads.iter().map(|p| p.id()).collect(),
+            payload_order: self.payloads.iter().map(Payload::id).collect(),
             payloads: self.payloads.into_iter().map(|p| (p.id(), p)).collect(),
             fp,
             sig,
@@ -178,8 +186,17 @@ impl BlockRaw {
 }
 derive_base64_conversions!(Block);
 
-/// A block signature
-pub type Signature = (RistrettoPoint, Scalar);
+type Signature = (RistrettoPoint, Scalar);
+
+/// A visitor for blocks
+pub trait BlockVisitor: PayloadVisitor {
+    /// Visits a block
+    fn visit_block(&mut self, block: &Block) {
+        for payload in block.payloads() {
+            self.visit_payload(block, payload);
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -241,7 +258,6 @@ mod tests {
         let original = builder.build(&sk);
 
         let exported = original.to_base64().unwrap();
-        dbg!(&exported);
 
         let recovered = Block::from_base64(&exported).unwrap();
         assert!(recovered.is_valid(&ring).is_true());

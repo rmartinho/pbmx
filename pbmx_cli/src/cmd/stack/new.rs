@@ -4,7 +4,7 @@ use crate::{
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_kit::{
-    chain::payload::Payload,
+    chain::Payload,
     crypto::{
         map,
         vtmf::{Mask, Stack},

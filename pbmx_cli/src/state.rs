@@ -9,12 +9,7 @@ use crate::{
 };
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
 use pbmx_kit::{
-    chain::{
-        block::Block,
-        chain::{Chain, ChainVisitor},
-        payload::Payload,
-        Id,
-    },
+    chain::{Block, BlockVisitor, Chain, ChainVisitor, Id, Payload, PayloadVisitor},
     crypto::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         map,
@@ -146,7 +141,9 @@ struct ChainParser {
     valid: bool,
 }
 
-impl ChainVisitor for ChainParser {
+impl ChainVisitor for ChainParser {}
+
+impl BlockVisitor for ChainParser {
     fn visit_block(&mut self, block: &Block) {
         for payload in block.payloads() {
             self.visit_payload(block, payload);
@@ -155,7 +152,9 @@ impl ChainVisitor for ChainParser {
             }
         }
     }
+}
 
+impl PayloadVisitor for ChainParser {
     fn visit_publish_key(&mut self, block: &Block, name: &str, pk: &PublicKey) {
         self.valid = self.valid && block.signer() == pk.fingerprint();
 
@@ -262,7 +261,14 @@ impl ChainVisitor for ChainParser {
         }
     }
 
-    fn visit_insert_stack(&mut self, id1: Id, id2: Id, stack: &Stack, proof: &InsertProof) {
+    fn visit_insert_stack(
+        &mut self,
+        _: &Block,
+        id1: Id,
+        id2: Id,
+        stack: &Stack,
+        proof: &InsertProof,
+    ) {
         self.valid = self.valid
             && self
                 .stacks

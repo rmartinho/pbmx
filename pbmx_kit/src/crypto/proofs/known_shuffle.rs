@@ -173,9 +173,7 @@ mod tests {
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
 
-        let g = &RistrettoPoint::random(&mut rng);
         let h = &RistrettoPoint::random(&mut rng);
-        dbg!((g, h));
 
         let m = &iter::repeat_with(|| Scalar::random(&mut rng))
             .take(8)

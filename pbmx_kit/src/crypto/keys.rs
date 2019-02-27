@@ -232,7 +232,6 @@ mod tests {
         let original = PrivateKey::random(&mut rng);
 
         let exported = original.to_base64().unwrap();
-        dbg!(&exported);
 
         let recovered = PrivateKey::from_base64(&exported).unwrap();
 
@@ -246,7 +245,6 @@ mod tests {
         let original = sk.public_key();
 
         let exported = original.to_base64().unwrap();
-        dbg!(&exported);
 
         let recovered = PublicKey::from_base64(&exported).unwrap();
 
@@ -262,7 +260,6 @@ mod tests {
         let original = RistrettoPoint::random(&mut rng);
 
         let encrypted = pk.encrypt(&original);
-        dbg!(&encrypted);
 
         let recovered = sk.decrypt(&encrypted);
 
@@ -276,10 +273,8 @@ mod tests {
         let pk = sk.public_key();
 
         let m = Scalar::random(&mut rng);
-        dbg!(&m);
 
         let s = sk.sign(&m);
-        dbg!(&s);
 
         let r = pk.verify(&m, &s);
 
@@ -295,7 +290,6 @@ mod tests {
     fn fingerprint_roundtrips_via_string() {
         let v = vec![0, 1, 2, 3, 4, 5, 6, 7];
         let original = Fingerprint::of(&v).unwrap();
-        dbg!(original);
 
         let exported = original.to_string();
 

@@ -20,7 +20,6 @@ mod tests {
         let g = &RistrettoPoint::random(&mut rng);
         let h = &RistrettoPoint::random(&mut rng);
         let x = &Scalar::random(&mut rng);
-        dbg!((g, h, x));
 
         let a = &(g * x);
         let b = &(h * x);

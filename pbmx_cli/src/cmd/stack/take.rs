@@ -5,7 +5,7 @@ use crate::{
 };
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
-use pbmx_kit::{chain::payload::Payload, crypto::vtmf::Stack};
+use pbmx_kit::{chain::Payload, crypto::vtmf::Stack};
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let id = value_t!(m, "SOURCE", String)?;

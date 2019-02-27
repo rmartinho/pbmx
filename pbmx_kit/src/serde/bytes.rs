@@ -2,7 +2,10 @@
 
 use crate::{Error, Result};
 use serde::{de::Deserialize, ser::Serialize};
-use std::{collections::HashMap, hash::Hash};
+use std::{
+    collections::HashMap,
+    hash::{BuildHasher, Hash},
+};
 
 /// A trait for types that can be serialized to bytes
 pub trait ToBytes {
@@ -79,10 +82,11 @@ where
     }
 }
 
-impl<T, U> ToBytes for HashMap<T, U>
+impl<K, V, H> ToBytes for HashMap<K, V, H>
 where
-    T: Serialize + Eq + Hash,
-    U: Serialize,
+    K: Serialize + Eq + Hash,
+    V: Serialize,
+    H: BuildHasher + Default,
 {
     fn to_bytes(&self) -> Result<Vec<u8>> {
         let bytes = bincode::config()
@@ -120,10 +124,11 @@ where
     }
 }
 
-impl<T, U> FromBytes for HashMap<T, U>
+impl<K, V, H> FromBytes for HashMap<K, V, H>
 where
-    T: for<'de> Deserialize<'de> + Eq + Hash,
-    U: for<'de> Deserialize<'de>,
+    K: for<'de> Deserialize<'de> + Eq + Hash,
+    V: for<'de> Deserialize<'de>,
+    H: BuildHasher + Default,
 {
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let x = bincode::config()

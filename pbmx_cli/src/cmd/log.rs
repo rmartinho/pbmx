@@ -2,7 +2,7 @@ use crate::{indices::display_indices, state::State, Config, Result};
 use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_kit::{
-    chain::{block::Block, chain::ChainVisitor, Id},
+    chain::{Block, BlockVisitor, ChainVisitor, Id, PayloadVisitor},
     crypto::{
         keys::PublicKey,
         vtmf::{
@@ -22,7 +22,9 @@ pub fn run(_: &ArgMatches, cfg: &Config) -> Result<()> {
 
 struct LogPrinter<'a>(&'a State, &'a Config);
 
-impl<'a> ChainVisitor for LogPrinter<'a> {
+impl<'a> ChainVisitor for LogPrinter<'a> {}
+
+impl<'a> BlockVisitor for LogPrinter<'a> {
     fn visit_block(&mut self, block: &Block) {
         print!("{}", format!("{:16}", block.id()).yellow());
 
@@ -46,7 +48,9 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
             self.visit_payload(block, payload);
         }
     }
+}
 
+impl<'a> PayloadVisitor for LogPrinter<'a> {
     fn visit_publish_key(&mut self, _: &Block, name: &str, pk: &PublicKey) {
         println!("    {} {} {}", "key".green().bold(), name, pk.fingerprint());
     }
@@ -101,7 +105,7 @@ impl<'a> ChainVisitor for LogPrinter<'a> {
         );
     }
 
-    fn visit_insert_stack(&mut self, id1: Id, id2: Id, stack: &Stack, _: &InsertProof) {
+    fn visit_insert_stack(&mut self, _: &Block, id1: Id, id2: Id, stack: &Stack, _: &InsertProof) {
         println!(
             "    {} {:16} {:16} {:16}",
             "insert".green().bold(),

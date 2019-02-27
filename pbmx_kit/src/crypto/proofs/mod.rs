@@ -1,5 +1,7 @@
 //! Zero-knowledge proofs
 
+#![allow(clippy::many_single_char_names)]
+
 pub mod dlog_eq;
 mod dlog_eq_1of2;
 mod known_rotation;

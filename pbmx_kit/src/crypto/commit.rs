@@ -154,7 +154,6 @@ mod tests {
         let original = Pedersen::random(h, 3, &mut rng);
 
         let exported = original.to_base64().unwrap();
-        dbg!(&exported);
 
         let recovered = Pedersen::from_base64(&exported).unwrap();
 

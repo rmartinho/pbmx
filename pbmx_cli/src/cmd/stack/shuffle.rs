@@ -2,7 +2,7 @@ use crate::{indices::parse_indices, state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
 use colored::Colorize;
 use pbmx_kit::{
-    chain::payload::Payload,
+    chain::Payload,
     crypto::perm::{Permutation, Shuffles},
 };
 use rand::{thread_rng, Rng};

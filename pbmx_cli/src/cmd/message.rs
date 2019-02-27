@@ -1,6 +1,6 @@
 use crate::{state::State, Config, Error, Result};
 use clap::{value_t, ArgMatches};
-use pbmx_kit::chain::payload::Payload;
+use pbmx_kit::chain::Payload;
 use std::{fs, path::PathBuf};
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {

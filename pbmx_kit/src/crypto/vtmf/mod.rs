@@ -385,14 +385,14 @@ impl Vtmf {
                 r2: &r2,
             },
         );
-        let mut r = r1;
-        r.extend(iter::repeat(Scalar::zero()).take(r2.len() - r.len()));
-        let pr = Permutation::shift(r.len(), n2 - k);
-        pr.apply_to(&mut r);
-        for (r, r2) in r.iter_mut().zip(r2.iter()) {
-            *r += r2;
+        let mut rx = r1;
+        rx.extend(iter::repeat(Scalar::zero()).take(r2.len() - rx.len()));
+        let pr = Permutation::shift(rx.len(), n2 - k);
+        pr.apply_to(&mut rx);
+        for (rx, r2) in rx.iter_mut().zip(r2.iter()) {
+            *rx += r2;
         }
-        (s2, r, proof)
+        (s2, rx, proof)
     }
 
     /// Verifies a masked insertion operation
