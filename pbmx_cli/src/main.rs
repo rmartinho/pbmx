@@ -82,6 +82,7 @@ fn main() {
             (@setting ColoredHelp)
             (@setting SubcommandRequiredElseHelp)
             (@setting VersionlessSubcommands)
+            (@setting DisableHelpSubcommand)
             (@subcommand new =>
                 (about: "Creates a new stack")
                 (@setting DeriveDisplayOrder)
@@ -174,6 +175,7 @@ fn main() {
             (@setting ColoredHelp)
             (@setting SubcommandRequiredElseHelp)
             (@setting VersionlessSubcommands)
+            (@setting DisableHelpSubcommand)
             (@subcommand new =>
                 (about: "Initializes a new generator")
                 (@setting DeriveDisplayOrder)

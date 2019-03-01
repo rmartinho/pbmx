@@ -1,0 +1,187 @@
+#!/usr/bin/env bash
+
+COMMANDS="init reset issue join status log message stack rng help"
+HELP_FLAG="-h --help"
+STACK_COMMANDS="new list show reveal name mask shuffle cut take pile insert"
+RNG_COMMANDS="new list entropy reveal get"
+
+_pbmx_completion()
+{
+  if [ "${#COMP_WORDS[@]}" == "2" ]; then
+    COMPREPLY=($(compgen -W "$COMMANDS $HELP_FLAG -V --version" -- "${COMP_WORDS[1]}"))
+  else
+    local completion_func="_pbmx_completion_${COMP_WORDS[1]}"
+    if declare -f $completion_func >/dev/null 2>/dev/null; then
+      $completion_func
+    fi
+  fi
+}
+
+complete -o filenames -F _pbmx_completion pbmx
+
+_pbmx_completion_help()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "$COMMANDS" -- "${COMP_WORDS[2]}"))
+  fi
+}
+
+_pbmx_completion_init()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -A directory -W "$HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  fi
+}
+
+_pbmx_completion_reset()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "-l --last $HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  fi
+}
+
+_pbmx_completion_issue()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "$HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  fi
+}
+
+_pbmx_completion_join()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "$HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  fi
+}
+
+_pbmx_completion_status()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "$HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  fi
+}
+
+_pbmx_completion_log()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "$HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  fi
+}
+
+_pbmx_completion_message()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "-b --base64 -f --file $HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  elif [ "${#COMP_WORDS[@]}" == "4" ]; then
+    case "${COMP_WORDS[2]}" in
+    -f|--file)
+      COMPREPLY=($(compgen -A file -W "$HELP_FLAG" -- "${COMP_WORDS[3]}"))
+      ;;
+    esac
+  fi
+}
+
+_pbmx_completion_stack()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "$STACK_COMMANDS $HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  else
+    local completion_func="_pbmx_completion_stack_${COMP_WORDS[2]}"
+    if declare -f $completion_func >/dev/null 2>/dev/null; then
+      $completion_func
+    fi
+  fi
+}
+
+_pbmx_completion_rng()
+{
+  if [ "${#COMP_WORDS[@]}" == "3" ]; then
+    COMPREPLY=($(compgen -W "$RNG_COMMANDS $HELP_FLAG" -- "${COMP_WORDS[2]}"))
+  else
+    local completion_func="_pbmx_completion_stack_${COMP_WORDS[2]}"
+    if declare -f $completion_func >/dev/null 2>/dev/null; then
+      $completion_func
+    fi
+  fi
+}
+
+_pbmx_completion_stack_new()
+{
+  if [ "${#COMP_WORDS[@]}" == "4" ]; then
+    COMPREPLY=($(compgen -W "-n --name $HELP_FLAG" -- "${COMP_WORDS[3]}"))
+  fi
+}
+
+_pbmx_completion_stack_list()
+{
+  if [ "${#COMP_WORDS[@]}" == "4" ]; then
+    COMPREPLY=($(compgen -W "-a --all $HELP_FLAG" -- "${COMP_WORDS[3]}"))
+  fi
+}
+
+_pbmx_stack_ids()
+{
+  local STACK_IDS=$(NO_COLOR=1 pbmx stack list -a | tr -s ' ' | tr $'\t' ' ' | cut -d' ' -f 1)
+  local STACK_NAMES=$(NO_COLOR=1 pbmx stack list | tr -s ' ' | tr $'\t' ' ' | cut -d' ' -f 3)
+
+  echo "$STACK_IDS $STACK_NAMES"
+}
+
+_pbmx_completion_stack_show()
+{
+  COMPREPLY=($(compgen -W "-a --all -v --verbose $(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[${#COMP_WORDS[@]}-1]}"))
+}
+
+_pbmx_completion_stack_reveal()
+{
+  if [ "${#COMP_WORDS[@]}" == "4" ]; then
+    COMPREPLY=($(compgen -W "$(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[3]}"))
+  fi
+}
+
+_pbmx_completion_stack_name()
+{
+  if [ "${#COMP_WORDS[@]}" == "4" ]; then
+    COMPREPLY=($(compgen -W "$(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[3]}"))
+  fi
+}
+
+_pbmx_completion_stack_mask()
+{
+  if [ "${#COMP_WORDS[@]}" == "4" ]; then
+    COMPREPLY=($(compgen -W "$(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[3]}"))
+  fi
+}
+
+_pbmx_completion_stack_shuffle()
+{
+  if [ "${#COMP_WORDS[@]}" == "4" ]; then
+    COMPREPLY=($(compgen -W "$(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[3]}"))
+  elif [ "${#COMP_WORDS[@]}" == "5" ]; then
+    COMPREPLY=($(compgen -W "-o --order $HELP_FLAG" -- "${COMP_WORDS[4]}"))
+  fi
+}
+
+_pbmx_completion_stack_cut()
+{
+  if [ "${#COMP_WORDS[@]}" == "4" ]; then
+    COMPREPLY=($(compgen -W "$(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[3]}"))
+  elif [ "${#COMP_WORDS[@]}" == "5" ]; then
+    COMPREPLY=($(compgen -W "-n $HELP_FLAG" -- "${COMP_WORDS[4]}"))
+  fi
+}
+
+_pbmx_completion_stack_take()
+{
+  COMPREPLY=($(compgen -W "-r --remove -c --clone -t --to -o --over -u --under $(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[${#COMP_WORDS[@]}-1]}"))
+}
+
+_pbmx_completion_stack_pile()
+{
+  COMPREPLY=($(compgen -W "-r --remove -c --clone -t --to $(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[${#COMP_WORDS[@]}-1]}"))
+}
+
+_pbmx_completion_stack_insert()
+{
+  COMPREPLY=($(compgen -W "-r --remove -c --clone -t --to $(_pbmx_stack_ids) $HELP_FLAG" -- "${COMP_WORDS[${#COMP_WORDS[@]}-1]}"))
+}
