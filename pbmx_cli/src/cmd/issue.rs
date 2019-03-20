@@ -13,11 +13,11 @@ pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(false)?;
 
     let block = {
-        let mut builder = state.chain.build_block();
+        let mut builder = state.base.chain.build_block();
         for payload in state.payloads.iter().cloned() {
             builder.add_payload(payload);
         }
-        builder.build(&state.vtmf.private_key())
+        builder.build(&state.base.vtmf.private_key())
     };
     let id = block.id();
 

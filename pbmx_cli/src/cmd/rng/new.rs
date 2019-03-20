@@ -10,11 +10,11 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let mut state = State::read(true)?;
 
-    if state.rngs.contains_key(&name) {
+    if state.base.rngs.contains_key(&name) {
         return Err(Error::InvalidData);
     }
 
-    let _ = Rng::new(state.vtmf.parties(), &spec)?;
+    let _ = Rng::new(state.base.vtmf.parties(), &spec)?;
     println!(
         "{} {}: {}",
         " + Random number generator".green().bold(),
@@ -23,7 +23,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     );
     state.payloads.push(Payload::RandomSpec(name.clone(), spec));
 
-    let mask = state.vtmf.mask_random(&mut thread_rng());
+    let mask = state.base.vtmf.mask_random(&mut thread_rng());
 
     println!("{} {}", " + Entropy".green().bold(), name);
     state.payloads.push(Payload::RandomEntropy(name, mask));

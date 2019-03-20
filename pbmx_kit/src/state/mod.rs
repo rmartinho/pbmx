@@ -11,11 +11,10 @@ use crate::{
         },
     },
 };
-use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
 use std::collections::HashMap;
 
 mod stack_map;
-pub use stack_map::{PrivateSecretMap, StackMap};
+pub use stack_map::{PrivateSecretMap, SecretMap, StackMap};
 
 mod rng;
 pub use rng::Rng;
@@ -24,12 +23,18 @@ type PlayerMap = HashMap<Fingerprint, String>;
 type RngMap = HashMap<String, Rng>;
 
 /// The end state of a chain
+#[derive(Debug)]
 pub struct State {
-    vtmf: Vtmf,
-    names: PlayerMap,
-    chain: Chain,
-    stacks: StackMap,
-    rngs: RngMap,
+    /// The VTMF instance
+    pub vtmf: Vtmf,
+    /// The chain
+    pub chain: Chain,
+    /// The player names
+    pub names: PlayerMap,
+    /// The stacks
+    pub stacks: StackMap,
+    /// The RNGs
+    pub rngs: RngMap,
 }
 
 impl State {
@@ -59,10 +64,11 @@ impl State {
     }
 
     /// Adds a stack's private secrets to this state
-    pub fn add_secret(&mut self, id: Id, s: &[Scalar]) -> Result<(), ()> {
-        let base_mask = Mask(RISTRETTO_BASEPOINT_POINT, self.vtmf.shared_key().point());
-        let map: Vec<Mask> = s.iter().map(|r| r * base_mask).collect();
-        self.stacks.add_private_secret(id, map)
+    pub fn add_secrets<It>(&mut self, it: It) -> Result<(), ()>
+    where
+        It: Iterator<Item = (Mask, Mask)>,
+    {
+        self.stacks.add_private_secrets(it)
     }
 }
 

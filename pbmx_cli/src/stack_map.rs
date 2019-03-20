@@ -1,113 +1,12 @@
 use crate::Config;
 use pbmx_kit::{
-    chain::Id,
     crypto::{
-        keys::Fingerprint,
         map,
-        vtmf::{Mask, SecretShare, Stack, Vtmf},
+        vtmf::{Stack, Vtmf},
     },
+    state::{PrivateSecretMap, SecretMap},
 };
-use qp_trie::Trie;
-use std::{
-    collections::HashMap,
-    fmt::{self, Display, Formatter},
-    str,
-};
-
-pub type SecretMap = HashMap<Mask, (SecretShare, Vec<Fingerprint>)>;
-pub type PrivateSecretMap = HashMap<Mask, Mask>;
-
-#[derive(Clone, Default, Debug)]
-pub struct StackMap {
-    len: usize,
-    map: Trie<Id, Stack>,
-    name_map: HashMap<String, Id>,
-    pub secrets: SecretMap,
-    pub private_secrets: PrivateSecretMap,
-}
-
-impl StackMap {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    pub fn insert(&mut self, stack: Stack) {
-        if !self.map.contains_key(&stack.id()) {
-            self.map.insert(stack.id(), stack);
-            self.len += 1;
-        }
-    }
-
-    pub fn contains(&mut self, id: &Id) -> bool {
-        self.map.contains_key(id)
-    }
-
-    pub fn set_name(&mut self, id: Id, name: String) {
-        self.name_map
-            .entry(name)
-            .and_modify(|e| *e = id)
-            .or_insert(id);
-    }
-
-    pub fn add_secret_share(&mut self, id: Id, owner: Fingerprint, shares: Vec<SecretShare>) {
-        let stack = &mut self.map[&id];
-        for (m, di) in stack.iter().zip(shares.iter()) {
-            self.secrets
-                .entry(*m)
-                .and_modify(|(d, fp)| {
-                    if !fp.contains(&owner) {
-                        *d += di;
-                        fp.push(owner);
-                    }
-                })
-                .or_insert_with(|| (*di, vec![owner]));
-        }
-    }
-
-    pub fn get_by_str(&self, s: &str) -> Option<&Stack> {
-        let hex_to_byte =
-            |c| u8::from_str_radix(str::from_utf8(c).map_err(|_| ())?, 16).map_err(|_| ());
-
-        self.get_by_name(s).or_else(|| {
-            let bytes: Vec<_> = s
-                .as_bytes()
-                .chunks(2)
-                .map(hex_to_byte)
-                .collect::<Result<_, _>>()
-                .ok()?;
-            let mut prefixed = self.map.iter_prefix(bytes.as_slice());
-            prefixed.next().xor(prefixed.next()).map(|(_, v)| v)
-        })
-    }
-
-    pub fn ids(&self) -> impl Iterator<Item = &Id> {
-        self.map.keys()
-    }
-
-    pub fn names(&self) -> impl Iterator<Item = &str> {
-        self.name_map.keys().map(String::as_str)
-    }
-
-    pub fn is_name(&self, s: &str) -> bool {
-        self.name_map.contains_key(s)
-    }
-
-    pub fn get_by_id(&self, id: &Id) -> Option<&Stack> {
-        self.map.get(id)
-    }
-
-    pub fn get_by_name(&self, name: &str) -> Option<&Stack> {
-        self.get_by_id(self.name_map.get(name)?)
-    }
-}
+use std::fmt::{self, Display, Formatter};
 
 struct DisplayStackContents<'a>(
     &'a Stack,

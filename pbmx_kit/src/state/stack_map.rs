@@ -78,10 +78,11 @@ impl StackMap {
     }
 
     /// Stores a private secret
-    pub fn add_private_secret(&mut self, id: Id, masks: Vec<Mask>) -> Result<(), ()> {
-        let stack = self.get_by_id(&id).ok_or(())?;
-        let map = stack.to_vec().into_iter().zip(masks.into_iter());
-        self.private_secrets.extend(map);
+    pub fn add_private_secrets<It>(&mut self, it: It) -> Result<(), ()>
+    where
+        It: Iterator<Item = (Mask, Mask)>,
+    {
+        self.private_secrets.extend(it);
         Ok(())
     }
 
@@ -110,6 +111,16 @@ impl StackMap {
     /// Gets all stack names in the map
     pub fn names(&self) -> impl Iterator<Item = &str> {
         self.name_map.keys().map(String::as_str)
+    }
+
+    /// Gets all published secrets in the map
+    pub fn secrets(&self) -> &SecretMap {
+        &self.secrets
+    }
+
+    /// Gets all private secrets in the map
+    pub fn private_secrets(&self) -> &PrivateSecretMap {
+        &self.private_secrets
     }
 
     /// Tests whether a string is a stack name

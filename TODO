@@ -1,5 +1,5 @@
 # refactoring
-x merge non-CLI crates together
+x make app use lib state tracking
 - move more toolkit-ish stuff out of CLI
 - reduce duplication
 - dylib

@@ -15,7 +15,7 @@ use pbmx_kit::{
 pub fn run(_: &ArgMatches, cfg: &Config) -> Result<()> {
     let state = State::read(false)?;
 
-    state.chain.visit(&mut LogPrinter(&state, cfg));
+    state.base.chain.visit(&mut LogPrinter(&state, cfg));
 
     Ok(())
 }
@@ -30,7 +30,7 @@ impl<'a> BlockVisitor for LogPrinter<'a> {
 
         print!(" {}", "by".blue().bold());
         let fp = block.signer();
-        if let Some(n) = self.0.names.get(&fp) {
+        if let Some(n) = self.0.base.names.get(&fp) {
             print!(" {}", n);
         } else {
             print!(" {:16}", fp);

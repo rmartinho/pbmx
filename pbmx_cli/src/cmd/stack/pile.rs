@@ -14,6 +14,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         .iter()
         .map(|id| {
             state
+                .base
                 .stacks
                 .get_by_str(&id)
                 .ok_or(Error::InvalidData)
@@ -31,12 +32,13 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         let empty = Stack::default();
         let id3 = empty.id();
         for id in in_ids.iter() {
-            if state.stacks.is_name(id) {
-                if !state.stacks.contains(&id3) {
+            if state.base.stacks.is_name(id) {
+                if !state.base.stacks.contains(&id3) {
                     println!("{} []", " + Open Stack".green().bold());
                     state.payloads.push(Payload::OpenStack(empty.clone()));
                 }
                 let name_change = state
+                    .base
                     .stacks
                     .get_by_name(id)
                     .map(|s| s.id() != id3)
@@ -58,6 +60,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     state.payloads.push(Payload::PileStacks(ids, id2));
     if let Some(name) = name {
         let name_change = state
+            .base
             .stacks
             .get_by_name(&name)
             .map(|s| s.id() != id2)

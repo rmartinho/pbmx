@@ -7,14 +7,14 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let state = State::read(true)?;
 
-    let rng = state.rngs.get(&name).ok_or(Error::InvalidData)?;
-    if rng.entropy_parties().len() < state.vtmf.parties()
-        || rng.secret_parties().len() < state.vtmf.parties()
+    let rng = state.base.rngs.get(&name).ok_or(Error::InvalidData)?;
+    if rng.entropy_parties().len() < state.base.vtmf.parties()
+        || rng.secret_parties().len() < state.base.vtmf.parties()
     {
         return Err(Error::InvalidData);
     }
 
-    let n = rng.gen(&state.vtmf);
+    let n = rng.gen(&state.base.vtmf);
     println!("{} {} = {}", " - Random".green().bold(), name, n);
 
     Ok(())

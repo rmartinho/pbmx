@@ -8,13 +8,13 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let mut state = State::read(true)?;
 
-    let fp = state.vtmf.private_key().fingerprint();
-    let rng = state.rngs.get(&name).ok_or(Error::InvalidData)?;
+    let fp = state.base.vtmf.private_key().fingerprint();
+    let rng = state.base.rngs.get(&name).ok_or(Error::InvalidData)?;
     if rng.secret_parties().contains(&fp) {
         return Err(Error::InvalidData);
     }
 
-    let (share, proof) = state.vtmf.unmask_share(rng.mask());
+    let (share, proof) = state.base.vtmf.unmask_share(rng.mask());
 
     println!("{} {}", " + Random number secret".green().bold(), name);
     state

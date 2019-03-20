@@ -8,7 +8,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let mut state = State::read(false)?;
 
-    let key = state.vtmf.public_key();
+    let key = state.base.vtmf.public_key();
     let fp = key.fingerprint();
 
     println!("{} {} {}", " + Publish key ".green().bold(), &name, fp);

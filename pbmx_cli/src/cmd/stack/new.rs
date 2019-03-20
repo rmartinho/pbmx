@@ -34,13 +34,14 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
             &stack.clone(),
             &HashMap::new(),
             &HashMap::new(),
-            &state.vtmf,
+            &state.base.vtmf,
             cfg
         )
     );
     state.payloads.push(Payload::OpenStack(stack));
     if let Some(name) = name {
         let name_change = state
+            .base
             .stacks
             .get_by_name(&name)
             .map(|s| s.id() != id)

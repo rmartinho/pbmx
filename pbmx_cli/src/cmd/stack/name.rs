@@ -9,7 +9,11 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let mut state = State::read(true)?;
 
-    let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
+    let stack = state
+        .base
+        .stacks
+        .get_by_str(&id)
+        .ok_or(Error::InvalidData)?;
 
     let id = stack.id();
     println!("{} {:16} {}", " + Name stack".green().bold(), id, name);

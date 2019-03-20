@@ -7,10 +7,10 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let state = State::read(true)?;
 
     let mut named = HashSet::new();
-    let mut names: Vec<_> = state.stacks.names().collect();
+    let mut names: Vec<_> = state.base.stacks.names().collect();
     names.sort();
     for n in names {
-        let stack = state.stacks.get_by_name(n).unwrap();
+        let stack = state.base.stacks.get_by_name(n).unwrap();
         let id = stack.id();
         named.insert(id);
         println!(
@@ -21,9 +21,9 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         );
     }
     if m.is_present("ALL") {
-        for id in state.stacks.ids() {
+        for id in state.base.stacks.ids() {
             if !named.contains(id) {
-                let s = state.stacks.get_by_id(&id).unwrap();
+                let s = state.base.stacks.get_by_id(&id).unwrap();
                 println!("{} {:4}", format!("{:16}", id).yellow(), s.len());
             }
         }

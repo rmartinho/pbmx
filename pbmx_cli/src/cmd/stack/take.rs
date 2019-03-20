@@ -18,6 +18,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let mut state = State::read(true)?;
 
     let stack = state
+        .base
         .stacks
         .get_by_str(&id)
         .ok_or(Error::InvalidData)?
@@ -30,7 +31,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         .flatten()
         .collect();
 
-    if remove && state.stacks.is_name(&id) {
+    if remove && state.base.stacks.is_name(&id) {
         let rev_indices: Vec<_> = (0..stack.len()).filter(|i| !indices.contains(&i)).collect();
         take(&stack, rev_indices, Some(id), Stacking::Replace, &mut state)?;
     }
@@ -79,6 +80,7 @@ fn take(
     let (name, result) = match stacking {
         Stacking::Over(over) => {
             let o = state
+                .base
                 .stacks
                 .get_by_str(&over)
                 .ok_or(Error::InvalidData)?
@@ -96,6 +98,7 @@ fn take(
         }
         Stacking::Under(under) => {
             let u = state
+                .base
                 .stacks
                 .get_by_str(&under)
                 .ok_or(Error::InvalidData)?
@@ -116,6 +119,7 @@ fn take(
     let id3 = result.id();
     if let Some(target) = name {
         let name_change = state
+            .base
             .stacks
             .get_by_name(&target)
             .map(|s| s.id() != id3)

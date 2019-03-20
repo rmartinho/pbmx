@@ -10,10 +10,14 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let mut state = State::read(true)?;
 
-    let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
+    let stack = state
+        .base
+        .stacks
+        .get_by_str(&id)
+        .ok_or(Error::InvalidData)?;
     let n = n.unwrap_or_else(|| thread_rng().gen_range(0, stack.len()));
 
-    let (s, r, proof) = state.vtmf.mask_shift(&stack, n);
+    let (s, r, proof) = state.base.vtmf.mask_shift(&stack, n);
     state.save_secrets(&s, r)?;
 
     let id1 = stack.id();
@@ -25,7 +29,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         id1,
         id2
     );
-    if state.stacks.is_name(&id) {
+    if state.base.stacks.is_name(&id) {
         println!("{} {:16} {}", " + Name stack".green().bold(), id2, id);
         state.payloads.push(Payload::NameStack(id2, id.to_string()));
     }

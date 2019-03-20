@@ -6,15 +6,19 @@ pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
     let state = State::read(false)?;
 
     println!("   {}", "Chain".blue().bold());
-    println!("    {}  {}", "Blocks".blue().bold(), state.chain.count());
-    if !state.chain.is_empty() {
+    println!(
+        "    {}  {}",
+        "Blocks".blue().bold(),
+        state.base.chain.count()
+    );
+    if !state.base.chain.is_empty() {
         print!("    {}  ", "Heads".blue().bold());
-        for head in state.chain.heads().iter() {
+        for head in state.base.chain.heads().iter() {
             print!(" {:16}", head);
         }
         println!();
         print!("    {}  ", "Roots".blue().bold());
-        for root in state.chain.roots().iter() {
+        for root in state.base.chain.roots().iter() {
             print!(" {:16}", root);
         }
         println!();
@@ -24,25 +28,25 @@ pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
     println!(
         "    {} {:16}",
         "Private".blue().bold(),
-        state.vtmf.private_key().fingerprint()
+        state.base.vtmf.private_key().fingerprint()
     );
     println!(
         "    {}  {:16}",
         "Shared".blue().bold(),
-        state.vtmf.shared_key().fingerprint()
+        state.base.vtmf.shared_key().fingerprint()
     );
 
-    if !state.stacks.is_empty() {
+    if !state.base.stacks.is_empty() {
         println!(
             "   {} {} ({})",
             "Stacks".blue().bold(),
-            state.stacks.names().count(),
-            state.stacks.len()
+            state.base.stacks.names().count(),
+            state.base.stacks.len()
         );
     }
 
-    if !state.rngs.is_empty() {
-        println!("   {} {}", "Rngs".blue().bold(), state.rngs.len());
+    if !state.base.rngs.is_empty() {
+        println!("   {} {}", "Rngs".blue().bold(), state.base.rngs.len());
     }
 
     if !state.payloads.is_empty() {

@@ -8,9 +8,16 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let mut state = State::read(true)?;
 
-    let stack = state.stacks.get_by_str(&id).ok_or(Error::InvalidData)?;
+    let stack = state
+        .base
+        .stacks
+        .get_by_str(&id)
+        .ok_or(Error::InvalidData)?;
 
-    let (s, p): (Vec<_>, Vec<_>) = stack.iter().map(|m| state.vtmf.unmask_share(m)).unzip();
+    let (s, p): (Vec<_>, Vec<_>) = stack
+        .iter()
+        .map(|m| state.base.vtmf.unmask_share(m))
+        .unzip();
 
     let id1 = stack.id();
     state.payloads.push(Payload::PublishShares(id1, s, p));
