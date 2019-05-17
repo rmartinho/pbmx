@@ -219,14 +219,10 @@ mod spec {
 
     impl Display for OpKind {
         fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            write!(
-                f,
-                "{}",
-                match self {
-                    OpKind::Add => "+",
-                    OpKind::Sub => "-",
-                }
-            )
+            write!(f, "{}", match self {
+                OpKind::Add => "+",
+                OpKind::Sub => "-",
+            })
         }
     }
 
