@@ -1,13 +1,12 @@
 //! PBMX toolbox blockchain tools
 
 mod block;
-pub use self::block::{Block, BlockVisitor};
+pub use self::block::{Block, BlockBuilder, BlockVisitor};
 mod payload;
 pub use self::payload::{Payload, PayloadVisitor};
 
 pub use crate::crypto::keys::Fingerprint as Id;
 
-use self::block::BlockBuilder;
 use crate::serde::serialize_flat_map;
 use serde::de::{Deserialize, Deserializer};
 use std::collections::HashMap;

@@ -112,9 +112,14 @@ impl Vtmf {
         self.pki.len()
     }
 
-    /// Gets the number of parties in this VTMF
+    /// Gets the fingerprints of the parties in this VTMF
     pub fn fingerprints<'a>(&'a self) -> impl Iterator<Item = Fingerprint> + 'a {
         self.pki.keys().cloned()
+    }
+
+    /// Gets the public keys of the parties in this VTMF
+    pub fn public_keys<'a>(&'a self) -> impl Iterator<Item = PublicKey> + 'a {
+        self.pki.values().cloned()
     }
 }
 

@@ -28,6 +28,7 @@ pub struct PublicKey {
 }
 
 /// A public key fingerprint
+#[repr(C)]
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
 
