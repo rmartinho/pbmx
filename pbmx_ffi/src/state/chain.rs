@@ -10,7 +10,7 @@ use crate::{
         Pbmx,
     },
 };
-use libc::{c_char, size_t};
+use libc::{c_char, c_int, size_t};
 use pbmx_kit::{
     chain::{Block, BlockBuilder, Payload},
     crypto::vtmf::Mask,
@@ -280,4 +280,110 @@ pub unsafe extern "C" fn pbmx_block_validate(state: Pbmx, block: PbmxBlock) -> P
     } else {
         PbmxResult::err()
     }
+}
+
+pub unsafe fn return_list<T, It>(iter: It, ptr: *mut T, len: *mut size_t) -> PbmxResult
+where
+    It: ExactSizeIterator<Item = T>,
+{
+    let len = &mut *len;
+    let n = iter.len();
+    if *len < n {
+        *len = n;
+        return PbmxResult::ok();
+    }
+
+    if ptr.is_null() {
+        return None?;
+    }
+
+    let slice = slice::from_raw_parts_mut(ptr, *len);
+    for (t, s) in iter.zip(slice.iter_mut()) {
+        *s = t;
+    }
+
+    PbmxResult::ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_blocks(
+    state: Pbmx,
+    ptr: *mut PbmxBlock,
+    len: *mut size_t,
+) -> PbmxResult {
+    let blocks = state
+        .as_ref()?
+        .chain
+        .blocks()
+        .map(|b| PbmxBlock::wrap(b.clone()));
+    return_list(blocks, ptr, len)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_heads(
+    state: Pbmx,
+    ptr: *mut PbmxFingerprint,
+    len: *mut size_t,
+) -> PbmxResult {
+    let heads = state.as_ref()?.chain.heads().iter().cloned();
+    return_list(heads, ptr, len)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_roots(
+    state: Pbmx,
+    ptr: *mut PbmxFingerprint,
+    len: *mut size_t,
+) -> PbmxResult {
+    let roots = state.as_ref()?.chain.roots().iter().cloned();
+    return_list(roots, ptr, len)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_merged_chain(state: Pbmx) -> c_int {
+    state
+        .as_ref()
+        .map(|s| if s.chain.is_merged() { 1 } else { 0 })
+        .unwrap_or(0)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_empty_chain(state: Pbmx) -> c_int {
+    state
+        .as_ref()
+        .map(|s| if s.chain.is_empty() { 1 } else { 0 })
+        .unwrap_or(0)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_incomplete_chain(state: Pbmx) -> c_int {
+    state
+        .as_ref()
+        .map(|s| if s.chain.is_incomplete() { 1 } else { 0 })
+        .unwrap_or(0)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_parent_ids(
+    block: PbmxBlock,
+    ptr: *mut PbmxFingerprint,
+    len: *mut size_t,
+) -> PbmxResult {
+    let ids = block.as_ref()?.parent_ids().iter().cloned();
+    return_list(ids, ptr, len)
+}
+
+pub type PbmxPayload = Opaque<Payload>;
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_payloads(
+    block: PbmxBlock,
+    ptr: *mut PbmxPayload,
+    len: *mut size_t,
+) -> PbmxResult {
+    let payloads = block
+        .as_ref()?
+        .payloads()
+        .map(|p| PbmxPayload::wrap(p.clone()));
+    return_list(payloads, ptr, len)
 }

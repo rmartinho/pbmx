@@ -69,7 +69,7 @@ impl Block {
     }
 
     /// Gets this block's payloads in order
-    pub fn payloads(&self) -> impl Iterator<Item = &Payload> {
+    pub fn payloads(&self) -> impl ExactSizeIterator<Item = &Payload> {
         PayloadIter {
             payload_order: self.payload_order.iter(),
             payloads: &self.payloads,
@@ -92,6 +92,12 @@ impl<'a> Iterator for PayloadIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let id = self.payload_order.next()?;
         self.payloads.get(id)
+    }
+}
+
+impl<'a> ExactSizeIterator for PayloadIter<'a> {
+    fn len(&self) -> usize {
+        self.payloads.len()
     }
 }
 

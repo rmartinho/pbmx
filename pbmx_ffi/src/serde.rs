@@ -7,7 +7,7 @@ pub unsafe fn ffi_export<T>(t: &T, buf: *mut u8, len: *mut size_t) -> PbmxResult
 where
     T: ToBytes,
 {
-    if buf.is_null() || len.is_null() {
+    if buf.is_null() && len.is_null() {
         None?
     }
     let bytes = t.to_bytes().ok()?;

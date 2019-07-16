@@ -417,10 +417,10 @@ ffi_deleter! { pbmx_delete_insert_proof(InsertProof) }
 #[no_mangle]
 pub unsafe extern "C" fn pbmx_insert(
     state: Pbmx,
-    stack: *const PbmxMask,
-    len_stack: size_t,
     needle: *const PbmxMask,
     len_needle: size_t,
+    stack: *const PbmxMask,
+    len_stack: size_t,
     k: size_t,
     inserted_out: *mut PbmxMask,
     proof_out: *mut PbmxInsertProof,
@@ -431,7 +431,7 @@ pub unsafe extern "C" fn pbmx_insert(
 
     let stack: Option<_> = stack.iter().cloned().map(|m| m.try_into().ok()).collect();
     let needle: Option<_> = needle.iter().cloned().map(|m| m.try_into().ok()).collect();
-    let (inserted, _, proof) = vtmf.mask_insert(stack.as_ref()?, needle.as_ref()?, k);
+    let (inserted, _, proof) = vtmf.mask_insert(needle.as_ref()?, stack.as_ref()?, k);
 
     let mut inserted_out = BufferFillPtr::new(inserted_out)?;
     for mask in inserted.iter().cloned() {
@@ -444,10 +444,10 @@ pub unsafe extern "C" fn pbmx_insert(
 #[no_mangle]
 pub unsafe extern "C" fn pbmx_verify_insert(
     state: Pbmx,
-    stack: *const PbmxMask,
-    len_stack: size_t,
     needle: *const PbmxMask,
     len_needle: size_t,
+    stack: *const PbmxMask,
+    len_stack: size_t,
     inserted: *const PbmxMask,
     proof: PbmxInsertProof,
 ) -> PbmxResult {
@@ -470,7 +470,7 @@ pub unsafe extern "C" fn pbmx_verify_insert(
         .cloned()
         .map(|m| m.try_into().ok())
         .collect::<Option<_>>()?;
-    vtmf.verify_mask_insert(&stack, &needle, &inserted, proof.as_ref()?)
+    vtmf.verify_mask_insert(&needle, &stack, &inserted, proof.as_ref()?)
         .ok()?;
     PbmxResult::ok()
 }
@@ -545,6 +545,18 @@ pub unsafe extern "C" fn pbmx_mask_random(
         vtmf.mask_random(&mut *rng)
     };
     mask_out.opt_write(mask.into());
+    PbmxResult::ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_add_masks(
+    mask1: PbmxMask,
+    mask2: PbmxMask,
+    mask_out: *mut PbmxMask,
+) -> PbmxResult {
+    let mask1: Mask = mask1.try_into().ok()?;
+    let mask2: Mask = mask2.try_into().ok()?;
+    mask_out.opt_write((mask1 + mask2).into());
     PbmxResult::ok()
 }
 

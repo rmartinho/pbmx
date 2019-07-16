@@ -103,7 +103,7 @@ impl Chain {
     }
 
     /// An iterator over the blocks in this chain
-    pub fn blocks(&self) -> impl Iterator<Item = &Block> {
+    pub fn blocks(&self) -> impl ExactSizeIterator<Item = &Block> {
         Blocks::new(self)
     }
 }
@@ -175,6 +175,12 @@ impl<'a> Iterator for Blocks<'a> {
                 }
             }
         }
+    }
+}
+
+impl<'a> ExactSizeIterator for Blocks<'a> {
+    fn len(&self) -> usize {
+        self.chain.blocks.len()
     }
 }
 
