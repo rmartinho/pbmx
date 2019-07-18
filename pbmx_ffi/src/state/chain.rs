@@ -1,6 +1,7 @@
 use crate::{
     keys::{PbmxFingerprint, PbmxPublicKey},
     opaque::Opaque,
+    ptr::PtrOptWrite,
     result::PbmxResult,
     state::{
         vtmf::{
@@ -282,7 +283,7 @@ pub unsafe extern "C" fn pbmx_block_validate(state: Pbmx, block: PbmxBlock) -> P
     }
 }
 
-pub unsafe fn return_list<T, It>(iter: It, ptr: *mut T, len: *mut size_t) -> PbmxResult
+unsafe fn return_list<T, It>(iter: It, ptr: *mut T, len: *mut size_t) -> PbmxResult
 where
     It: ExactSizeIterator<Item = T>,
 {
@@ -315,7 +316,7 @@ pub unsafe extern "C" fn pbmx_blocks(
         .as_ref()?
         .chain
         .blocks()
-        .map(|b| PbmxBlock::wrap(b.clone()));
+        .map(|b| Opaque::wrap(b.clone()));
     return_list(blocks, ptr, len)
 }
 
@@ -381,9 +382,276 @@ pub unsafe extern "C" fn pbmx_payloads(
     ptr: *mut PbmxPayload,
     len: *mut size_t,
 ) -> PbmxResult {
-    let payloads = block
-        .as_ref()?
-        .payloads()
-        .map(|p| PbmxPayload::wrap(p.clone()));
+    let payloads = block.as_ref()?.payloads().map(|p| Opaque::wrap(p.clone()));
     return_list(payloads, ptr, len)
+}
+
+unsafe fn return_string(s: &str, ptr: *mut c_char, len: *mut size_t) -> PbmxResult {
+    if *len < s.len() + 1 {
+        *len = s.len() + 1;
+        return None?;
+    }
+    let slice = slice::from_raw_parts_mut(ptr as *mut u8, *len);
+    slice[..s.len()].copy_from_slice(s.as_bytes());
+    slice[s.len()] = 0;
+    PbmxResult::ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_publish_key(
+    payload: PbmxPayload,
+    name_out: *mut c_char,
+    name_len: *mut size_t,
+    key_out: *mut PbmxPublicKey,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::PublishKey(name, key) => {
+            return_string(&name, name_out, name_len)?;
+            key_out.opt_write(Opaque::wrap(key.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_open_stack(
+    payload: PbmxPayload,
+    masks_out: *mut PbmxMask,
+    len: *mut size_t,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::OpenStack(stack) => {
+            let masks = stack.iter().map(|&m| m.into());
+            return_list(masks, masks_out, len)?;
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_mask_stack(
+    payload: PbmxPayload,
+    id_out: *mut PbmxFingerprint,
+    masks_out: *mut PbmxMask,
+    len: *mut size_t,
+    proofs_out: *mut PbmxMaskProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::MaskStack(id, stack, proof) => {
+            let masks = stack.iter().map(|&m| m.into());
+            return_list(masks, masks_out, len)?;
+            let proofs = proof.iter().map(|p| Opaque::wrap(p.clone()));
+            return_list(proofs, proofs_out, len)?;
+            id_out.opt_write(id.clone().into());
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_shuffle_stack(
+    payload: PbmxPayload,
+    id_out: *mut PbmxFingerprint,
+    masks_out: *mut PbmxMask,
+    len: *mut size_t,
+    proof_out: *mut PbmxShuffleProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::ShuffleStack(id, stack, proof) => {
+            let masks = stack.iter().map(|&m| m.into());
+            return_list(masks, masks_out, len)?;
+            id_out.opt_write(id.clone().into());
+            proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_shift_stack(
+    payload: PbmxPayload,
+    id_out: *mut PbmxFingerprint,
+    masks_out: *mut PbmxMask,
+    len: *mut size_t,
+    proof_out: *mut PbmxShiftProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::ShiftStack(id, stack, proof) => {
+            let masks = stack.iter().map(|&m| m.into());
+            return_list(masks, masks_out, len)?;
+            id_out.opt_write(id.clone().into());
+            proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_name_stack(
+    payload: PbmxPayload,
+    id_out: *mut PbmxFingerprint,
+    name_out: *mut c_char,
+    name_len: *mut size_t,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::NameStack(id, name) => {
+            return_string(name, name_out, name_len)?;
+            id_out.opt_write(id.clone().into());
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_take_stack(
+    payload: PbmxPayload,
+    id1_out: *mut PbmxFingerprint,
+    indices_out: *mut size_t,
+    indices_len: *mut size_t,
+    id2_out: *mut PbmxFingerprint,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::TakeStack(id1, indices, id2) => {
+            return_list(indices.iter().cloned(), indices_out, indices_len)?;
+            id1_out.opt_write(id1.clone().into());
+            id2_out.opt_write(id2.clone().into());
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_pile_stacks(
+    payload: PbmxPayload,
+    ids_out: *mut PbmxFingerprint,
+    ids_len: *mut size_t,
+    id_out: *mut PbmxFingerprint,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::PileStacks(ids, id) => {
+            return_list(ids.iter().cloned(), ids_out, ids_len)?;
+            id_out.opt_write(id.clone().into());
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_insert_stack(
+    payload: PbmxPayload,
+    id1_out: *mut PbmxFingerprint,
+    id2_out: *mut PbmxFingerprint,
+    masks_out: *mut PbmxMask,
+    len: *mut size_t,
+    proof_out: *mut PbmxInsertProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::InsertStack(id1, id2, stack, proof) => {
+            let masks = stack.iter().map(|&m| m.into());
+            return_list(masks, masks_out, len)?;
+            id1_out.opt_write(id1.clone().into());
+            id2_out.opt_write(id2.clone().into());
+            proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_publish_shares(
+    payload: PbmxPayload,
+    id_out: *mut PbmxFingerprint,
+    shares_out: *mut PbmxShare,
+    len: *mut size_t,
+    proofs_out: *mut PbmxShareProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::PublishShares(id, shares, proofs) => {
+            let shares = shares.iter().map(|&m| m.into());
+            return_list(shares, shares_out, len)?;
+            let proofs = proofs.iter().map(|p| Opaque::wrap(p.clone()));
+            return_list(proofs, proofs_out, len)?;
+            id_out.opt_write(id.clone().into());
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_random_spec(
+    payload: PbmxPayload,
+    name_out: *mut c_char,
+    name_len: *mut size_t,
+    spec_out: *mut c_char,
+    spec_len: *mut size_t,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::RandomSpec(name, spec) => {
+            return_string(name, name_out, name_len)?;
+            return_string(spec, spec_out, spec_len)?;
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_random_entropy(
+    payload: PbmxPayload,
+    name_out: *mut c_char,
+    name_len: *mut size_t,
+    entropy_out: *mut PbmxMask,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::RandomEntropy(name, entropy) => {
+            return_string(name, name_out, name_len)?;
+            entropy_out.opt_write(entropy.clone().into());
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_random_reveal(
+    payload: PbmxPayload,
+    name_out: *mut c_char,
+    name_len: *mut size_t,
+    share_out: *mut PbmxShare,
+    proof_out: *mut PbmxShareProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::RandomReveal(name, share, proof) => {
+            return_string(name, name_out, name_len)?;
+            share_out.opt_write(share.clone().into());
+            proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_bytes(
+    payload: PbmxPayload,
+    buf_out: *mut u8,
+    len: *mut size_t,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::Bytes(bytes) => {
+            return_list(bytes.iter().cloned(), buf_out, len)?;
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
 }
