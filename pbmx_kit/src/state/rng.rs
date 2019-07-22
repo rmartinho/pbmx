@@ -7,7 +7,7 @@ use digest::XofReader;
 use std::fmt::{self, Debug, Display, Formatter};
 
 /// An distributed random number generator
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Rng {
     parties: usize,
     spec: RngSpec,
@@ -81,6 +81,7 @@ impl Rng {
     }
 }
 
+#[derive(Clone)]
 struct RngSpec(spec::Expr);
 
 impl Display for RngSpec {
@@ -97,7 +98,7 @@ impl Debug for RngSpec {
 
 impl RngSpec {
     fn parse(input: &str) -> Result<Self, spec::ParseError> {
-        Ok(Self(spec::parse_expr(input)?))
+        Ok(Self(spec::Expr::parse(input)?))
     }
 
     fn gen(&self, reader: &mut XofReader) -> u64 {
@@ -123,40 +124,54 @@ mod spec {
         }
     }
 
-    pub trait Node: Display {
-        fn apply(&self, reader: &mut XofReader) -> u64;
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    enum Node {
+        Const(u64),
+        Die { n: u64, d: u64, max: u64 },
+        Op(Expr, OpKind, Expr),
     }
 
-    #[derive(Debug, PartialEq, Eq)]
-    struct Const(u64);
-
-    impl Display for Const {
+    impl Display for Node {
         fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            write!(f, "{}", self.0)
+            match self {
+                Node::Const(k) => write!(f, "{}", k),
+                Node::Die { n, d, .. } => write!(f, "{}d{}", n, d),
+                Node::Op(l, o, r) => write!(f, "{}{}{}", l, o, r),
+            }
         }
     }
 
-    impl Node for Const {
-        fn apply(&self, _: &mut XofReader) -> u64 {
-            self.0
+    impl Node {
+        fn apply(&self, reader: &mut XofReader) -> u64 {
+            match self {
+                Node::Const(k) => *k,
+                Node::Die { n, d, max } => {
+                    let mut sum = 0u64;
+                    for _ in 0..*n {
+                        loop {
+                            let mut buf = [0u8; 8];
+                            reader.read(&mut buf);
+                            let x = u64::from_be_bytes(buf);
+                            if x < *max {
+                                sum += x % *d;
+                                break;
+                            }
+                        }
+                    }
+                    sum
+                }
+                Node::Op(l, o, r) => {
+                    let left = l.apply(reader);
+                    let right = r.apply(reader);
+                    match o {
+                        OpKind::Add => left + right,
+                        OpKind::Sub => left - right,
+                    }
+                }
+            }
         }
-    }
 
-    #[derive(Debug, PartialEq, Eq)]
-    struct Die {
-        n: u64,
-        d: u64,
-        max: u64,
-    }
-
-    impl Display for Die {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            write!(f, "{}d{}", self.n, self.d)
-        }
-    }
-
-    impl Die {
-        fn new(n: u64, d: u64) -> Self {
+        fn die(n: u64, d: u64) -> Self {
             let max = iter::repeat(d)
                 .scan(1u64, |s, x| {
                     let (r, overflow) = s.overflowing_mul(x);
@@ -169,49 +184,11 @@ mod spec {
                 })
                 .last()
                 .unwrap();
-            Self { n, d, max }
+            Node::Die { n, d, max }
         }
     }
 
-    impl Node for Die {
-        fn apply(&self, reader: &mut XofReader) -> u64 {
-            let mut sum = 0u64;
-            for _ in 0..self.n {
-                loop {
-                    let mut buf = [0u8; 8];
-                    reader.read(&mut buf);
-                    let x = u64::from_be_bytes(buf);
-                    if x < self.max {
-                        sum += x % self.d;
-                        break;
-                    }
-                }
-            }
-            sum
-        }
-    }
-
-    #[derive(Debug, PartialEq, Eq)]
-    struct Op(Die, OpKind, Const);
-
-    impl Display for Op {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            write!(f, "{}{}{}", self.0, self.1, self.2)
-        }
-    }
-
-    impl Node for Op {
-        fn apply(&self, reader: &mut XofReader) -> u64 {
-            let left = self.0.apply(reader);
-            let right = self.2.apply(reader);
-            match self.1 {
-                OpKind::Add => left + right,
-                OpKind::Sub => left - right,
-            }
-        }
-    }
-
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     enum OpKind {
         Add,
         Sub,
@@ -226,30 +203,43 @@ mod spec {
         }
     }
 
-    pub type Expr = Box<dyn Node + 'static>;
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Expr(Box<Node>);
 
-    pub fn parse_expr(input: &str) -> Result<Expr, ParseError> {
-        expr(CompleteStr(input))
-            .map(|(_, x)| x)
-            .map_err(|_| ParseError)
+    impl Display for Expr {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
     }
 
-    fn make_expr<T: Node + 'static>(t: T) -> Expr {
-        box t
+    impl Expr {
+        pub fn parse(input: &str) -> Result<Self, ParseError> {
+            expr(CompleteStr(input))
+                .map(|(_, x)| x)
+                .map_err(|_| ParseError)
+        }
+
+        pub fn apply(&self, reader: &mut XofReader) -> u64 {
+            self.0.apply(reader)
+        }
+
+        fn make(node: Node) -> Self {
+            Self(box node)
+        }
     }
 
     named!(number(CompleteStr) -> u64,
         ws!(map_res!(digit, |s: CompleteStr| u64::from_str(s.0)))
     );
-    named!(constant(CompleteStr) -> Const,
-        ws!(map!(number, Const))
+    named!(constant(CompleteStr) -> Node,
+        ws!(map!(number, Node::Const))
     );
-    named!(die(CompleteStr) -> Die,
+    named!(die(CompleteStr) -> Node,
         ws!(do_parse!(
             n: number >>
             char!('d') >>
             d: number >>
-            (Die::new(n, d))
+            (Node::die(n, d))
         ))
     );
     named!(op_kind(CompleteStr) -> OpKind,
@@ -258,18 +248,18 @@ mod spec {
             value!(OpKind::Sub, char!('-'))
         ))
     );
-    named!(op(CompleteStr) -> Op,
+    named!(op(CompleteStr) -> Node,
         ws!(do_parse!(
             l: die >>
             o: op_kind >>
             r: constant >>
-            (Op(l, o, r))
+            (Node::Op(Expr::make(l), o, Expr::make(r)))
         ))
     );
     named!(expr(CompleteStr) -> Expr,
         ws!(alt!(
-            map!(op, make_expr) |
-            map!(die, make_expr)
+            map!(op, Expr::make) |
+            map!(die, Expr::make)
         ))
     );
 }
