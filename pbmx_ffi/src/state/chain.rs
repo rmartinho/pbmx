@@ -1,4 +1,5 @@
 use crate::{
+    buffer::{return_list, return_string},
     keys::{PbmxFingerprint, PbmxPublicKey},
     opaque::Opaque,
     ptr::PtrOptWrite,
@@ -283,29 +284,6 @@ pub unsafe extern "C" fn pbmx_block_validate(state: Pbmx, block: PbmxBlock) -> P
     }
 }
 
-unsafe fn return_list<T, It>(iter: It, ptr: *mut T, len: *mut size_t) -> PbmxResult
-where
-    It: ExactSizeIterator<Item = T>,
-{
-    let len = &mut *len;
-    let n = iter.len();
-    if *len < n {
-        *len = n;
-        return PbmxResult::ok();
-    }
-
-    if ptr.is_null() {
-        return None?;
-    }
-
-    let slice = slice::from_raw_parts_mut(ptr, *len);
-    for (t, s) in iter.zip(slice.iter_mut()) {
-        *s = t;
-    }
-
-    PbmxResult::ok()
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn pbmx_blocks(
     state: Pbmx,
@@ -386,14 +364,45 @@ pub unsafe extern "C" fn pbmx_payloads(
     return_list(payloads, ptr, len)
 }
 
-unsafe fn return_string(s: &str, ptr: *mut c_char, len: *mut size_t) -> PbmxResult {
-    if *len < s.len() + 1 {
-        *len = s.len() + 1;
-        return None?;
-    }
-    let slice = slice::from_raw_parts_mut(ptr as *mut u8, *len);
-    slice[..s.len()].copy_from_slice(s.as_bytes());
-    slice[s.len()] = 0;
+#[repr(C)]
+pub enum PayloadKind {
+    PublishKey = 1,
+    OpenStack,
+    MaskStack,
+    ShuffleStack,
+    ShiftStack,
+    NameStack,
+    TakeStack,
+    PileStacks,
+    InsertStack,
+    PublishShares,
+    RandomSpec,
+    RandomEntropy,
+    RandomReveal,
+    Bytes,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_payload_kind(
+    payload: PbmxPayload,
+    kind_out: *mut PayloadKind,
+) -> PbmxResult {
+    kind_out.opt_write(match payload.as_ref()? {
+        Payload::PublishKey(..) => PayloadKind::PublishKey,
+        Payload::OpenStack(_) => PayloadKind::OpenStack,
+        Payload::MaskStack(..) => PayloadKind::MaskStack,
+        Payload::ShuffleStack(..) => PayloadKind::ShuffleStack,
+        Payload::ShiftStack(..) => PayloadKind::ShiftStack,
+        Payload::NameStack(..) => PayloadKind::NameStack,
+        Payload::TakeStack(..) => PayloadKind::TakeStack,
+        Payload::PileStacks(..) => PayloadKind::PileStacks,
+        Payload::InsertStack(..) => PayloadKind::InsertStack,
+        Payload::PublishShares(..) => PayloadKind::PublishShares,
+        Payload::RandomSpec(..) => PayloadKind::RandomSpec,
+        Payload::RandomEntropy(..) => PayloadKind::RandomEntropy,
+        Payload::RandomReveal(..) => PayloadKind::RandomReveal,
+        Payload::Bytes(_) => PayloadKind::Bytes,
+    });
     PbmxResult::ok()
 }
 

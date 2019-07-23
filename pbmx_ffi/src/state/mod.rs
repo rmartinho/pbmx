@@ -2,7 +2,7 @@ use crate::{keys::PbmxPrivateKey, opaque::Opaque};
 use pbmx_kit::state::State;
 
 pub mod chain;
-// pub mod secrets;
+pub mod rng;
 pub mod vtmf;
 
 pub type Pbmx = Opaque<State>;

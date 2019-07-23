@@ -1,9 +1,8 @@
 // TODO don't slice if null
 // TODO don't transmute if null
 // TODO BufferFillPtr copy_from_slice
-// TODO PbmxMask slice to Vec<Mask>
 use crate::{
-    buffer::BufferFillPtr,
+    buffer::{return_kv_list, BufferFillPtr},
     keys::{PbmxFingerprint, PbmxPrivateKey, PbmxPublicKey},
     opaque::Opaque,
     ptr::PtrOptWrite,
@@ -13,7 +12,7 @@ use crate::{
 };
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use digest::XofReader;
-use libc::{size_t, uint64_t};
+use libc::{c_char, size_t, uint64_t};
 use pbmx_kit::crypto::{
     map,
     vtmf::{InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
@@ -50,28 +49,21 @@ pub unsafe extern "C" fn pbmx_add_key(mut state: Pbmx, key: PbmxPublicKey) -> Pb
 #[no_mangle]
 pub unsafe extern "C" fn pbmx_parties(
     state: Pbmx,
-    ptr: *mut PbmxFingerprint,
+    fp_out: *mut PbmxFingerprint,
     len: *mut size_t,
+    names_idx_out: *mut size_t,
+    names_out: *mut c_char,
+    names_len: *mut size_t,
 ) -> PbmxResult {
-    let vtmf = &state.as_ref()?.vtmf;
-    let n = vtmf.parties();
-    let len = &mut *len;
-    if *len < n {
-        *len = n;
-        return PbmxResult::ok();
-    }
-
-    if ptr.is_null() {
-        return None?;
-    }
-
-    let fps = vtmf.fingerprints();
-    let slice = slice::from_raw_parts_mut(ptr, *len);
-    for (fp, s) in fps.zip(slice.iter_mut()) {
-        *s = fp;
-    }
-
-    PbmxResult::ok()
+    let map = &state.as_ref()?.names;
+    return_kv_list(
+        map.iter().map(|(k, v)| (v.clone(), k.clone())),
+        names_idx_out,
+        len,
+        names_out,
+        names_len,
+        fp_out,
+    )
 }
 
 #[repr(C)]
