@@ -12,6 +12,7 @@ version = "1.0"
 
 [dependencies.curve25519-dalek]
 version = "1.0"
+features = ["serde"]
 
 [dependencies.digest]
 version = "0.8"
@@ -45,9 +46,6 @@ version = "2.0"
 
 [dependencies.tribool]
 version = "0.2"
-
-[dependencies.zkp]
-version = "0.5"
 
 [build-dependencies.curve25519-dalek]
 version = "1.0"

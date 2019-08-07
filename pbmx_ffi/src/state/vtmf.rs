@@ -12,7 +12,7 @@ use crate::{
 };
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use digest::XofReader;
-use libc::{c_char, size_t, uint64_t};
+use libc::{c_char, size_t};
 use pbmx_kit::crypto::{
     map,
     vtmf::{InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
@@ -106,11 +106,11 @@ impl From<Mask> for PbmxMask {
 
 #[repr(transparent)]
 #[derive(Copy, Clone)]
-pub struct PbmxValue(uint64_t);
+pub struct PbmxValue(u64);
 
 impl Try for PbmxValue {
     type Error = NoneError;
-    type Ok = uint64_t;
+    type Ok = u64;
 
     fn into_result(self) -> Result<Self::Ok, Self::Error> {
         if self.0 == u64::MAX {

@@ -9,8 +9,6 @@
 extern crate nom;
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
-extern crate zkp;
 
 #[macro_use]
 pub mod serde;
