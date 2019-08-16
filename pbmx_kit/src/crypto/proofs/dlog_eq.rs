@@ -33,7 +33,8 @@ pub struct Secrets<'a> {
 }
 
 impl Proof {
-    /// Generates a non-interactive zero-knowledge proof of equality of discrete logarithms
+    /// Generates a non-interactive zero-knowledge proof of equality of discrete
+    /// logarithms
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"dlog_eq");
 

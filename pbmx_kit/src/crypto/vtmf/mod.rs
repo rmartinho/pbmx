@@ -255,17 +255,28 @@ impl Vtmf {
     pub fn mask_shuffle(&self, m: &Stack, pi: &Permutation) -> (Stack, Vec<Scalar>, ShuffleProof) {
         let mut rng = thread_rng();
 
+        let r: Vec<_> = iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(m.len())
+            .collect();
+        let (rm, proof) = self.mask_shuffle_with_secret(m, pi, &r);
+        (rm, r, proof)
+    }
+
+    fn mask_shuffle_with_secret(
+        &self,
+        m: &Stack,
+        pi: &Permutation,
+        r: &[Scalar],
+    ) -> (Stack, ShuffleProof) {
         let h = self.pk.point();
 
-        let remask = |c: &Mask| {
-            let r = Scalar::random(&mut rng);
-
-            let c1 = G * &r + c.0;
+        let remask = |(c, r): (&Mask, &Scalar)| {
+            let c1 = G * r + c.0;
             let c2 = h * r + c.1;
-            (Mask(c1, c2), r)
+            (Mask(c1, c2), *r)
         };
 
-        let (mut rm, mut r): (Stack, Vec<_>) = m.iter().map(remask).unzip();
+        let (mut rm, mut r): (Stack, Vec<_>) = m.iter().zip(r.iter()).map(remask).unzip();
         pi.apply_to(&mut rm);
         pi.apply_to(&mut r);
 
@@ -278,7 +289,7 @@ impl Vtmf {
             },
             secret_shuffle::Secrets { pi: &pi, r: &r },
         );
-        (rm, r, proof)
+        (rm, proof)
     }
 
     /// Verifies the application of the mask-shuffling protocol
@@ -432,6 +443,105 @@ impl Vtmf {
         let mut xof = Xof::default();
         xof.input(&m.1.compress().to_bytes());
         xof.xof_result()
+    }
+}
+
+const TWO64_BYTES: [u8; 32] = [
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+fn entangle_stacks(a: &Stack, b: &Stack) -> Stack {
+    let two64 = Scalar::from_bytes_mod_order(TWO64_BYTES);
+    a.iter().zip(b.iter()).map(|(a, b)| a * two64 + b).collect()
+}
+
+fn entangle_secrets(a: &[Scalar], b: &[Scalar]) -> Vec<Scalar> {
+    let two64 = Scalar::from_bytes_mod_order(TWO64_BYTES);
+    a.iter().zip(b.iter()).map(|(a, b)| a * two64 + b).collect()
+}
+
+trait IteratorEx: Iterator + Sized {
+    fn unzip3<A, B, C, FromA, FromB, FromC>(self) -> (FromA, FromB, FromC)
+    where
+        FromA: Default + Extend<A>,
+        FromB: Default + Extend<B>,
+        FromC: Default + Extend<C>,
+        Self: Iterator<Item = (A, B, C)>,
+    {
+        let mut r_a = FromA::default();
+        let mut r_b = FromB::default();
+        let mut r_c = FromC::default();
+
+        for (a, b, c) in self {
+            r_a.extend(iter::once(a));
+            r_b.extend(iter::once(b));
+            r_c.extend(iter::once(c));
+        }
+
+        (r_a, r_b, r_c)
+    }
+}
+
+impl<T: Iterator> IteratorEx for T {}
+
+/// Proof of an entangled shuffle
+pub type EntagledShuffleProof = (Vec<ShuffleProof>, Vec<ShuffleProof>);
+
+impl Vtmf {
+    /// Performs an mask-shuffle operation over two entangled stacks
+    pub fn mask_shuffle_entangled(
+        &self,
+        m: &[&Stack],
+        pi: &Permutation,
+    ) -> (Vec<Stack>, Vec<Vec<Scalar>>, EntagledShuffleProof) {
+        let (stacks, secrets, proofs): (Vec<_>, Vec<_>, Vec<_>) =
+            m.iter().map(|m| self.mask_shuffle(m, pi)).unzip3();
+
+        let pairs = m.iter().zip(m.iter().skip(1));
+        let secret_pairs = secrets.iter().zip(secrets.iter().skip(1));
+        let entangle_proofs = pairs
+            .zip(secret_pairs)
+            .map(|((a, b), (ra, rb))| {
+                let c = entangle_stacks(a, b);
+                let r = entangle_secrets(&ra, &rb);
+                let (_, pc) = self.mask_shuffle_with_secret(&c, pi, &r);
+                pc
+            })
+            .collect();
+
+        (stacks, secrets, (proofs, entangle_proofs))
+    }
+
+    /// Verifies an entangled mask-shuffle operation
+    pub fn verify_mask_shuffle_entangled(
+        &self,
+        m: &[&Stack],
+        c: &[&Stack],
+        proof: &EntagledShuffleProof,
+    ) -> Result<(), ()> {
+        let (proofs, entangle_proofs) = proof;
+
+        m.iter()
+            .zip(c.iter())
+            .zip(proofs.iter())
+            .map(|((m, c), p)| self.verify_mask_shuffle(m, c, p))
+            .fold(Ok(()), Result::and)?;
+
+        let entangled = m
+            .iter()
+            .zip(m.iter().skip(1))
+            .map(|(a, b)| entangle_stacks(a, b));
+        let entangled_shuffles = c
+            .iter()
+            .zip(c.iter().skip(1))
+            .map(|(a, b)| entangle_stacks(a, b));
+        entangled
+            .zip(entangled_shuffles)
+            .zip(entangle_proofs)
+            .map(|((c0, c1), p)| self.verify_mask_shuffle(&c0, &c1, p))
+            .fold(Ok(()), Result::and)?;
+
+        Ok(())
     }
 }
 
@@ -732,5 +842,68 @@ mod tests {
         vtmf_mask_inserting_works_idx(5);
         vtmf_mask_inserting_works_idx(8);
         vtmf_mask_inserting_works_idx(0);
+    }
+
+    #[test]
+    fn vtmf_entangled_mask_shuffling_works() {
+        let mut rng = thread_rng();
+        let sk0 = PrivateKey::random(&mut rng);
+        let sk1 = PrivateKey::random(&mut rng);
+        let pk0 = sk0.public_key();
+        let pk1 = sk1.public_key();
+
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
+        let fp0 = pk0.fingerprint();
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
+
+        let m0: Stack = (0u64..8)
+            .map(map::to_curve)
+            .map(|p| vtmf0.mask(&p).0)
+            .collect();
+        let m1: Stack = (8u64..16)
+            .map(map::to_curve)
+            .map(|p| vtmf0.mask(&p).0)
+            .collect();
+        let m2: Stack = (16u64..24)
+            .map(map::to_curve)
+            .map(|p| vtmf0.mask(&p).0)
+            .collect();
+
+        let pi = thread_rng().sample(&Shuffles(m0.len()));
+        let (shuffles, _, proof) = vtmf0.mask_shuffle_entangled(&[&m0, &m1, &m2], &pi);
+        let verified = vtmf1.verify_mask_shuffle_entangled(
+            &[&m0, &m1, &m2],
+            &[&shuffles[0], &shuffles[1], &shuffles[2]],
+            &proof,
+        );
+        assert_eq!(verified, Ok(()));
+
+        let open: Vec<Vec<_>> = shuffles
+            .iter()
+            .map(|s| {
+                s.iter()
+                    .map(|m| {
+                        let (d0, proof0) = vtmf0.unmask_share(m);
+                        let verified = vtmf1.verify_unmask(m, &fp0, &d0, &proof0);
+                        assert_eq!(verified, Ok(()));
+                        let mask1 = vtmf1.unmask(m, &d0);
+                        let mask1 = vtmf1.unmask_private(&mask1);
+                        let r = vtmf1.unmask_open(&mask1);
+                        map::from_curve(&r).unwrap()
+                    })
+                    .collect()
+            })
+            .collect();
+        let mut expected0: Vec<_> = (0u64..8).collect();
+        let mut expected1: Vec<_> = (8u64..16).collect();
+        let mut expected2: Vec<_> = (16u64..24).collect();
+        pi.apply_to(&mut expected0);
+        pi.apply_to(&mut expected1);
+        pi.apply_to(&mut expected2);
+        assert_eq!(open[0], expected0);
+        assert_eq!(open[1], expected1);
+        assert_eq!(open[2], expected2);
     }
 }
