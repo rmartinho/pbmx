@@ -26,9 +26,6 @@ version = "1.0"
 [dependencies.nom]
 version = "4.2"
 
-[dependencies.phf]
-version = "0.7"
-
 [dependencies.qp-trie]
 version = "0.7"
 
@@ -49,9 +46,3 @@ version = "2.0"
 
 [dependencies.tribool]
 version = "0.2"
-
-[build-dependencies.curve25519-dalek]
-version = "1.0"
-
-[build-dependencies.phf_codegen]
-version = "0.7"

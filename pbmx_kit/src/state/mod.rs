@@ -4,7 +4,6 @@ use crate::{
     chain::{Block, BlockVisitor, Chain, Id, PayloadVisitor},
     crypto::{
         keys::{Fingerprint, PrivateKey, PublicKey},
-        map,
         vtmf::{
             InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
             Stack, Vtmf,
@@ -102,10 +101,7 @@ impl<'a> PayloadVisitor for BlockAdder<'a> {
     }
 
     fn visit_open_stack(&mut self, _: &Block, stack: &Stack) {
-        self.valid = self.valid
-            && stack
-                .iter()
-                .all(|m| map::from_curve(&self.state.vtmf.unmask_open(m)).is_some());
+        self.valid = self.valid && stack.iter().all(Mask::is_open);
 
         if self.valid {
             self.state.stacks.insert(stack.clone());

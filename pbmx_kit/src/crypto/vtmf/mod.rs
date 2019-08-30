@@ -615,7 +615,7 @@ mod tests {
         let mask0 = vtmf0.unmask_private(&mask0);
         let r = vtmf0.unmask_open(&mask0);
         let r = map::from_curve(&r);
-        assert_eq!(r, Some(x));
+        assert_eq!(r, x);
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert_eq!(verified, Ok(()));
@@ -623,7 +623,7 @@ mod tests {
         let mask1 = vtmf1.unmask_private(&mask1);
         let r = vtmf1.unmask_open(&mask1);
         let r = map::from_curve(&r);
-        assert_eq!(r, Some(x));
+        assert_eq!(r, x);
     }
 
     #[test]
@@ -647,7 +647,7 @@ mod tests {
 
         let open = vtmf1.unmask_open(&mask);
         let open = map::from_curve(&open);
-        assert_eq!(open, Some(x));
+        assert_eq!(open, x);
 
         let (d0, proof0) = vtmf0.unmask_share(&mask);
         let (d1, proof1) = vtmf1.unmask_share(&mask);
@@ -658,7 +658,7 @@ mod tests {
         let mask0 = vtmf0.unmask_private(&mask0);
         let r = vtmf0.unmask_open(&mask0);
         let r = map::from_curve(&r);
-        assert_eq!(r, Some(x));
+        assert_eq!(r, x);
 
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert_eq!(verified, Ok(()));
@@ -666,7 +666,7 @@ mod tests {
         let mask1 = vtmf1.unmask_private(&mask1);
         let r = vtmf1.unmask_open(&mask1);
         let r = map::from_curve(&r);
-        assert_eq!(r, Some(x));
+        assert_eq!(r, x);
     }
 
     #[test]
@@ -701,7 +701,7 @@ mod tests {
                 let mask1 = vtmf1.unmask(m, &d0);
                 let mask1 = vtmf1.unmask_private(&mask1);
                 let r = vtmf1.unmask_open(&mask1);
-                map::from_curve(&r).unwrap()
+                map::from_curve(&r)
             })
             .collect();
         let mut expected: Vec<_> = (0u64..8).collect();
@@ -741,7 +741,7 @@ mod tests {
                 let mask1 = vtmf1.unmask(m, &d0);
                 let mask1 = vtmf1.unmask_private(&mask1);
                 let r = vtmf1.unmask_open(&mask1);
-                map::from_curve(&r).unwrap()
+                map::from_curve(&r)
             })
             .collect();
         let mut expected: Vec<_> = (0u64..8).collect();
@@ -827,7 +827,7 @@ mod tests {
                 let mask1 = vtmf1.unmask(m, &d0);
                 let mask1 = vtmf1.unmask_private(&mask1);
                 let r = vtmf1.unmask_open(&mask1);
-                map::from_curve(&r).unwrap()
+                map::from_curve(&r)
             })
             .collect();
         let mut expected: Vec<_> = (0u64..8).collect();
@@ -891,7 +891,7 @@ mod tests {
                         let mask1 = vtmf1.unmask(m, &d0);
                         let mask1 = vtmf1.unmask_private(&mask1);
                         let r = vtmf1.unmask_open(&mask1);
-                        map::from_curve(&r).unwrap()
+                        map::from_curve(&r)
                     })
                     .collect()
             })

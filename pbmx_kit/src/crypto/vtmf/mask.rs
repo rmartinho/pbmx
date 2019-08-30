@@ -1,4 +1,8 @@
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar, traits::Identity};
+use curve25519_dalek::{
+    ristretto::RistrettoPoint,
+    scalar::Scalar,
+    traits::{Identity, IsIdentity},
+};
 use std::{
     borrow::Borrow,
     hash::{Hash, Hasher},
@@ -16,6 +20,11 @@ impl Mask {
     /// Creates a new open masking
     pub fn open(p: RistrettoPoint) -> Mask {
         Mask(RistrettoPoint::identity(), p)
+    }
+
+    /// Checks whether this mask is open or not
+    pub fn is_open(&self) -> bool {
+        self.0.is_identity()
     }
 }
 

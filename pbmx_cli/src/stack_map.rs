@@ -8,13 +8,13 @@ use pbmx_kit::{
 };
 use std::fmt::{self, Display, Formatter};
 
-struct DisplayStackContents<'a>(
-    &'a Stack,
-    &'a SecretMap,
-    &'a PrivateSecretMap,
-    &'a Vtmf,
-    &'a Config,
-);
+struct DisplayStackContents<'a> {
+    stack: &'a Stack,
+    secrets: &'a SecretMap,
+    private_secrets: &'a PrivateSecretMap,
+    vtmf: &'a Vtmf,
+    config: &'a Config,
+}
 pub fn display_stack_contents<'a>(
     stack: &'a Stack,
     secrets: &'a SecretMap,
@@ -22,7 +22,7 @@ pub fn display_stack_contents<'a>(
     vtmf: &'a Vtmf,
     config: &'a Config,
 ) -> impl Display + 'a {
-    DisplayStackContents(stack, secrets, private_secrets, vtmf, config)
+    DisplayStackContents{stack, secrets, private_secrets, vtmf, config}
 }
 
 impl<'a> Display for DisplayStackContents<'a> {
@@ -32,20 +32,26 @@ impl<'a> Display for DisplayStackContents<'a> {
         let mut unfinished_seq = false;
         let mut count_encrypted = 0;
         write!(f, "[")?;
-        let my_fp = &self.3.private_key().fingerprint();
-        for m in self.0.iter() {
+        let my_fp = &self.vtmf.private_key().fingerprint();
+        for m in self.stack.iter() {
             let mut m = *m;
-            while let Some(d) = self.2.get(&m) {
+            while let Some(d) = self.private_secrets.get(&m) {
                 m -= d;
             }
-            if let Some((d, fp)) = self.1.get(&m) {
-                m = self.3.unmask(&m, d);
+            let is_known = if let Some((d, fp)) = self.secrets.get(&m) {
+                m = self.vtmf.unmask(&m, d);
                 if !fp.contains(my_fp) {
-                    m = self.3.unmask_private(&m);
+                    m = self.vtmf.unmask_private(&m);
+                    fp.len() + 1 == self.vtmf.parties()
+                } else {
+                    fp.len() == self.vtmf.parties()
                 }
-            }
-            let u = self.3.unmask_open(&m);
-            if let Some(token) = map::from_curve(&u) {
+            } else {
+                m.is_open()
+            };
+            if is_known {
+                let u = self.vtmf.unmask_open(&m);
+                let token = map::from_curve(&u);
                 if count_encrypted > 0 {
                     if !first {
                         write!(f, " ")?;
@@ -54,7 +60,7 @@ impl<'a> Display for DisplayStackContents<'a> {
                     first = false;
                     count_encrypted = 0;
                 }
-                if self.4.tokens.is_empty() {
+                if self.config.tokens.is_empty() {
                     if let Some(last) = last_in_seq {
                         if last + 1 == token {
                             unfinished_seq = true;
@@ -75,7 +81,7 @@ impl<'a> Display for DisplayStackContents<'a> {
                     if !first {
                         write!(f, " ")?;
                     }
-                    let s = self.4.tokens.get(&token);
+                    let s = self.config.tokens.get(&token);
                     if let Some(s) = s {
                         write!(f, "{}", s)?;
                     } else {

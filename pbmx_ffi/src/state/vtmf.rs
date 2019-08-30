@@ -136,7 +136,7 @@ pub extern "C" fn pbmx_encode_token(value: PbmxValue) -> PbmxToken {
 
 #[no_mangle]
 pub extern "C" fn pbmx_decode_token(token: PbmxToken) -> PbmxValue {
-    PbmxValue(map::from_curve(&token.try_into().ok()?)?)
+    PbmxValue(map::from_curve(&token.try_into().ok()?))
 }
 
 pub type PbmxMaskProof = Opaque<MaskProof>;
