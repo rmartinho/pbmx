@@ -101,7 +101,7 @@ impl RngSpec {
         Ok(Self(spec::Expr::parse(input)?))
     }
 
-    fn gen(&self, reader: &mut XofReader) -> u64 {
+    fn gen(&self, reader: &mut dyn XofReader) -> u64 {
         self.0.apply(reader)
     }
 }
@@ -142,7 +142,7 @@ mod spec {
     }
 
     impl Node {
-        fn apply(&self, reader: &mut XofReader) -> u64 {
+        fn apply(&self, reader: &mut dyn XofReader) -> u64 {
             match self {
                 Node::Const(k) => *k,
                 Node::Die { n, d, max } => {
@@ -219,7 +219,7 @@ mod spec {
                 .map_err(|_| ParseError)
         }
 
-        pub fn apply(&self, reader: &mut XofReader) -> u64 {
+        pub fn apply(&self, reader: &mut dyn XofReader) -> u64 {
             self.0.apply(reader)
         }
 

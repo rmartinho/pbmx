@@ -184,7 +184,7 @@ impl Display for Fingerprint {
 }
 impl Debug for Fingerprint {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        (self as &Display).fmt(f)
+        (self as &dyn Display).fmt(f)
     }
 }
 impl FromStr for Fingerprint {

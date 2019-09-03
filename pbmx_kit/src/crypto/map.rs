@@ -10,9 +10,9 @@ const END_BIT: usize = START_BIT + 8;
 pub fn to_curve(x: u64) -> RistrettoPoint {
     let mut rng = thread_rng();
     let mut buf = [0u8; 32];
+    buf[START_BIT..END_BIT].copy_from_slice(&x.to_le_bytes());
     loop {
         rng.fill(&mut buf[..START_BIT]);
-        buf[START_BIT..END_BIT].copy_from_slice(&x.to_le_bytes());
         rng.fill(&mut buf[END_BIT..]);
         if let Some(p) = CompressedRistretto::from_slice(&buf).decompress() {
             break p;

@@ -22,7 +22,13 @@ pub fn display_stack_contents<'a>(
     vtmf: &'a Vtmf,
     config: &'a Config,
 ) -> impl Display + 'a {
-    DisplayStackContents{stack, secrets, private_secrets, vtmf, config}
+    DisplayStackContents {
+        stack,
+        secrets,
+        private_secrets,
+        vtmf,
+        config,
+    }
 }
 
 impl<'a> Display for DisplayStackContents<'a> {
