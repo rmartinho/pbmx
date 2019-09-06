@@ -6,6 +6,7 @@ use crate::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         perm::Permutation,
         proofs::{dlog_eq, secret_insertion, secret_rotation, secret_shuffle},
+        util::IteratorEx,
     },
     serde::serialize_flat_map,
 };
@@ -270,13 +271,15 @@ impl Vtmf {
     ) -> (Stack, ShuffleProof) {
         let h = self.pk.point();
 
-        let remask = |(c, r): (&Mask, &Scalar)| {
-            let c1 = G * r + c.0;
-            let c2 = h * r + c.1;
-            (Mask(c1, c2), *r)
-        };
-
-        let (mut rm, mut r): (Stack, Vec<_>) = m.iter().zip(r.iter()).map(remask).unzip();
+        let (mut rm, mut r): (Stack, Vec<_>) = m
+            .iter()
+            .zip(r.iter())
+            .map(|(c, r)| {
+                let c1 = G * r + c.0;
+                let c2 = h * r + c.1;
+                (Mask(c1, c2), r)
+            })
+            .unzip();
         pi.apply_to(&mut rm);
         pi.apply_to(&mut r);
 
@@ -446,70 +449,52 @@ impl Vtmf {
     }
 }
 
+/// Proof of an entangled shuffle
+pub struct EntagledShuffleProof {
+    shuffle_proofs: Vec<ShuffleProof>,
+    tangle_proofs: Vec<ShuffleProof>,
+}
+
 const TWO64_BYTES: [u8; 32] = [
     0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 
-fn entangle_stacks(a: &Stack, b: &Stack) -> Stack {
-    let two64 = Scalar::from_bytes_mod_order(TWO64_BYTES);
-    a.iter().zip(b.iter()).map(|(a, b)| a * two64 + b).collect()
-}
-
-fn entangle_secrets(a: &[Scalar], b: &[Scalar]) -> Vec<Scalar> {
-    let two64 = Scalar::from_bytes_mod_order(TWO64_BYTES);
-    a.iter().zip(b.iter()).map(|(a, b)| a * two64 + b).collect()
-}
-
-trait IteratorEx: Iterator + Sized {
-    fn unzip3<A, B, C, FromA, FromB, FromC>(self) -> (FromA, FromB, FromC)
-    where
-        FromA: Default + Extend<A>,
-        FromB: Default + Extend<B>,
-        FromC: Default + Extend<C>,
-        Self: Iterator<Item = (A, B, C)>,
-    {
-        let mut r_a = FromA::default();
-        let mut r_b = FromB::default();
-        let mut r_c = FromC::default();
-
-        for (a, b, c) in self {
-            r_a.extend(iter::once(a));
-            r_b.extend(iter::once(b));
-            r_c.extend(iter::once(c));
-        }
-
-        (r_a, r_b, r_c)
-    }
-}
-
-impl<T: Iterator> IteratorEx for T {}
-
-/// Proof of an entangled shuffle
-pub type EntagledShuffleProof = (Vec<ShuffleProof>, Vec<ShuffleProof>);
-
 impl Vtmf {
+    pub fn entangle_stacks(&self, a: &Stack, b: &Stack) -> Stack {
+        let two64 = Scalar::from_bytes_mod_order(TWO64_BYTES);
+        a.iter().zip(b.iter()).map(|(a, b)| a * two64 + b).collect()
+    }
+
+    pub fn entangle_secrets(&self, a: &[Scalar], b: &[Scalar]) -> Vec<Scalar> {
+        let two64 = Scalar::from_bytes_mod_order(TWO64_BYTES);
+        a.iter().zip(b.iter()).map(|(a, b)| a * two64 + b).collect()
+    }
+
     /// Performs an mask-shuffle operation over two entangled stacks
     pub fn mask_shuffle_entangled(
         &self,
         m: &[&Stack],
         pi: &Permutation,
     ) -> (Vec<Stack>, Vec<Vec<Scalar>>, EntagledShuffleProof) {
-        let (stacks, secrets, proofs): (Vec<_>, Vec<_>, Vec<_>) =
+        let (stacks, secrets, shuffle_proofs): (Vec<_>, Vec<_>, Vec<_>) =
             m.iter().map(|m| self.mask_shuffle(m, pi)).unzip3();
 
         let pairs = m.iter().zip(m.iter().skip(1));
         let secret_pairs = secrets.iter().zip(secrets.iter().skip(1));
-        let entangle_proofs = pairs
+        let tangle_proofs = pairs
             .zip(secret_pairs)
             .map(|((a, b), (ra, rb))| {
-                let c = entangle_stacks(a, b);
-                let r = entangle_secrets(&ra, &rb);
+                let c = self.entangle_stacks(a, b);
+                let r = self.entangle_secrets(&ra, &rb);
                 let (_, pc) = self.mask_shuffle_with_secret(&c, pi, &r);
                 pc
             })
             .collect();
 
-        (stacks, secrets, (proofs, entangle_proofs))
+        (stacks, secrets, EntagledShuffleProof {
+            shuffle_proofs,
+            tangle_proofs,
+        })
     }
 
     /// Verifies an entangled mask-shuffle operation
@@ -519,25 +504,23 @@ impl Vtmf {
         c: &[&Stack],
         proof: &EntagledShuffleProof,
     ) -> Result<(), ()> {
-        let (proofs, entangle_proofs) = proof;
-
         m.iter()
             .zip(c.iter())
-            .zip(proofs.iter())
+            .zip(proof.shuffle_proofs.iter())
             .map(|((m, c), p)| self.verify_mask_shuffle(m, c, p))
             .fold(Ok(()), Result::and)?;
 
         let entangled = m
             .iter()
             .zip(m.iter().skip(1))
-            .map(|(a, b)| entangle_stacks(a, b));
+            .map(|(a, b)| self.entangle_stacks(a, b));
         let entangled_shuffles = c
             .iter()
             .zip(c.iter().skip(1))
-            .map(|(a, b)| entangle_stacks(a, b));
+            .map(|(a, b)| self.entangle_stacks(a, b));
         entangled
             .zip(entangled_shuffles)
-            .zip(entangle_proofs)
+            .zip(proof.tangle_proofs.iter())
             .map(|((c0, c1), p)| self.verify_mask_shuffle(&c0, &c1, p))
             .fold(Ok(()), Result::and)?;
 
@@ -545,7 +528,10 @@ impl Vtmf {
     }
 }
 
-pub type SubsetProof = (Stack, ShuffleProof);
+pub struct SubsetProof {
+    stacked: Stack,
+    proof: ShuffleProof,
+}
 
 impl Vtmf {
     pub fn prove_subset(
@@ -585,15 +571,78 @@ impl Vtmf {
                 r: &secrets,
             },
         );
-        (stacked, proof)
+        SubsetProof { stacked, proof }
     }
 
     pub fn verify_subset(&self, sub: &Stack, sup: &Stack, proof: &SubsetProof) -> Result<(), ()> {
-        let top = proof.0.iter().take(sub.len());
+        let top = proof.stacked.iter().take(sub.len());
         if !top.zip(sub.iter()).all(|(a, b)| a == b) {
             return Err(());
         }
-        self.verify_mask_shuffle(sup, &proof.0, &proof.1)?;
+        self.verify_mask_shuffle(sup, &proof.stacked, &proof.proof)?;
+        Ok(())
+    }
+}
+
+pub struct SupersetProof {
+    stacked: Stack,
+    proof: ShuffleProof,
+}
+
+impl Vtmf {
+    pub fn prove_superset(
+        &self,
+        sup: &Stack,
+        sub: &Stack,
+        indices: &[usize],
+        secrets: &[Scalar],
+    ) -> SupersetProof {
+        let h = self.pk.point();
+
+        let mut extras: Vec<_> = (0..sup.len()).collect();
+        indices.iter().for_each(|i| {
+            extras.remove_item(i);
+        });
+        let mut indices = indices.to_vec();
+        indices.extend(extras.iter());
+
+        let mut stacked = sub.clone();
+        let mut secrets = secrets.to_vec();
+        secrets.iter_mut().for_each(|s| {
+            *s = Scalar::zero() - *s;
+        });
+        extras.iter().for_each(|&i| {
+            let (mask, secret, _) = self.remask(&sup[i]);
+            stacked.0.push(mask);
+            secrets.push(secret);
+        });
+        let pi = Permutation::try_from(indices).unwrap();
+        let proof = ShuffleProof::create(
+            &mut Transcript::new(b"mask_shuffle"),
+            secret_shuffle::Publics {
+                h: &h,
+                e0: sup,
+                e1: &stacked,
+            },
+            secret_shuffle::Secrets {
+                pi: &pi,
+                r: &secrets,
+            },
+        );
+        SupersetProof { stacked, proof }
+    }
+
+    pub fn verify_superset(
+        &self,
+        sup: &Stack,
+        sub: &Stack,
+        proof: &SupersetProof,
+    ) -> Result<(), ()> {
+        let top = proof.stacked.iter().take(sub.len());
+        if !top.zip(sub.iter()).all(|(a, b)| a == b) {
+            return Err(());
+        }
+        self.verify_mask_shuffle(sup, &proof.stacked, &proof.proof)?;
         Ok(())
     }
 }
@@ -661,7 +710,7 @@ mod tests {
         let (remask, _, proof) = vtmf0.remask(&mask);
         let verified = vtmf1.verify_remask(&mask, &remask, &proof);
         assert_eq!(verified, Ok(()));
-        let (remask, _, _) = vtmf0.remask(&remask);
+        let (remask, ..) = vtmf0.remask(&remask);
         let invalid = vtmf1.verify_remask(&mask, &remask, &proof);
         assert_eq!(invalid, Err(()));
 
@@ -1006,19 +1055,54 @@ mod tests {
             .map(|p| vtmf0.mask(&p).0)
             .collect();
         let pi = thread_rng().sample(&Shuffles(m.len()));
-        let (mut shuffle, mut secrets, _) = vtmf0.mask_shuffle(&m, &pi);
+        let (shuffle, mut secrets, _) = vtmf0.mask_shuffle(&m, &pi);
 
-        shuffle.0.drain(3..);
-        let top = shuffle;
+        let mut top = shuffle;
+        top.0.drain(3..);
         let indices: Vec<_> = pi.iter().cloned().take(3).collect();
         pi.apply_to(&mut secrets);
         secrets.drain(3..);
-        let proof = vtmf0.prove_subset(&top, &m, &indices[..], &secrets);
+        let proof = vtmf0.prove_subset(&top, &m, &indices, &secrets);
         let verified = vtmf1.verify_subset(&top, &m, &proof);
         assert_eq!(verified, Ok(()));
         let mut added = top.clone();
         added[0] = vtmf0.mask(&map::to_curve(8)).0;
         let invalid = vtmf1.verify_subset(&added, &m, &proof);
+        assert_eq!(invalid, Err(()));
+    }
+
+    #[test]
+    pub fn vtmf_proving_supersets_works() {
+        let mut rng = thread_rng();
+        let sk0 = PrivateKey::random(&mut rng);
+        let sk1 = PrivateKey::random(&mut rng);
+        let pk0 = sk0.public_key();
+        let pk1 = sk1.public_key();
+
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
+
+        let m: Stack = (0u64..8)
+            .map(map::to_curve)
+            .map(|p| vtmf0.mask(&p).0)
+            .collect();
+        let pi = thread_rng().sample(&Shuffles(m.len()));
+        let (shuffle, mut secrets, _) = vtmf0.mask_shuffle(&m, &pi);
+
+        let mut needle = m;
+        needle.0.drain(3..);
+        let indices: Vec<_> = pi.inverse().iter().cloned().take(3).collect();
+        pi.apply_to(&mut secrets);
+        let secrets: Vec<_> = indices.iter().map(|&i| secrets[i]).collect();
+
+        let proof = vtmf0.prove_superset(&shuffle, &needle, &indices, &secrets);
+        let verified = vtmf1.verify_superset(&shuffle, &needle, &proof);
+        assert_eq!(verified, Ok(()));
+        let mut added = needle.clone();
+        added[0] = vtmf0.mask(&map::to_curve(8)).0;
+        let invalid = vtmf1.verify_superset(&shuffle, &added, &proof);
         assert_eq!(invalid, Err(()));
     }
 }
