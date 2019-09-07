@@ -560,7 +560,7 @@ impl Vtmf {
 
         let pi = Permutation::try_from(indices).unwrap();
         let proof = ShuffleProof::create(
-            &mut Transcript::new(b"mask_shuffle"),
+            &mut Transcript::new(b"subset"),
             secret_shuffle::Publics {
                 h: &h,
                 e0: sup,
@@ -575,19 +575,21 @@ impl Vtmf {
     }
 
     pub fn verify_subset(&self, sub: &Stack, sup: &Stack, proof: &SubsetProof) -> Result<(), ()> {
-        let top = proof.stacked.iter().take(sub.len());
-        if !top.zip(sub.iter()).all(|(a, b)| a == b) {
+        let top_match = proof.stacked.iter().zip(sub.iter()).all(|(a, b)| a == b);
+        if !top_match {
             return Err(());
         }
-        self.verify_mask_shuffle(sup, &proof.stacked, &proof.proof)?;
-        Ok(())
+        proof
+            .proof
+            .verify(&mut Transcript::new(b"subset"), secret_shuffle::Publics {
+                h: &self.pk.point(),
+                e0: sup,
+                e1: &proof.stacked,
+            })
     }
 }
 
-pub struct SupersetProof {
-    stacked: Stack,
-    proof: ShuffleProof,
-}
+pub struct SupersetProof(SubsetProof);
 
 impl Vtmf {
     pub fn prove_superset(
@@ -618,7 +620,7 @@ impl Vtmf {
         });
         let pi = Permutation::try_from(indices).unwrap();
         let proof = ShuffleProof::create(
-            &mut Transcript::new(b"mask_shuffle"),
+            &mut Transcript::new(b"superset"),
             secret_shuffle::Publics {
                 h: &h,
                 e0: sup,
@@ -629,7 +631,7 @@ impl Vtmf {
                 r: &secrets,
             },
         );
-        SupersetProof { stacked, proof }
+        SupersetProof(SubsetProof { stacked, proof })
     }
 
     pub fn verify_superset(
@@ -638,13 +640,85 @@ impl Vtmf {
         sub: &Stack,
         proof: &SupersetProof,
     ) -> Result<(), ()> {
-        let top = proof.stacked.iter().take(sub.len());
-        if !top.zip(sub.iter()).all(|(a, b)| a == b) {
+        let top_match = proof.0.stacked.iter().zip(sub.iter()).all(|(a, b)| a == b);
+        if !top_match {
             return Err(());
         }
-        self.verify_mask_shuffle(sup, &proof.stacked, &proof.proof)?;
-        Ok(())
+        proof
+            .0
+            .proof
+            .verify(&mut Transcript::new(b"superset"), secret_shuffle::Publics {
+                h: &self.pk.point(),
+                e0: sup,
+                e1: &proof.0.stacked,
+            })
     }
+}
+
+pub struct DisjointProof(SubsetProof);
+
+impl Vtmf {
+    pub fn prove_disjoint(
+        &self,
+        sub: &[Stack],
+        sup: &Stack,
+        indices: &[&[usize]],
+        secrets: &[&[Scalar]],
+    ) -> DisjointProof {
+        let h = self.pk.point();
+
+        let mut extras: Vec<_> = (0..sup.len()).collect();
+        let mut indices: Vec<_> = indices.iter().flat_map(|i| i.iter()).cloned().collect();
+        indices.iter().for_each(|i| {
+            extras.remove_item(i);
+        });
+        indices.extend(extras.iter());
+
+        let mut stacked: Stack = sub.iter().flat_map(|s| s.0.iter()).cloned().collect();
+        let mut secrets: Vec<_> = secrets.iter().flat_map(|s| s.iter()).cloned().collect();
+        extras.iter().for_each(|&i| {
+            let (mask, secret, _) = self.remask(&sup[i]);
+            stacked.0.push(mask);
+            secrets.push(secret);
+        });
+
+        let pi = Permutation::try_from(indices).unwrap();
+        let proof = ShuffleProof::create(
+            &mut Transcript::new(b"disjoint"),
+            secret_shuffle::Publics {
+                h: &h,
+                e0: sup,
+                e1: &stacked,
+            },
+            secret_shuffle::Secrets {
+                pi: &pi,
+                r: &secrets,
+            },
+        );
+        DisjointProof(SubsetProof { stacked, proof })
+    }
+
+    pub fn verify_disjoint(
+        &self,
+        sub: &[Stack],
+        sup: &Stack,
+        proof: &DisjointProof,
+    ) -> Result<(), ()> {
+        let sub = sub.iter().flat_map(|s| s.0.iter());
+        let top_match = proof.0.stacked.iter().zip(sub).all(|(a, b)| a == b);
+        if !top_match {
+            return Err(());
+        }
+        proof
+            .0
+            .proof
+            .verify(&mut Transcript::new(b"disjoint"), secret_shuffle::Publics {
+                h: &self.pk.point(),
+                e0: sup,
+                e1: &proof.0.stacked,
+            })
+    }
+    // TODO build on top of subset
 }
 
 impl<'de> Deserialize<'de> for Vtmf {
@@ -1103,6 +1177,47 @@ mod tests {
         let mut added = needle.clone();
         added[0] = vtmf0.mask(&map::to_curve(8)).0;
         let invalid = vtmf1.verify_superset(&shuffle, &added, &proof);
+        assert_eq!(invalid, Err(()));
+    }
+
+    #[test]
+    pub fn vtmf_proving_disjoint_sets_works() {
+        let mut rng = thread_rng();
+        let sk0 = PrivateKey::random(&mut rng);
+        let sk1 = PrivateKey::random(&mut rng);
+        let pk0 = sk0.public_key();
+        let pk1 = sk1.public_key();
+
+        let mut vtmf0 = Vtmf::new(sk0);
+        let mut vtmf1 = Vtmf::new(sk1);
+        vtmf0.add_key(pk1);
+        vtmf1.add_key(pk0);
+
+        let m: Stack = (0u64..8)
+            .map(map::to_curve)
+            .map(|p| vtmf0.mask(&p).0)
+            .collect();
+        let pi = thread_rng().sample(&Shuffles(m.len()));
+        let (shuffle, secrets, _) = vtmf0.mask_shuffle(&m, &pi);
+
+        let mut top = shuffle.clone();
+        top.0.drain(3..);
+        let mut bottom = shuffle.clone();
+        bottom.0.drain(..6);
+        let pi_top: Vec<_> = pi.iter().take(3).cloned().collect();
+        let pi_bot: Vec<_> = pi.iter().skip(6).cloned().collect();
+        let sec_top: Vec<_> = pi_top.iter().map(|&i| secrets[i]).collect();
+        let sec_bot: Vec<_> = pi_bot.iter().map(|&i| secrets[i]).collect();
+
+        let n = [top, bottom];
+        let idx = [&pi_top[..], &pi_bot[..]];
+        let sec = [&sec_top[..], &sec_bot[..]];
+        let proof = vtmf0.prove_disjoint(&n, &m, &idx, &sec);
+        let verified = vtmf1.verify_disjoint(&n, &m, &proof);
+        assert_eq!(verified, Ok(()));
+        let mut added = n.clone();
+        added[0][0] = vtmf0.mask(&map::to_curve(8)).0;
+        let invalid = vtmf1.verify_disjoint(&added, &m, &proof);
         assert_eq!(invalid, Err(()));
     }
 }
