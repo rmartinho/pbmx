@@ -45,8 +45,7 @@ pub struct Secrets<'a> {
 }
 
 impl Proof {
-    /// Generates a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Generates a non-interactive zero-knowledge proof of a secret shuffle
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"secret_shuffle");
 
@@ -137,8 +136,7 @@ impl Proof {
         }
     }
 
-    /// Verifies a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Verifies a non-interactive zero-knowledge proof of a secret shuffle
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
         transcript.domain_sep(b"secret_shuffle");
 
