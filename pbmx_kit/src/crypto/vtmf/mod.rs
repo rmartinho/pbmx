@@ -498,12 +498,14 @@ impl Vtmf {
     }
 }
 
+/// A subset proof
 pub struct SubsetProof {
     stacked: Stack,
     proof: ShuffleProof,
 }
 
 impl Vtmf {
+    /// Proves that a stack is a subset of another
     pub fn prove_subset(
         &self,
         sub: &Stack,
@@ -544,6 +546,7 @@ impl Vtmf {
         SubsetProof { stacked, proof }
     }
 
+    /// Verifies that a stack is a subset of another
     pub fn verify_subset(&self, sub: &Stack, sup: &Stack, proof: &SubsetProof) -> Result<(), ()> {
         let top_match = proof.stacked.iter().zip(sub.iter()).all(|(a, b)| a == b);
         if !top_match {
@@ -559,9 +562,11 @@ impl Vtmf {
     }
 }
 
+/// A superset proof
 pub struct SupersetProof(SubsetProof);
 
 impl Vtmf {
+    /// Proves that a stack is a superset of another
     pub fn prove_superset(
         &self,
         sup: &Stack,
@@ -604,6 +609,7 @@ impl Vtmf {
         SupersetProof(SubsetProof { stacked, proof })
     }
 
+    /// Verifies that a stack is a superset of another
     pub fn verify_superset(
         &self,
         sup: &Stack,
@@ -625,9 +631,11 @@ impl Vtmf {
     }
 }
 
+/// A disjoint subset proof
 pub struct DisjointProof(SubsetProof);
 
 impl Vtmf {
+    /// Proves that two subsets of a common superset are disjoint
     pub fn prove_disjoint(
         &self,
         sub: &[Stack],
@@ -668,6 +676,7 @@ impl Vtmf {
         DisjointProof(SubsetProof { stacked, proof })
     }
 
+    /// Verifies that two subsets of a common superset are disjoint
     pub fn verify_disjoint(
         &self,
         sub: &[Stack],
@@ -688,7 +697,7 @@ impl Vtmf {
                 e1: &proof.0.stacked,
             })
     }
-    // TODO build on top of subset
+    // TODO truly build on top of subset
 }
 
 impl<'de> Deserialize<'de> for Vtmf {

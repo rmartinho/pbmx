@@ -1,4 +1,3 @@
-#![feature(option_xor)]
 #![feature(box_syntax)]
 #![deny(clippy::correctness)]
 #![allow(dead_code)]

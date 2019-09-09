@@ -2,15 +2,9 @@
 
 use super::TranscriptProtocol;
 use crate::crypto::{perm::Permutation, proofs::secret_shuffle, vtmf::Mask};
-use curve25519_dalek::{
-    constants::RISTRETTO_BASEPOINT_TABLE,
-    ristretto::{RistrettoBasepointTable, RistrettoPoint},
-    scalar::Scalar,
-};
+use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use std::ops::{Add, Mul};
-
-const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,7 +96,7 @@ const TWO64_BYTES: [u8; 32] = [
     0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 
-pub fn entangle<T>(a: &[T], b: &[T]) -> Vec<T>
+fn entangle<T>(a: &[T], b: &[T]) -> Vec<T>
 where
     for<'a> &'a T: Mul<Scalar, Output = T>,
     for<'a> T: Add<&'a T, Output = T>,
@@ -113,11 +107,17 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{super::random_scalars, Proof, Publics, Secrets, G};
+    use super::{super::random_scalars, Proof, Publics, Secrets};
     use crate::crypto::{perm::Shuffles, vtmf::Mask};
-    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use curve25519_dalek::{
+        constants::RISTRETTO_BASEPOINT_TABLE,
+        ristretto::{RistrettoBasepointTable, RistrettoPoint},
+        scalar::Scalar,
+    };
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
+
+    const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
     #[test]
     fn prove_and_verify_agree() {

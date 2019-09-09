@@ -88,7 +88,7 @@ impl RngSpec {
         Ok(Self(spec::parse_expr(input)?))
     }
 
-    fn gen(&self, reader: &mut XofReader) -> u64 {
+    fn gen(&self, reader: &mut dyn XofReader) -> u64 {
         self.0.apply(reader)
     }
 }
@@ -112,7 +112,7 @@ mod spec {
     }
 
     pub trait Node: Display {
-        fn apply(&self, reader: &mut XofReader) -> u64;
+        fn apply(&self, reader: &mut dyn XofReader) -> u64;
     }
 
     #[derive(Debug, PartialEq, Eq)]
@@ -125,7 +125,7 @@ mod spec {
     }
 
     impl Node for Const {
-        fn apply(&self, _: &mut XofReader) -> u64 {
+        fn apply(&self, _: &mut dyn XofReader) -> u64 {
             self.0
         }
     }
@@ -162,7 +162,7 @@ mod spec {
     }
 
     impl Node for Die {
-        fn apply(&self, reader: &mut XofReader) -> u64 {
+        fn apply(&self, reader: &mut dyn XofReader) -> u64 {
             let mut sum = 0u64;
             for _ in 0..self.n {
                 loop {
@@ -189,7 +189,7 @@ mod spec {
     }
 
     impl Node for Op {
-        fn apply(&self, reader: &mut XofReader) -> u64 {
+        fn apply(&self, reader: &mut dyn XofReader) -> u64 {
             let left = self.0.apply(reader);
             let right = self.2.apply(reader);
             match self.1 {

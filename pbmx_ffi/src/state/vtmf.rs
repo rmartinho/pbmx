@@ -484,7 +484,7 @@ impl PbmxXof {
         self.0.data.is_null() || self.0.vtable.is_null()
     }
 
-    unsafe fn as_mut(&mut self) -> Option<&mut XofReader> {
+    unsafe fn as_mut(&mut self) -> Option<&mut dyn XofReader> {
         if self.is_null() {
             None
         } else {
