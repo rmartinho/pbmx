@@ -1,6 +1,6 @@
 //! Proof of entanglement of stacks
 
-use super::{TranscriptProtocol};
+use super::TranscriptProtocol;
 use crate::crypto::{perm::Permutation, proofs::secret_shuffle, vtmf::Mask};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -8,9 +8,7 @@ use curve25519_dalek::{
     scalar::Scalar,
 };
 use merlin::Transcript;
-use std::{
-    ops::{Add, Mul},
-};
+use std::ops::{Add, Mul};
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
@@ -128,23 +126,34 @@ mod tests {
         let h = &RistrettoPoint::random(&mut rng);
         let gh = Mask(G.basepoint(), *h);
 
-        let m = &[random_scalars(8, &mut rng), random_scalars(8, &mut rng), random_scalars(8, &mut rng)];
+        let m = &[
+            random_scalars(8, &mut rng),
+            random_scalars(8, &mut rng),
+            random_scalars(8, &mut rng),
+        ];
         let e0: Vec<Vec<_>> = m
             .into_iter()
-            .map(|m| m.into_iter()
             .map(|m| {
-                let r = Scalar::random(&mut rng);
-                gh * r + Mask::open(G * &m)
-            }).collect())
+                m.into_iter()
+                    .map(|m| {
+                        let r = Scalar::random(&mut rng);
+                        gh * r + Mask::open(G * &m)
+                    })
+                    .collect()
+            })
             .collect();
         let (mut e1, mut r): (Vec<_>, Vec<_>) = e0
             .iter()
-            .map(|e| {let (e1, r): (Vec<_>, Vec<_>) = e.iter()
             .map(|e| {
-                let r = Scalar::random(&mut rng);
-                (gh * r + e, r)
-            }).unzip();
-            (e1, r)})
+                let (e1, r): (Vec<_>, Vec<_>) = e
+                    .iter()
+                    .map(|e| {
+                        let r = Scalar::random(&mut rng);
+                        (gh * r + e, r)
+                    })
+                    .unzip();
+                (e1, r)
+            })
             .unzip();
         let pi = &rng.sample(&Shuffles(8));
         e1.iter_mut().for_each(|e1| pi.apply_to(e1));
@@ -155,7 +164,10 @@ mod tests {
             e0: &[&e0[0], &e0[1], &e0[2]],
             e1: &[&e1[0], &e1[1], &e1[2]],
         };
-        let secrets = Secrets { pi, r: &[&r[0], &r[1], &r[2]] };
+        let secrets = Secrets {
+            pi,
+            r: &[&r[0], &r[1], &r[2]],
+        };
 
         let mut proof = Proof::create(&mut Transcript::new(b"test"), publics, secrets);
 

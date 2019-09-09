@@ -5,7 +5,7 @@ use crate::{
         hash::Xof,
         keys::{Fingerprint, PrivateKey, PublicKey},
         perm::Permutation,
-        proofs::{dlog_eq, secret_insertion, secret_rotation, secret_shuffle},
+        proofs::{dlog_eq, entanglement, secret_insertion, secret_rotation, secret_shuffle},
     },
     serde::serialize_flat_map,
 };
@@ -21,9 +21,9 @@ use serde::{de, Deserialize, Deserializer};
 use std::{collections::HashMap, convert::TryFrom, iter};
 
 pub use crate::crypto::proofs::{
-    dlog_eq::Proof as MaskProof, secret_insertion::Proof as InsertProof,
-    secret_rotation::Proof as ShiftProof, secret_shuffle::Proof as ShuffleProof,
-    entanglement::Proof as EntanglementProof,
+    dlog_eq::Proof as MaskProof, entanglement::Proof as EntanglementProof,
+    secret_insertion::Proof as InsertProof, secret_rotation::Proof as ShiftProof,
+    secret_shuffle::Proof as ShuffleProof,
 };
 
 mod mask;
@@ -441,23 +441,60 @@ impl Vtmf {
 }
 
 impl Vtmf {
-    /// Performs an mask-shuffle operation over two entangled stacks
-    pub fn mask_shuffle_entangled(
+    /// Proves that multiple stacks have been reordered according to the same
+    /// permutation
+    pub fn prove_entanglement<'a, It1, It2, It3>(
         &self,
-        _m: &[&Stack],
-        _pi: &Permutation,
-    ) -> (Vec<Stack>, Vec<Vec<Scalar>>, EntanglementProof) {
-        unimplemented!()
+        m: It1,
+        c: It2,
+        pi: &Permutation,
+        secrets: It3,
+    ) -> EntanglementProof
+    where
+        It1: Iterator<Item = &'a Stack>,
+        It2: Iterator<Item = &'a Stack>,
+        It3: Iterator<Item = &'a [Scalar]>,
+    {
+        let h = self.pk.point();
+
+        let m: Vec<_> = m.map(|s| &s[..]).collect();
+        let c: Vec<_> = c.map(|s| &s[..]).collect();
+        let r: Vec<_> = secrets.collect();
+        entanglement::Proof::create(
+            &mut Transcript::new(b"entanglement"),
+            entanglement::Publics {
+                h: &h,
+                e0: &m,
+                e1: &c,
+            },
+            entanglement::Secrets { pi, r: &r },
+        )
     }
 
-    /// Verifies an entangled mask-shuffle operation
-    pub fn verify_mask_shuffle_entangled(
+    /// Proves that multiple stacks have been reordered according to the same
+    /// permutation
+    pub fn verify_entanglement<'a, It1, It2>(
         &self,
-        _m: &[&Stack],
-        _c: &[&Stack],
-        _proof: &EntanglementProof,
-    ) -> Result<(), ()> {
-        unimplemented!()
+        m: It1,
+        c: It2,
+        proof: &EntanglementProof,
+    ) -> Result<(), ()>
+    where
+        It1: Iterator<Item = &'a Stack>,
+        It2: Iterator<Item = &'a Stack>,
+    {
+        let h = self.pk.point();
+
+        let m: Vec<_> = m.map(|s| &s[..]).collect();
+        let c: Vec<_> = c.map(|s| &s[..]).collect();
+        proof.verify(
+            &mut Transcript::new(b"entanglement"),
+            entanglement::Publics {
+                h: &h,
+                e0: &m,
+                e1: &c,
+            },
+        )
     }
 }
 
@@ -975,7 +1012,6 @@ mod tests {
         vtmf_mask_inserting_works_idx(0);
     }
 
-    #[ignore]
     #[test]
     fn vtmf_entangled_mask_shuffling_works() {
         let mut rng = thread_rng();
@@ -986,7 +1022,6 @@ mod tests {
 
         let mut vtmf0 = Vtmf::new(sk0);
         let mut vtmf1 = Vtmf::new(sk1);
-        let fp0 = pk0.fingerprint();
         vtmf0.add_key(pk1);
         vtmf1.add_key(pk0);
 
@@ -1004,45 +1039,27 @@ mod tests {
             .collect();
 
         let pi = thread_rng().sample(&Shuffles(m0.len()));
-        let (shuffles, _, proof) = vtmf0.mask_shuffle_entangled(&[&m0, &m1, &m2], &pi);
-        let verified = vtmf1.verify_mask_shuffle_entangled(
-            &[&m0, &m1, &m2],
-            &[&shuffles[0], &shuffles[1], &shuffles[2]],
-            &proof,
-        );
-        assert_eq!(verified, Ok(()));
-        let invalid = vtmf1.verify_mask_shuffle_entangled(
-            &[&m0, &m1, &m2],
-            &[&shuffles[0], &m1, &shuffles[2]],
-            &proof,
-        );
-        assert_eq!(invalid, Err(()));
-
-        let open: Vec<Vec<_>> = shuffles
+        let m = [m0, m1, m2];
+        let (shuffles, secrets): (Vec<_>, Vec<_>) = m
             .iter()
-            .map(|s| {
-                s.iter()
-                    .map(|m| {
-                        let (d0, proof0) = vtmf0.unmask_share(m);
-                        let verified = vtmf1.verify_unmask(m, &fp0, &d0, &proof0);
-                        assert_eq!(verified, Ok(()));
-                        let mask1 = vtmf1.unmask(m, &d0);
-                        let mask1 = vtmf1.unmask_private(&mask1);
-                        let r = vtmf1.unmask_open(&mask1);
-                        map::from_curve(&r)
-                    })
-                    .collect()
+            .map(|m| {
+                let (shuffle, secrets, _) = vtmf0.mask_shuffle(m, &pi);
+                (shuffle, secrets)
             })
-            .collect();
-        let mut expected0: Vec<_> = (0u64..8).collect();
-        let mut expected1: Vec<_> = (8u64..16).collect();
-        let mut expected2: Vec<_> = (16u64..24).collect();
-        pi.apply_to(&mut expected0);
-        pi.apply_to(&mut expected1);
-        pi.apply_to(&mut expected2);
-        assert_eq!(open[0], expected0);
-        assert_eq!(open[1], expected1);
-        assert_eq!(open[2], expected2);
+            .unzip();
+
+        let proof = vtmf0.prove_entanglement(
+            m.iter(),
+            shuffles.iter(),
+            &pi,
+            secrets.iter().map(|s| &s[..]),
+        );
+        let verified = vtmf1.verify_entanglement(m.iter(), shuffles.iter(), &proof);
+        assert_eq!(verified, Ok(()));
+        let mut bad_shuffles = shuffles;
+        bad_shuffles[1] = m[1].clone();
+        let invalid = vtmf1.verify_entanglement(m.iter(), bad_shuffles.iter(), &proof);
+        assert_eq!(invalid, Err(()));
     }
 
     #[ignore]
