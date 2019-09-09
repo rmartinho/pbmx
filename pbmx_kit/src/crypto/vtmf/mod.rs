@@ -1071,7 +1071,6 @@ mod tests {
         assert_eq!(invalid, Err(()));
     }
 
-    #[ignore]
     #[test]
     pub fn vtmf_proving_subsets_works() {
         let mut rng = thread_rng();
@@ -1095,7 +1094,6 @@ mod tests {
         let mut top = shuffle;
         top.0.drain(3..);
         let indices: Vec<_> = pi.iter().cloned().take(3).collect();
-        pi.apply_to(&mut secrets);
         secrets.drain(3..);
         let proof = vtmf0.prove_subset(&top, &m, &indices, &secrets);
         let verified = vtmf1.verify_subset(&top, &m, &proof);
@@ -1106,7 +1104,6 @@ mod tests {
         assert_eq!(invalid, Err(()));
     }
 
-    #[ignore]
     #[test]
     pub fn vtmf_proving_supersets_works() {
         let mut rng = thread_rng();
@@ -1125,12 +1122,11 @@ mod tests {
             .map(|p| vtmf0.mask(&p).0)
             .collect();
         let pi = thread_rng().sample(&Shuffles(m.len()));
-        let (shuffle, mut secrets, _) = vtmf0.mask_shuffle(&m, &pi);
+        let (shuffle, secrets, _) = vtmf0.mask_shuffle(&m, &pi);
 
         let mut needle = m;
         needle.0.drain(3..);
         let indices: Vec<_> = pi.inverse().iter().cloned().take(3).collect();
-        pi.apply_to(&mut secrets);
         let secrets: Vec<_> = indices.iter().map(|&i| secrets[i]).collect();
 
         let proof = vtmf0.prove_superset(&shuffle, &needle, &indices, &secrets);
