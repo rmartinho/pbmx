@@ -1,8 +1,6 @@
 # refactoring
-x make app use lib state tracking
 - move more toolkit-ish stuff out of CLI
 - reduce duplication
-- dylib
 
 # cli improvements
 - less IDs, more names
@@ -19,7 +17,5 @@ x make app use lib state tracking
 - oblivious transfers? 
 
 # primitive improvements
-- return blinding factors from VTMF functions so they can be re-combined later
-- a couple more primitives instead of saving blinding factors?
 - wire format versioning
 - distinguish text/binary messages
