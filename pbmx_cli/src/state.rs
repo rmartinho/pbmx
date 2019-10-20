@@ -12,7 +12,7 @@ use pbmx_kit::{
         keys::PrivateKey,
         vtmf::{Mask, Stack},
     },
-    serde::{FromBase64, ToBase64},
+    serde::Message,
     state::{PrivateSecretMap, State as BaseState},
 };
 use std::{ffi::OsStr, fs, path::PathBuf};
@@ -27,7 +27,7 @@ impl State {
     pub fn read(include_temp: bool) -> Result<State> {
         let mut path = PathBuf::from(SECRETS_FOLDER_NAME);
         path.push(KEY_FILE_NAME);
-        let sk = PrivateKey::from_base64(&fs::read_to_string(&path)?)?;
+        let sk = PrivateKey::decode(&fs::read(&path)?)?;
 
         let mut base = BaseState::new(sk.clone());
         for entry in fs::read_dir(BLOCKS_FOLDER_NAME)? {
@@ -40,7 +40,7 @@ impl State {
                 if ext != block_extension {
                     continue;
                 }
-                let block = Block::from_base64(&fs::read_to_string(&entry.path())?)?;
+                let block = Block::decode(&fs::read(&entry.path())?)?;
                 base.add_block(&block).map_err(|_| Error::InvalidBlock)?;
             }
         }
@@ -55,13 +55,13 @@ impl State {
                 if ext != secret_extension {
                     continue;
                 }
-                let secrets = PrivateSecretMap::from_base64(&fs::read_to_string(&entry.path())?)?;
+                let secrets = PrivateSecretMap::decode(&fs::read(&entry.path())?)?;
                 base.add_secrets(secrets.into_iter())
                     .map_err(|_| Error::InvalidBlock)?;
             }
         }
 
-        let payloads = Vec::from_base64(&fs::read_to_string(CURRENT_BLOCK_FILE_NAME)?)?;
+        let payloads = Vec::decode(&fs::read(CURRENT_BLOCK_FILE_NAME)?)?;
 
         if include_temp {
             let mut builder = base.chain.build_block();
@@ -94,15 +94,12 @@ impl State {
         let secret_file = format!("{}.{}", stack.id(), SECRET_EXTENSION);
         let mut path = PathBuf::from(SECRETS_FOLDER_NAME);
         path.push(secret_file);
-        fs::write(path, &map.to_base64()?.as_bytes())?;
+        fs::write(path, &map.encode()?)?;
         Ok(())
     }
 
     pub fn save_payloads(&self) -> Result<()> {
-        fs::write(
-            CURRENT_BLOCK_FILE_NAME,
-            &self.payloads.to_base64()?.as_bytes(),
-        )?;
+        fs::write(CURRENT_BLOCK_FILE_NAME, &self.payloads.encode()?)?;
         Ok(())
     }
 }

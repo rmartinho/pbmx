@@ -13,6 +13,9 @@ version = "1.0"
 [dependencies.bitvec]
 version = "0.14"
 
+[dependencies.bytes]
+version = "0.4"
+
 [dependencies.curve25519-dalek]
 version = "1.0"
 features = ["serde"]
@@ -28,6 +31,12 @@ version = "4.2"
 
 [dependencies.qp-trie]
 version = "0.7"
+
+[dependencies.prost]
+version = "0.5"
+
+[dependencies.prost-build]
+version = "0.5"
 
 [dependencies.rand]
 version = "0.6"
@@ -46,3 +55,6 @@ version = "2.0"
 
 [dependencies.tribool]
 version = "0.2"
+
+[build-dependencies.prost-build]
+version = "0.5"

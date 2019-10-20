@@ -9,33 +9,54 @@ use crate::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         Hash,
     },
-    serde::serialize_flat_map,
+    proto,
+    serde::{vec_from_proto, vec_to_proto, FromBytes, Proto, ToBytes},
+    Error,
 };
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use digest::Digest;
-use serde::de::{Deserialize, Deserializer};
-use std::{collections::HashMap, slice, str};
+use serde::{
+    de::{Deserialize, Deserializer},
+    ser::{Serialize, Serializer},
+};
+use std::{collections::HashMap, convert::TryFrom, slice, str};
 use tribool::Tribool;
 
 /// A block in a PBMX chain
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct Block {
     acks: Vec<Id>,
-    #[serde(serialize_with = "serialize_flat_map")]
     payloads: HashMap<Id, Payload>,
     payload_order: Vec<Id>,
     fp: Fingerprint,
     sig: Signature,
 }
 
+impl Proto for Vec<Payload> {
+    type Message = proto::PayloadList;
+
+    fn to_proto(&self) -> Result<Self::Message, Error> {
+        Ok(proto::PayloadList {
+            payloads: self
+                .iter()
+                .map(|p| p.to_proto())
+                .collect::<Result<_, _>>()?,
+        })
+    }
+
+    fn from_proto(m: &Self::Message) -> Result<Self, Error> {
+        m.payloads.iter().map(|p| Payload::from_proto(&p)).collect()
+    }
+}
+
 impl Block {
     fn new_unchecked(
         acks: Vec<Id>,
         payloads: Vec<Payload>,
-        payload_order: Vec<Id>,
         fp: Fingerprint,
         sig: Signature,
     ) -> Block {
+        let payload_order = payloads.iter().map(|p| p.id()).collect();
         Block {
             acks,
             sig,
@@ -161,6 +182,15 @@ where
     Scalar::from_hash(h)
 }
 
+impl Serialize for Block {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        BlockRaw::from(self).serialize(serializer)
+    }
+}
+
 impl<'de> Deserialize<'de> for Block {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -170,26 +200,71 @@ impl<'de> Deserialize<'de> for Block {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct BlockRaw {
     acks: Vec<Id>,
     payloads: Vec<Payload>,
-    payload_order: Vec<Id>,
     fp: Fingerprint,
     sig: Signature,
 }
 
 impl BlockRaw {
+    fn from(b: &Block) -> Self {
+        Self {
+            acks: b.acks.clone(),
+            payloads: b
+                .payload_order
+                .iter()
+                .map(|id| b.payloads[id].clone())
+                .collect(),
+            fp: b.fp,
+            sig: b.sig,
+        }
+    }
+
     fn into(self) -> Block {
-        Block::new_unchecked(
-            self.acks,
-            self.payloads,
-            self.payload_order,
-            self.fp,
-            self.sig,
-        )
+        Block::new_unchecked(self.acks, self.payloads, self.fp, self.sig)
     }
 }
+
+impl Proto for BlockRaw {
+    type Message = proto::Block;
+
+    fn to_proto(&self) -> Result<proto::Block, Error> {
+        Ok(proto::Block {
+            acks: self.acks.iter().map(|id| id.to_vec()).collect(),
+            payloads: vec_to_proto(&self.payloads)?,
+            fingerprint: self.fp.to_vec(),
+            signature: self.sig.to_bytes()?,
+        })
+    }
+
+    fn from_proto(m: &proto::Block) -> Result<Self, Error> {
+        Ok(Self {
+            acks: m
+                .acks
+                .iter()
+                .map(|b| Id::try_from(b))
+                .collect::<Result<_, _>>()?,
+            payloads: vec_from_proto(&m.payloads)?,
+            fp: Fingerprint::try_from(&m.fingerprint)?,
+            sig: Signature::from_bytes(&m.signature)?,
+        })
+    }
+}
+
+impl Proto for Block {
+    type Message = proto::Block;
+
+    fn to_proto(&self) -> Result<proto::Block, Error> {
+        BlockRaw::from(self).to_proto()
+    }
+
+    fn from_proto(m: &proto::Block) -> Result<Self, Error> {
+        Ok(BlockRaw::from_proto(m)?.into())
+    }
+}
+
 derive_base64_conversions!(Block);
 
 type Signature = (RistrettoPoint, Scalar);

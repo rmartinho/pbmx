@@ -6,7 +6,7 @@ use crate::{
     file, Config, Result,
 };
 use clap::{value_t, ArgMatches};
-use pbmx_kit::{chain::Payload, crypto::keys::PrivateKey, serde::ToBase64};
+use pbmx_kit::{chain::Payload, crypto::keys::PrivateKey, serde::Message};
 use rand::thread_rng;
 use std::{fs, path::PathBuf};
 
@@ -39,7 +39,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     {
         path.push(CURRENT_BLOCK_FILE_NAME);
-        file::write_new(&path, &current.to_base64()?.as_bytes())?;
+        file::write_new(&path, &current.encode()?)?;
         path.pop();
     }
 
@@ -48,7 +48,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         fs::create_dir_all(&path)?;
         {
             path.push(KEY_FILE_NAME);
-            file::write_new(&path, &sk.to_base64()?.as_bytes())?;
+            file::write_new(&path, &sk.encode()?)?;
             path.pop();
         }
         path.pop();

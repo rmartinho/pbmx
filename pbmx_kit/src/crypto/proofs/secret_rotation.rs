@@ -1,7 +1,10 @@
 //! Hoogh et al's verifiable rotation of homomorphic encryptions
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
-use crate::crypto::{perm::Permutation, proofs::known_rotation, vtmf::Mask};
+use crate::{
+    crypto::{perm::Permutation, proofs::known_rotation, vtmf::Mask},
+    proto,
+};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -25,6 +28,8 @@ pub struct Proof {
     rho: Vec<Scalar>,
     mu: Vec<Scalar>,
 }
+
+derive_opaque_proto_conversions!(Proof: proto::RotationProof);
 
 /// Public parameters
 #[derive(Copy, Clone)]

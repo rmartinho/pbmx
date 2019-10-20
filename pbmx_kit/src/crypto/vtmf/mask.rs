@@ -1,3 +1,4 @@
+use crate::proto;
 use curve25519_dalek::{
     ristretto::RistrettoPoint,
     scalar::Scalar,
@@ -14,7 +15,7 @@ use std::{
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Mask(pub RistrettoPoint, pub RistrettoPoint);
 
-derive_base64_conversions!(Mask);
+derive_opaque_proto_conversions!(Mask: proto::Mask);
 
 impl Mask {
     /// Creates a new open masking

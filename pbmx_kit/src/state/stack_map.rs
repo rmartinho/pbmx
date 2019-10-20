@@ -4,6 +4,9 @@ use crate::{
         keys::Fingerprint,
         vtmf::{Mask, SecretShare, Stack},
     },
+    proto,
+    serde::{FromBytes, Proto, ToBytes},
+    Error,
 };
 use qp_trie::Trie;
 use std::{collections::HashMap, str};
@@ -13,6 +16,31 @@ pub type SecretMap = HashMap<Mask, (SecretShare, Vec<Fingerprint>)>;
 
 /// A map of private secrets
 pub type PrivateSecretMap = HashMap<Mask, Mask>;
+
+impl Proto for PrivateSecretMap {
+    type Message = proto::PrivateSecretMap;
+
+    fn to_proto(&self) -> Result<Self::Message, Error> {
+        Ok(proto::PrivateSecretMap {
+            map: self
+                .iter()
+                .map(|(k, v)| {
+                    Ok(proto::PrivateSecretEntry {
+                        key: k.to_bytes()?,
+                        value: v.to_bytes()?,
+                    })
+                })
+                .collect::<Result<_, Error>>()?,
+        })
+    }
+
+    fn from_proto(m: &Self::Message) -> Result<Self, Error> {
+        m.map
+            .iter()
+            .map(|e| Ok((Mask::from_bytes(&e.key)?, Mask::from_bytes(&e.value)?)))
+            .collect()
+    }
+}
 
 /// A map of stacks
 #[derive(Clone, Default, Debug)]

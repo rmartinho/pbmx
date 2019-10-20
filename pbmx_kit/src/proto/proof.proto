@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package pbmx.proof;
+
+message DlogEqProof {
+    bytes raw = 1;
+}
+
+message ShuffleProof {
+    bytes raw = 1;
+}
+
+message RotationProof {
+    bytes raw = 1;
+}
+
+message InsertionProof {
+    bytes raw = 1;
+}

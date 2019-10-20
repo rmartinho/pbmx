@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package pbmx.core;
+
+message Stack {
+    repeated Mask masks = 1;
+}
+
+message Mask {
+    bytes raw = 1;
+}
+
+message SecretShare {
+    bytes raw = 1;
+}
+

@@ -9,8 +9,14 @@ use crate::{
             Stack,
         },
     },
+    proto,
+    serde::{vec_from_proto, vec_to_proto, Proto},
+    Error, Result,
 };
-use std::fmt::{self, Display, Formatter};
+use std::{
+    convert::TryFrom,
+    fmt::{self, Display, Formatter},
+};
 
 /// A PBMX message payload
 #[allow(clippy::large_enum_variant)]
@@ -200,4 +206,158 @@ pub trait PayloadVisitor {
     }
     /// Visits a Bytes payload
     fn visit_bytes(&mut self, _block: &Block, _bytes: &[u8]) {}
+}
+
+impl Proto for Payload {
+    type Message = proto::Payload;
+
+    fn to_proto(&self) -> Result<proto::Payload> {
+        use proto::payload::PayloadKind;
+
+        let kind = match self {
+            Payload::PublishKey(name, pk) => PayloadKind::PublishKey(proto::PublishKey {
+                name: name.clone(),
+                key: Some(pk.to_proto()?),
+            }),
+            Payload::OpenStack(stk) => PayloadKind::OpenStack(proto::OpenStack {
+                stack: Some(stk.to_proto()?),
+            }),
+            Payload::NameStack(id, name) => PayloadKind::NameStack(proto::NameStack {
+                id: id.to_vec(),
+                name: name.clone(),
+            }),
+            Payload::MaskStack(id, stk, proof) => PayloadKind::MaskStack(proto::MaskStack {
+                id: id.to_vec(),
+                stack: Some(stk.to_proto()?),
+                proofs: vec_to_proto(&proof)?,
+            }),
+            Payload::ShuffleStack(id, stk, proof) => {
+                PayloadKind::ShuffleStack(proto::ShuffleStack {
+                    id: id.to_vec(),
+                    shuffle: Some(stk.to_proto()?),
+                    proof: Some(proof.to_proto()?),
+                })
+            }
+            Payload::ShiftStack(id, stk, proof) => PayloadKind::ShiftStack(proto::ShiftStack {
+                id: id.to_vec(),
+                shifted: Some(stk.to_proto()?),
+                proof: Some(proof.to_proto()?),
+            }),
+            Payload::TakeStack(id1, idxs, id2) => PayloadKind::TakeStack(proto::TakeStack {
+                source_id: id1.to_vec(),
+                indices: idxs.iter().map(|&i| i as i64).collect(),
+                result_id: id2.to_vec(),
+            }),
+            Payload::PileStacks(ids, id2) => PayloadKind::PileStacks(proto::PileStacks {
+                source_ids: ids.iter().map(|id| id.to_vec()).collect(),
+                result_id: id2.to_vec(),
+            }),
+            Payload::InsertStack(id1, id2, stk, proof) => {
+                PayloadKind::InsertStack(proto::InsertStack {
+                    haystack_id: id1.to_vec(),
+                    needle_id: id2.to_vec(),
+                    inserted: Some(stk.to_proto()?),
+                    proof: Some(proof.to_proto()?),
+                })
+            }
+            Payload::PublishShares(id, shares, proof) => {
+                PayloadKind::PublishShares(proto::PublishShares {
+                    id: id.to_vec(),
+                    shares: vec_to_proto(&shares)?,
+                    proofs: vec_to_proto(&proof)?,
+                })
+            }
+            Payload::RandomSpec(name, spec) => PayloadKind::RandomSpec(proto::RandomSpec {
+                name: name.clone(),
+                spec: spec.clone(),
+            }),
+            Payload::RandomEntropy(name, entropy) => {
+                PayloadKind::RandomEntropy(proto::RandomEntropy {
+                    name: name.clone(),
+                    entropy: Some(entropy.to_proto()?),
+                })
+            }
+            Payload::RandomReveal(name, share, proof) => {
+                PayloadKind::RandomReveal(proto::RandomReveal {
+                    name: name.clone(),
+                    share: Some(share.to_proto()?),
+                    proof: Some(proof.to_proto()?),
+                })
+            }
+            Payload::Bytes(bytes) => PayloadKind::Raw(bytes.clone()),
+        };
+        Ok(proto::Payload {
+            payload_kind: Some(kind),
+        })
+    }
+
+    fn from_proto(m: &proto::Payload) -> Result<Self> {
+        fn do_it(m: &proto::Payload) -> Option<Payload> {
+            use proto::payload::PayloadKind;
+
+            Some(match m.payload_kind.as_ref()? {
+                PayloadKind::PublishKey(p) => Payload::PublishKey(
+                    p.name.clone(),
+                    PublicKey::from_proto(p.key.as_ref()?).ok()?,
+                ),
+                PayloadKind::OpenStack(p) => {
+                    Payload::OpenStack(Stack::from_proto(p.stack.as_ref()?).ok()?)
+                }
+                PayloadKind::MaskStack(p) => Payload::MaskStack(
+                    Id::try_from(&p.id).ok()?,
+                    Stack::from_proto(p.stack.as_ref()?).ok()?,
+                    vec_from_proto(&p.proofs).ok()?,
+                ),
+                PayloadKind::ShuffleStack(p) => Payload::ShuffleStack(
+                    Id::try_from(&p.id).ok()?,
+                    Stack::from_proto(p.shuffle.as_ref()?).ok()?,
+                    ShuffleProof::from_proto(p.proof.as_ref()?).ok()?,
+                ),
+                PayloadKind::ShiftStack(p) => Payload::ShiftStack(
+                    Id::try_from(&p.id).ok()?,
+                    Stack::from_proto(p.shifted.as_ref()?).ok()?,
+                    ShiftProof::from_proto(p.proof.as_ref()?).ok()?,
+                ),
+                PayloadKind::NameStack(p) => {
+                    Payload::NameStack(Id::try_from(&p.id).ok()?, p.name.clone())
+                }
+                PayloadKind::TakeStack(p) => Payload::TakeStack(
+                    Id::try_from(&p.source_id).ok()?,
+                    p.indices.iter().map(|&i| i as usize).collect(),
+                    Id::try_from(&p.result_id).ok()?,
+                ),
+                PayloadKind::PileStacks(p) => Payload::PileStacks(
+                    p.source_ids
+                        .iter()
+                        .map(|id| Id::try_from(id))
+                        .collect::<Result<_>>()
+                        .ok()?,
+                    Id::try_from(&p.result_id).ok()?,
+                ),
+                PayloadKind::InsertStack(p) => Payload::InsertStack(
+                    Id::try_from(&p.haystack_id).ok()?,
+                    Id::try_from(&p.needle_id).ok()?,
+                    Stack::from_proto(p.inserted.as_ref()?).ok()?,
+                    InsertProof::from_proto(p.proof.as_ref()?).ok()?,
+                ),
+                PayloadKind::PublishShares(p) => Payload::PublishShares(
+                    Id::try_from(&p.id).ok()?,
+                    vec_from_proto(&p.shares).ok()?,
+                    vec_from_proto(&p.proofs).ok()?,
+                ),
+                PayloadKind::RandomSpec(p) => Payload::RandomSpec(p.name.clone(), p.spec.clone()),
+                PayloadKind::RandomEntropy(p) => Payload::RandomEntropy(
+                    p.name.clone(),
+                    Mask::from_proto(p.entropy.as_ref()?).ok()?,
+                ),
+                PayloadKind::RandomReveal(p) => Payload::RandomReveal(
+                    p.name.clone(),
+                    SecretShare::from_proto(p.share.as_ref()?).ok()?,
+                    SecretShareProof::from_proto(p.proof.as_ref()?).ok()?,
+                ),
+                PayloadKind::Raw(p) => Payload::Bytes(p.clone()),
+            })
+        }
+        do_it(m).ok_or(Error::Decoding)
+    }
 }

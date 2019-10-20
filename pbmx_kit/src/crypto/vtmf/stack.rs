@@ -1,4 +1,9 @@
-use crate::crypto::{keys::Fingerprint, vtmf::Mask};
+use crate::{
+    crypto::{keys::Fingerprint, vtmf::Mask},
+    proto,
+    serde::{vec_from_proto, vec_to_proto, Proto},
+    Result,
+};
 use std::{
     borrow::{Borrow, BorrowMut},
     iter::FromIterator,
@@ -10,6 +15,20 @@ use std::{
 pub struct Stack(pub(crate) Vec<Mask>);
 
 derive_base64_conversions!(Stack);
+
+impl Proto for Stack {
+    type Message = proto::Stack;
+
+    fn to_proto(&self) -> Result<proto::Stack> {
+        Ok(proto::Stack {
+            masks: vec_to_proto(&self.0)?,
+        })
+    }
+
+    fn from_proto(m: &proto::Stack) -> Result<Self> {
+        Ok(Stack(vec_from_proto(&m.masks)?))
+    }
+}
 
 impl Stack {
     /// Gets an ID for this stack

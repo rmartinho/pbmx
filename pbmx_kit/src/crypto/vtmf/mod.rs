@@ -7,6 +7,7 @@ use crate::{
         perm::Permutation,
         proofs::{dlog_eq, entanglement, secret_insertion, secret_rotation, secret_shuffle},
     },
+    proto,
     serde::serialize_flat_map,
 };
 use curve25519_dalek::{
@@ -44,6 +45,8 @@ pub struct Vtmf {
 
 /// One party's share of a secret
 pub type SecretShare = RistrettoPoint;
+
+derive_opaque_proto_conversions!(SecretShare: proto::SecretShare);
 
 /// Zero-knowledge proof of a secret share
 pub type SecretShareProof = MaskProof;

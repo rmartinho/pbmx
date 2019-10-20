@@ -1,6 +1,11 @@
 //! ElGamal encryption scheme for elliptic curves
 
-use crate::{crypto::hash::Hash, serde::ToBytes, Error};
+use crate::{
+    crypto::hash::Hash,
+    proto,
+    serde::{FromBytes, Proto, ToBytes},
+    Error,
+};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -11,7 +16,9 @@ use digest::Digest;
 use rand::{thread_rng, CryptoRng, Rng};
 use std::{
     borrow::Borrow,
+    convert::TryFrom,
     fmt::{self, Debug, Display, Formatter},
+    ops::Deref,
     str::{self, FromStr},
 };
 
@@ -32,9 +39,31 @@ pub struct PublicKey {
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
 
+impl Deref for Fingerprint {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 impl Borrow<[u8]> for Fingerprint {
     fn borrow(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl Proto for PrivateKey {
+    type Message = proto::PrivateKey;
+
+    fn to_proto(&self) -> Result<Self::Message, Error> {
+        Ok(proto::PrivateKey {
+            raw: self.to_bytes()?,
+        })
+    }
+
+    fn from_proto(m: &Self::Message) -> Result<Self, Error> {
+        PrivateKey::from_bytes(&m.raw)
     }
 }
 
@@ -160,7 +189,7 @@ impl AsRef<[u8]> for Fingerprint {
 }
 
 derive_base64_conversions!(PrivateKey);
-derive_base64_conversions!(PublicKey);
+derive_opaque_proto_conversions!(PublicKey: proto::PublicKey);
 
 impl Display for Fingerprint {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -205,6 +234,19 @@ impl FromStr for Fingerprint {
         let mut fp = Fingerprint([0; FINGERPRINT_SIZE]);
         fp.0.copy_from_slice(&bytes);
         Ok(fp)
+    }
+}
+
+impl<'a> TryFrom<&'a Vec<u8>> for Fingerprint {
+    type Error = Error;
+
+    fn try_from(v: &'a Vec<u8>) -> Result<Fingerprint, Error> {
+        if v.len() != FINGERPRINT_SIZE {
+            return Err(Error::Decoding);
+        }
+        let mut array = [0u8; FINGERPRINT_SIZE];
+        array.copy_from_slice(&v[..]);
+        Ok(Fingerprint(array))
     }
 }
 

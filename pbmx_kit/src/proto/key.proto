@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package pbmx.key;
+
+message PublicKey {
+    bytes raw = 1;
+}
+
+message PrivateKey {
+    bytes raw = 1;
+}

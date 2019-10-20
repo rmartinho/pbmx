@@ -1,10 +1,13 @@
 //! Verifiable secret insertion of homomorphic encryptions
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
-use crate::crypto::{
-    perm::Permutation,
-    proofs::{dlog_eq_1of2, secret_rotation},
-    vtmf::Mask,
+use crate::{
+    crypto::{
+        perm::Permutation,
+        proofs::{dlog_eq_1of2, secret_rotation},
+        vtmf::Mask,
+    },
+    proto,
 };
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -25,6 +28,8 @@ pub struct Proof {
     rot2: secret_rotation::Proof,
     eq_top_bottom: dlog_eq_1of2::Proof,
 }
+
+derive_opaque_proto_conversions!(Proof: proto::InsertionProof);
 
 /// Public parameters
 #[derive(Copy, Clone)]

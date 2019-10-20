@@ -1,6 +1,7 @@
 //! Chaum and Pedersen's zero-knowledge proof of equality of discrete logarithms
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
+use crate::proto;
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use rand::thread_rng;
@@ -11,6 +12,8 @@ pub struct Proof {
     c: Scalar,
     r: Scalar,
 }
+
+derive_opaque_proto_conversions!(Proof: proto::DlogEqProof);
 
 /// Public parameters
 #[derive(Copy, Clone)]

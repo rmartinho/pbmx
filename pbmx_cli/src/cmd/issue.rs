@@ -6,7 +6,7 @@ use crate::{
 };
 use clap::ArgMatches;
 use colored::Colorize;
-use pbmx_kit::serde::ToBase64;
+use pbmx_kit::serde::Message;
 use std::path::PathBuf;
 
 pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
@@ -24,7 +24,7 @@ pub fn run(_: &ArgMatches, _: &Config) -> Result<()> {
     let block_file = format!("{}.{}", id, BLOCK_EXTENSION);
     let mut path = PathBuf::from(BLOCKS_FOLDER_NAME);
     path.push(block_file);
-    file::write_new(path, block.to_base64()?.as_bytes())?;
+    file::write_new(path, block.encode()?)?;
     println!("{} {:16}", " ^ Issue block".green().bold(), id);
 
     state.payloads.clear();

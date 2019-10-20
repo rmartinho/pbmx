@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package pbmx.chain;
+
+import "core.proto";
+import "key.proto";
+import "proof.proto";
+
+message Block {
+    repeated bytes acks = 1;
+    repeated Payload payloads = 2;
+    bytes fingerprint = 3;
+    bytes signature = 4;
+}
+
+message PayloadList {
+    repeated Payload payloads = 1;
+}
+
+message Payload {
+    oneof payload_kind {
+        bytes raw = 1;
+        PublishKey publish_key = 2;
+        OpenStack open_stack = 3;
+        MaskStack mask_stack = 4;
+        ShuffleStack shuffle_stack = 5;
+        ShiftStack shift_stack = 6;
+        NameStack name_stack = 7;
+        TakeStack take_stack = 8;
+        PileStacks pile_stacks = 9;
+        InsertStack insert_stack = 10;
+        PublishShares publish_shares = 11;
+        RandomSpec random_spec = 12;
+        RandomEntropy random_entropy = 13;
+        RandomReveal random_reveal = 14;
+    }
+}
+
+message PublishKey {
+    string name = 1;
+    pbmx.key.PublicKey key = 2;
+}
+
+message OpenStack {
+    pbmx.core.Stack stack = 1;
+}
+
+message MaskStack {
+    bytes id = 1;
+    pbmx.core.Stack stack = 2;
+    repeated pbmx.proof.DlogEqProof proofs = 3;
+}
+
+message ShuffleStack {
+    bytes id = 1;
+    pbmx.core.Stack shuffle = 2;
+    pbmx.proof.ShuffleProof proof = 3;
+}
+
+message ShiftStack {
+    bytes id = 1;
+    pbmx.core.Stack shifted = 2;
+    pbmx.proof.RotationProof proof = 3;
+}
+
+message NameStack {
+    bytes id = 1;
+    string name = 2;
+}
+
+message TakeStack {
+    bytes source_id = 1;
+    repeated int64 indices = 2;
+    bytes result_id = 3;
+}
+
+message PileStacks {
+    repeated bytes source_ids = 1;
+    bytes result_id = 2;
+}
+
+message InsertStack {
+    bytes haystack_id = 1;
+    bytes needle_id = 2;
+    pbmx.core.Stack inserted = 3;
+    pbmx.proof.InsertionProof proof = 4;
+}
+
+message PublishShares {
+    bytes id = 1;
+    repeated pbmx.core.SecretShare shares = 2;
+    repeated pbmx.proof.DlogEqProof proofs = 3;
+}
+
+message RandomSpec {
+    string name = 1;
+    string spec = 2;
+}
+
+message RandomEntropy {
+    string name = 1;
+    pbmx.core.Mask entropy = 2;
+}
+
+message RandomReveal {
+    string name = 1;
+    pbmx.core.SecretShare share = 2;
+    pbmx.proof.DlogEqProof proof = 3;
+}
