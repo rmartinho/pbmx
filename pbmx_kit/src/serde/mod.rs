@@ -33,7 +33,9 @@ where
         let msg = self.to_proto()?;
         let raw_len = self.to_proto()?.encoded_len();
         let delim_len = prost::length_delimiter_len(raw_len);
-        let mut buf = Vec::with_capacity(raw_len + delim_len);
+        let format_len = prost::length_delimiter_len(FORMAT_NUMBER);
+        let mut buf = Vec::with_capacity(raw_len + delim_len + format_len);
+        prost::encode_length_delimiter(FORMAT_NUMBER, &mut buf).map_err(|_| Error::Encoding)?;
         msg.encode_length_delimited(&mut buf)
             .map_err(|_| Error::Encoding)?;
         Ok(buf)
@@ -41,11 +43,18 @@ where
 
     fn decode(buf: &[u8]) -> Result<Self, Error> {
         use prost::Message;
-        let msg =
-            <Self as Proto>::Message::decode_length_delimited(buf).map_err(|_| Error::Encoding)?;
+        let format = prost::decode_length_delimiter(buf).map_err(|_| Error::Decoding)?;
+        if format != FORMAT_NUMBER {
+            return Err(Error::Decoding);
+        }
+        let format_len = prost::length_delimiter_len(format);
+        let msg = <Self as Proto>::Message::decode_length_delimited(&buf[format_len..])
+            .map_err(|_| Error::Decoding)?;
         Self::from_proto(&msg)
     }
 }
+
+const FORMAT_NUMBER: usize = 1;
 
 /// Serializes a map as a flat vector
 ///
