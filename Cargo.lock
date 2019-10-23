@@ -358,7 +358,7 @@ dependencies = [
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 4.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pbmx_kit 0.1.0",
- "qp-trie 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "qp-trie 0.7.3 (git+https://github.com/messense/qp-trie-rs?branch=fix-compilation)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -390,7 +390,7 @@ dependencies = [
  "nom 4.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost-build 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "qp-trie 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "qp-trie 0.7.3 (git+https://github.com/messense/qp-trie-rs?branch=fix-compilation)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -479,7 +479,7 @@ dependencies = [
 [[package]]
 name = "qp-trie"
 version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/messense/qp-trie-rs?branch=fix-compilation#7390457aacbb4dfaff2d6e56103d98ae9a2a0ab2"
 dependencies = [
  "new_debug_unreachable 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -915,7 +915,7 @@ dependencies = [
 "checksum prost-build 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "eb788126ea840817128183f8f603dce02cb7aea25c2a0b764359d8e20010702e"
 "checksum prost-derive 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5e7dc378b94ac374644181a2247cebf59a6ec1c88b49ac77f3a94b86b79d0e11"
 "checksum prost-types 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1de482a366941c8d56d19b650fac09ca08508f2a696119ee7513ad590c8bac6f"
-"checksum qp-trie 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)" = "e33b211108c76b16776bb37112363045bda4da539a5a8cb58559d4abb36af080"
+"checksum qp-trie 0.7.3 (git+https://github.com/messense/qp-trie-rs?branch=fix-compilation)" = "<none>"
 "checksum quote 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce23b6b870e8f94f81fb0a363d65d86675884b34a09043c81e5562f11c1f8e1"
 "checksum quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "053a8c8bcc71fcce321828dc897a98ab9760bef03a4fc36693c231e5b3216cfe"
 "checksum rand 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"

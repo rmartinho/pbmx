@@ -30,7 +30,8 @@ version = "1.0"
 version = "4.2"
 
 [dependencies.qp-trie]
-version = "0.7"
+git = "https://github.com/messense/qp-trie-rs"
+branch = "fix-compilation"
 
 [dependencies.rand]
 version = "0.6"
