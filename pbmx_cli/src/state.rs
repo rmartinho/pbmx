@@ -7,7 +7,7 @@ use crate::{
 };
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
 use pbmx_kit::{
-    chain::{Block, Payload},
+    chain::{Block, Chain, Payload},
     crypto::{
         keys::PrivateKey,
         vtmf::{Mask, Stack},
@@ -29,7 +29,7 @@ impl State {
         path.push(KEY_FILE_NAME);
         let sk = PrivateKey::decode(&fs::read(&path)?)?;
 
-        let mut base = BaseState::new(sk.clone());
+        let mut chain = Chain::new();
         for entry in fs::read_dir(BLOCKS_FOLDER_NAME)? {
             let entry = entry?;
             if !entry.file_type()?.is_file() {
@@ -41,10 +41,14 @@ impl State {
                     continue;
                 }
                 let block = Block::decode(&fs::read(&entry.path())?)?;
-                base.add_block(&block).map_err(|_| Error::InvalidBlock)?;
+                chain.add_block(block);
             }
         }
 
+        let mut base = BaseState::new(sk.clone());
+        for block in chain.blocks() {
+            base.add_block(&block).map_err(|_| Error::InvalidBlock)?;
+        }
         for entry in fs::read_dir(SECRETS_FOLDER_NAME)? {
             let entry = entry?;
             if !entry.file_type()?.is_file() {
