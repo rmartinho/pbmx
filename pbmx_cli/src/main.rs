@@ -23,7 +23,7 @@ mod stack_map;
 mod state;
 
 mod cmd;
-use cmd::{init, issue, join, log, message, reset, rng, stack, status};
+use cmd::{bin, init, issue, join, log, message, reset, rng, stack, status};
 
 fn main() {
     let cfg = Config::read().unwrap();
@@ -76,8 +76,16 @@ fn main() {
             (@setting ColoredHelp)
             (@group data +required =>
                 (@arg MESSAGE: "The message")
-                (@arg BASE64: -b --base64 +takes_value "Use a binary message given in base64")
                 (@arg FILE: -f --file +takes_value "Use the contents of the file as the message")
+            )
+        )
+        (@subcommand bin =>
+            (about: "Adds arbitrary binary data to the current block")
+            (@setting DeriveDisplayOrder)
+            (@setting ColoredHelp)
+            (@group data +required =>
+                (@arg BASE64: "The data in base64")
+                (@arg FILE: -f --file +takes_value "Use the contents of the file as data")
             )
         )
         (@subcommand stack =>
@@ -222,6 +230,7 @@ fn main() {
         ("join", Some(sub_m)) => join::run(sub_m, &cfg),
         ("status", Some(sub_m)) => status::run(sub_m, &cfg),
         ("log", Some(sub_m)) => log::run(sub_m, &cfg),
+        ("bin", Some(sub_m)) => bin::run(sub_m, &cfg),
         ("message", Some(sub_m)) => message::run(sub_m, &cfg),
         ("stack", Some(sub_m)) => stack::run(sub_m, &cfg),
         ("rng", Some(sub_m)) => rng::run(sub_m, &cfg),

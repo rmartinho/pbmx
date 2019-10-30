@@ -48,6 +48,8 @@ pub enum Payload {
     RandomEntropy(String, Mask),
     /// An rng reveal payload
     RandomReveal(String, SecretShare, SecretShareProof),
+    /// Raw text payload
+    Text(String),
     /// Raw byte payload
     Bytes(Vec<u8>),
 }
@@ -85,7 +87,12 @@ impl<'a> Display for DisplayShort<'a> {
             RandomSpec(id, ..) => write!(f, "new rng {}", id),
             RandomEntropy(id, ..) => write!(f, "add entropy {}", id),
             RandomReveal(id, ..) => write!(f, "open rng {}", id),
-            Bytes(bytes) => write!(f, "message {}", &String::from_utf8_lossy(bytes)),
+            Text(text) => write!(f, "text {}", text),
+            Bytes(bytes) => write!(
+                f,
+                "binary {}",
+                &base64::encode_config(bytes, base64::URL_SAFE_NO_PAD)
+            ),
         }
     }
 }
@@ -136,6 +143,9 @@ pub trait PayloadVisitor {
             }
             RandomReveal(id, share, proof) => {
                 self.visit_random_reveal(block, id, share, proof);
+            }
+            Text(text) => {
+                self.visit_text(block, text);
             }
             Bytes(bytes) => {
                 self.visit_bytes(block, bytes);
@@ -204,6 +214,9 @@ pub trait PayloadVisitor {
         _proof: &SecretShareProof,
     ) {
     }
+    /// Visits a Text payload
+    fn visit_text(&mut self, _block: &Block, _text: &str) {}
+
     /// Visits a Bytes payload
     fn visit_bytes(&mut self, _block: &Block, _bytes: &[u8]) {}
 }
@@ -284,6 +297,7 @@ impl Proto for Payload {
                     proof: Some(proof.to_proto()?),
                 })
             }
+            Payload::Text(text) => PayloadKind::Text(text.clone()),
             Payload::Bytes(bytes) => PayloadKind::Raw(bytes.clone()),
         };
         Ok(proto::Payload {
@@ -355,6 +369,7 @@ impl Proto for Payload {
                     SecretShare::from_proto(p.share.as_ref()?).ok()?,
                     SecretShareProof::from_proto(p.proof.as_ref()?).ok()?,
                 ),
+                PayloadKind::Text(s) => Payload::Text(s.clone()),
                 PayloadKind::Raw(p) => Payload::Bytes(p.clone()),
             })
         }

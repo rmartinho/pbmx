@@ -232,6 +232,17 @@ pub unsafe extern "C" fn pbmx_random_reveal_payload(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn pbmx_text_payload(
+    mut builder: PbmxBlockBuilder,
+    text: *const c_char,
+) -> PbmxResult {
+    let text = CStr::from_ptr(text).to_string_lossy();
+    let payload = Payload::Text(text.into());
+    builder.as_mut()?.add_payload(payload);
+    PbmxResult::ok()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn pbmx_bytes_payload(
     mut builder: PbmxBlockBuilder,
     buf: *const u8,
@@ -379,6 +390,7 @@ pub enum PayloadKind {
     RandomSpec,
     RandomEntropy,
     RandomReveal,
+    Text,
     Bytes,
 }
 
@@ -401,6 +413,7 @@ pub unsafe extern "C" fn pbmx_payload_kind(
         Payload::RandomSpec(..) => PayloadKind::RandomSpec,
         Payload::RandomEntropy(..) => PayloadKind::RandomEntropy,
         Payload::RandomReveal(..) => PayloadKind::RandomReveal,
+        Payload::Text(_) => PayloadKind::Text,
         Payload::Bytes(_) => PayloadKind::Bytes,
     });
     PbmxResult::ok()
@@ -644,6 +657,21 @@ pub unsafe extern "C" fn pbmx_unwrap_random_reveal(
             return_string(name, name_out, name_len)?;
             share_out.opt_write(share.clone().into());
             proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_text(
+    payload: PbmxPayload,
+    buf_out: *mut u8,
+    len: *mut size_t,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::Text(text) => {
+            return_list(text.as_bytes().iter().cloned(), buf_out, len)?;
             PbmxResult::ok()
         }
         _ => PbmxResult::err(),

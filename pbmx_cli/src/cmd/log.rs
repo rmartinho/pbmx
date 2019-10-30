@@ -141,6 +141,10 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
         println!("    {} {}", "rng reveal".green().bold(), id);
     }
 
+    fn visit_text(&mut self, _: &Block, text: &str) {
+        println!("    {} {}", "text".green().bold(), text);
+    }
+
     fn visit_bytes(&mut self, _: &Block, bytes: &[u8]) {
         println!(
             "    {} {}",

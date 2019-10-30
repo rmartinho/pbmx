@@ -20,6 +20,7 @@ message PayloadList {
 message Payload {
     oneof payload_kind {
         bytes raw = 1;
+        string text = 15;
         PublishKey publish_key = 2;
         OpenStack open_stack = 3;
         MaskStack mask_stack = 4;

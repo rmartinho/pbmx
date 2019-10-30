@@ -15,7 +15,3 @@
 - subset/superset/disjoint/no suit proofs
 - "glueing"/linked shuffles
 - oblivious transfers? 
-
-# primitive improvements
-- wire format versioning
-- distinguish text/binary messages
