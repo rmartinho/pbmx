@@ -1,16 +1,16 @@
 use crate::{ptr::PtrOptWrite, result::PbmxResult};
 use libc::size_t;
-use pbmx_kit::serde::{FromBytes, ToBytes};
+use pbmx_kit::serde::Message;
 use std::slice;
 
 pub unsafe fn ffi_export<T>(t: &T, buf: *mut u8, len: *mut size_t) -> PbmxResult
 where
-    T: ToBytes,
+    T: Message,
 {
     if buf.is_null() && len.is_null() {
         None?
     }
-    let bytes = t.to_bytes().ok()?;
+    let bytes = t.encode().ok()?;
     if *len < bytes.len() {
         len.opt_write(bytes.len());
         None?
@@ -22,8 +22,8 @@ where
 }
 pub unsafe fn ffi_import<T>(buf: *const u8, len: size_t) -> Option<T>
 where
-    T: FromBytes,
+    T: Message,
 {
     let buf = slice::from_raw_parts(buf, len);
-    T::from_bytes(buf).ok()
+    T::decode(buf).ok()
 }
