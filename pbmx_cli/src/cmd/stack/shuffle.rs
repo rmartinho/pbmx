@@ -11,7 +11,7 @@ use std::convert::TryFrom;
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let ids = values_t!(m, "STACK", String)?;
-    let indices = values_t!(m, "INDICES", String).ok();
+    let indices = values_t!(m, "ORDER", String).ok();
 
     let mut state = State::read(true)?;
 
@@ -81,11 +81,19 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     let shuffle_ids = shuffles.iter().map(|s| s.id()).collect();
 
     state.payloads.extend(payloads.into_iter());
-    state.payloads.push(Payload::ProveEntanglement(
-        stack_ids,
-        shuffle_ids,
-        entangle_proof,
-    ));
+    if ids.len() > 1 {
+        println!(
+            "{} {:16?} \u{224B} {:16?}",
+            " + Entangled".green().bold(),
+            stack_ids,
+            shuffle_ids
+        );
+        state.payloads.push(Payload::ProveEntanglement(
+            stack_ids,
+            shuffle_ids,
+            entangle_proof,
+        ));
+    }
 
     state.save_payloads()?;
     Ok(())

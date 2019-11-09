@@ -11,6 +11,7 @@ use pbmx_kit::{
         },
     },
 };
+use std::fmt::{self, Display, Formatter};
 
 pub fn run(_: &ArgMatches, cfg: &Config) -> Result<()> {
     let state = State::read(false)?;
@@ -26,20 +27,20 @@ impl<'a> ChainVisitor for LogPrinter<'a> {}
 
 impl<'a> BlockVisitor for LogPrinter<'a> {
     fn visit_block(&mut self, block: &Block) {
-        print!("{}", format!("{:16}", block.id()).yellow());
+        print!("{}", format!("{:8}", block.id()).yellow());
 
         print!(" {}", "by".blue().bold());
         let fp = block.signer();
         if let Some(n) = self.0.base.names.get(&fp) {
             print!(" {}", n);
         } else {
-            print!(" {:16}", fp);
+            print!(" {:8}", fp);
         }
 
         if !block.parent_ids().is_empty() {
             print!(" {}", "ack".blue());
             for id in block.parent_ids() {
-                print!(" {:16}", id);
+                print!(" {:8}", id);
             }
         }
         println!();
@@ -56,12 +57,12 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
     }
 
     fn visit_open_stack(&mut self, _: &Block, stack: &Stack) {
-        println!("    {} {:16}", "stack".green().bold(), stack.id());
+        println!("    {} {:8}", "stack".green().bold(), stack.id());
     }
 
     fn visit_mask_stack(&mut self, _: &Block, id: Id, stack: &Stack, _: &[MaskProof]) {
         println!(
-            "    {} {:16} \u{21AC} {:16}",
+            "    {} {:8} \u{21AC} {:8}",
             "mask".green().bold(),
             id,
             stack.id()
@@ -70,7 +71,7 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
 
     fn visit_shuffle_stack(&mut self, _: &Block, id: Id, stack: &Stack, _: &ShuffleProof) {
         println!(
-            "    {} {:16} \u{224B} {:16}",
+            "    {} {:8} \u{224B} {:8}",
             "shuffle".green().bold(),
             id,
             stack.id()
@@ -79,7 +80,7 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
 
     fn visit_shift_stack(&mut self, _: &Block, id: Id, stack: &Stack, _: &ShiftProof) {
         println!(
-            "    {} {:16} \u{21CB} {:16}",
+            "    {} {:8} \u{21CB} {:8}",
             "cut".green().bold(),
             id,
             stack.id()
@@ -88,7 +89,7 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
 
     fn visit_take_stack(&mut self, _: &Block, id1: Id, indices: &[usize], id2: Id) {
         println!(
-            "    {} {:16}{} \u{219B} {:16}",
+            "    {} {:8}{} \u{219B} {:8}",
             "take".green().bold(),
             id1,
             display_indices(indices),
@@ -98,15 +99,15 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
 
     fn visit_pile_stack(&mut self, _: &Block, ids: &[Id], id2: Id) {
         println!(
-            "    {} {:16?} \u{21A3} {:16}",
+            "    {} {:8} {:8}",
             "pile".green().bold(),
-            ids,
+            DisplayPile(ids),
             id2
         );
     }
 
     fn visit_name_stack(&mut self, _: &Block, id: Id, name: &str) {
-        println!("    {} {:16} {}", "name".green().bold(), id, name);
+        println!("    {} {:8} {}", "name".green().bold(), id, name);
     }
 
     fn visit_publish_shares(
@@ -116,7 +117,7 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
         _: &[SecretShare],
         _: &[SecretShareProof],
     ) {
-        println!("    {} {:16}", "secret".green().bold(), id);
+        println!("    {} {:8}", "secret".green().bold(), id);
     }
 
     fn visit_random_spec(&mut self, _: &Block, id: &str, spec: &str) {
@@ -139,8 +140,8 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
         _: &EntanglementProof,
     ) {
         println!(
-            "    {} {:?} {:?}",
-            "prove tangle".green().bold(),
+            "    {} {:8?} \u{224B} {:8?}",
+            "entangled".green().bold(),
             ids1,
             ids2
         );
@@ -156,5 +157,22 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
             "bytes".green().bold(),
             String::from_utf8_lossy(bytes)
         );
+    }
+}
+
+struct DisplayPile<'a>(&'a [Id]);
+
+impl<'a> Display for DisplayPile<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut first = true;
+        for id in self.0.iter() {
+            if !first {
+                write!(f, ", ")?;
+            } else {
+                first = false;
+            }
+            write!(f, "{:8}", id)?;
+        }
+        Ok(())
     }
 }
