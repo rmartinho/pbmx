@@ -355,6 +355,7 @@ dependencies = [
  "colored 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 4.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pbmx_kit 0.1.0",
  "qp-trie 0.7.3 (git+https://github.com/messense/qp-trie-rs?branch=fix-compilation)",

@@ -6,8 +6,8 @@ use pbmx_kit::{
     crypto::{
         keys::PublicKey,
         vtmf::{
-            InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-            Stack,
+            EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
+            ShuffleProof, Stack,
         },
     },
 };
@@ -105,16 +105,6 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
         );
     }
 
-    fn visit_insert_stack(&mut self, _: &Block, id1: Id, id2: Id, stack: &Stack, _: &InsertProof) {
-        println!(
-            "    {} {:16} {:16} {:16}",
-            "insert".green().bold(),
-            id1,
-            id2,
-            stack.id()
-        );
-    }
-
     fn visit_name_stack(&mut self, _: &Block, id: Id, name: &str) {
         println!("    {} {:16} {}", "name".green().bold(), id, name);
     }
@@ -139,6 +129,21 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
 
     fn visit_random_reveal(&mut self, _: &Block, id: &str, _: &SecretShare, _: &SecretShareProof) {
         println!("    {} {}", "rng reveal".green().bold(), id);
+    }
+
+    fn visit_prove_entanglement(
+        &mut self,
+        _: &Block,
+        ids1: &[Id],
+        ids2: &[Id],
+        _: &EntanglementProof,
+    ) {
+        println!(
+            "    {} {:?} {:?}",
+            "prove tangle".green().bold(),
+            ids1,
+            ids2
+        );
     }
 
     fn visit_text(&mut self, _: &Block, text: &str) {

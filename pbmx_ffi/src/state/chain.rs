@@ -6,8 +6,7 @@ use crate::{
     result::PbmxResult,
     state::{
         vtmf::{
-            PbmxInsertProof, PbmxMask, PbmxMaskProof, PbmxShare, PbmxShareProof, PbmxShiftProof,
-            PbmxShuffleProof,
+            PbmxMask, PbmxMaskProof, PbmxShare, PbmxShareProof, PbmxShiftProof, PbmxShuffleProof,
         },
         Pbmx,
     },
@@ -152,22 +151,6 @@ pub unsafe extern "C" fn pbmx_pile_stacks_payload(
 ) -> PbmxResult {
     let ids = slice::from_raw_parts(ids, len);
     let payload = Payload::PileStacks(ids.into(), id);
-    builder.as_mut()?.add_payload(payload);
-    PbmxResult::ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn pbmx_insert_stack_payload(
-    mut builder: PbmxBlockBuilder,
-    id1: PbmxFingerprint,
-    id2: PbmxFingerprint,
-    masks: *const PbmxMask,
-    len: size_t,
-    proof: PbmxInsertProof,
-) -> PbmxResult {
-    let masks = slice::from_raw_parts(masks, len);
-    let stack: Option<Vec<_>> = masks.iter().cloned().map(|m| m.try_into().ok()).collect();
-    let payload = Payload::InsertStack(id1, id2, stack?.into(), proof.as_ref().cloned()?);
     builder.as_mut()?.add_payload(payload);
     PbmxResult::ok()
 }
@@ -385,11 +368,11 @@ pub enum PayloadKind {
     NameStack,
     TakeStack,
     PileStacks,
-    InsertStack,
     PublishShares,
     RandomSpec,
     RandomEntropy,
     RandomReveal,
+    ProveEntanglement,
     Text,
     Bytes,
 }
@@ -408,11 +391,11 @@ pub unsafe extern "C" fn pbmx_payload_kind(
         Payload::NameStack(..) => PayloadKind::NameStack,
         Payload::TakeStack(..) => PayloadKind::TakeStack,
         Payload::PileStacks(..) => PayloadKind::PileStacks,
-        Payload::InsertStack(..) => PayloadKind::InsertStack,
         Payload::PublishShares(..) => PayloadKind::PublishShares,
         Payload::RandomSpec(..) => PayloadKind::RandomSpec,
         Payload::RandomEntropy(..) => PayloadKind::RandomEntropy,
         Payload::RandomReveal(..) => PayloadKind::RandomReveal,
+        Payload::ProveEntanglement(..) => PayloadKind::ProveEntanglement,
         Payload::Text(_) => PayloadKind::Text,
         Payload::Bytes(_) => PayloadKind::Bytes,
     });
@@ -560,28 +543,6 @@ pub unsafe extern "C" fn pbmx_unwrap_pile_stacks(
         Payload::PileStacks(ids, id) => {
             return_list(ids.iter().cloned(), ids_out, ids_len)?;
             id_out.opt_write(id.clone().into());
-            PbmxResult::ok()
-        }
-        _ => PbmxResult::err(),
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn pbmx_unwrap_insert_stack(
-    payload: PbmxPayload,
-    id1_out: *mut PbmxFingerprint,
-    id2_out: *mut PbmxFingerprint,
-    masks_out: *mut PbmxMask,
-    len: *mut size_t,
-    proof_out: *mut PbmxInsertProof,
-) -> PbmxResult {
-    match payload.as_ref()? {
-        Payload::InsertStack(id1, id2, stack, proof) => {
-            let masks = stack.iter().map(|&m| m.into());
-            return_list(masks, masks_out, len)?;
-            id1_out.opt_write(id1.clone().into());
-            id2_out.opt_write(id2.clone().into());
-            proof_out.opt_write(Opaque::wrap(proof.clone()));
             PbmxResult::ok()
         }
         _ => PbmxResult::err(),

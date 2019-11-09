@@ -5,7 +5,7 @@ use crate::{
         hash::Xof,
         keys::{Fingerprint, PrivateKey, PublicKey},
         perm::Permutation,
-        proofs::{dlog_eq, entanglement, secret_insertion, secret_rotation, secret_shuffle},
+        proofs::{dlog_eq, entanglement, secret_rotation, secret_shuffle},
     },
     proto,
     serde::serialize_flat_map,
@@ -23,8 +23,7 @@ use std::{collections::HashMap, iter};
 
 pub use crate::crypto::proofs::{
     dlog_eq::Proof as MaskProof, entanglement::Proof as EntanglementProof,
-    secret_insertion::Proof as InsertProof, secret_rotation::Proof as ShiftProof,
-    secret_shuffle::Proof as ShuffleProof,
+    secret_rotation::Proof as ShiftProof, secret_shuffle::Proof as ShuffleProof,
 };
 
 mod mask;
@@ -366,69 +365,6 @@ impl Vtmf {
 }
 
 impl Vtmf {
-    /// Performs a masked insertion operation
-    pub fn mask_insert(
-        &self,
-        c: &Stack,
-        s0: &Stack,
-        k: usize,
-    ) -> (Stack, Vec<Scalar>, InsertProof) {
-        let mut rng = thread_rng();
-
-        let n = s0.len();
-        let h = self.pk.point();
-        let k = n - k;
-        let (s1, r1) = self.do_shift(s0, k % n, &mut rng);
-        let mut s1c = s1;
-        s1c.0.extend_from_slice(c);
-        let n2 = s1c.len();
-        let (s2, r2) = self.do_shift(&s1c, n2 - k, &mut rng);
-
-        let proof = InsertProof::create(
-            &mut Transcript::new(b"mask_insert"),
-            secret_insertion::Publics {
-                h: &h,
-                c,
-                s0,
-                s2: &s2,
-            },
-            secret_insertion::Secrets {
-                k,
-                r1: &r1,
-                r2: &r2,
-            },
-        );
-        let mut rx = r1;
-        rx.extend(iter::repeat(Scalar::zero()).take(r2.len() - rx.len()));
-        let pr = Permutation::shift(rx.len(), n2 - k);
-        pr.apply_to(&mut rx);
-        for (rx, r2) in rx.iter_mut().zip(r2.iter()) {
-            *rx += r2;
-        }
-        (s2, rx, proof)
-    }
-
-    /// Verifies a masked insertion operation
-    pub fn verify_mask_insert(
-        &self,
-        c: &Stack,
-        s0: &Stack,
-        s1: &Stack,
-        proof: &InsertProof,
-    ) -> Result<(), ()> {
-        proof.verify(
-            &mut Transcript::new(b"mask_insert"),
-            secret_insertion::Publics {
-                h: &self.pk.point(),
-                c,
-                s0,
-                s2: s1,
-            },
-        )
-    }
-}
-
-impl Vtmf {
     /// Applies a random mask
     pub fn mask_random<R: Rng + CryptoRng>(&self, rng: &mut R) -> Mask {
         let p = RistrettoPoint::random(rng);
@@ -765,61 +701,6 @@ mod tests {
             xof1.read(&mut buf1);
             assert_eq!(buf0, buf1);
         }
-    }
-
-    fn vtmf_mask_inserting_works_idx(k: usize) {
-        let mut rng = thread_rng();
-        let sk0 = PrivateKey::random(&mut rng);
-        let sk1 = PrivateKey::random(&mut rng);
-        let pk0 = sk0.public_key();
-        let pk1 = sk1.public_key();
-
-        let mut vtmf0 = Vtmf::new(sk0);
-        let mut vtmf1 = Vtmf::new(sk1);
-        let fp0 = pk0.fingerprint();
-        vtmf0.add_key(pk1);
-        vtmf1.add_key(pk0);
-
-        let c: Stack = (10u64..13)
-            .map(map::to_curve)
-            .map(|p| vtmf0.mask(&p).0)
-            .collect();
-        let m: Stack = (0u64..8)
-            .map(map::to_curve)
-            .map(|p| vtmf0.mask(&p).0)
-            .collect();
-        let (inserted, _, proof) = vtmf0.mask_insert(&c, &m, k);
-        let verified = vtmf1.verify_mask_insert(&c, &m, &inserted, &proof);
-        assert_eq!(verified, Ok(()));
-        let mut m2 = m.clone();
-        m2.swap(0, 1);
-        let invalid = vtmf1.verify_mask_insert(&c, &m2, &inserted, &proof);
-        assert_eq!(invalid, Err(()));
-
-        let open: Vec<_> = inserted
-            .iter()
-            .map(|m| {
-                let (d0, proof0) = vtmf0.unmask_share(m);
-                let verified = vtmf1.verify_unmask(m, &fp0, &d0, &proof0);
-                assert_eq!(verified, Ok(()));
-                let mask1 = vtmf1.unmask(m, &d0);
-                let mask1 = vtmf1.unmask_private(&mask1);
-                let r = vtmf1.unmask_open(&mask1);
-                map::from_curve(&r)
-            })
-            .collect();
-        let mut expected: Vec<_> = (0u64..8).collect();
-        expected.insert(k, 10);
-        expected.insert(k + 1, 11);
-        expected.insert(k + 2, 12);
-        assert_eq!(open, expected);
-    }
-
-    #[test]
-    fn vtmf_mask_inserting_works() {
-        vtmf_mask_inserting_works_idx(5);
-        vtmf_mask_inserting_works_idx(8);
-        vtmf_mask_inserting_works_idx(0);
     }
 
     #[test]

@@ -15,7 +15,7 @@ use digest::XofReader;
 use libc::{c_char, size_t};
 use pbmx_kit::crypto::{
     map,
-    vtmf::{InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
+    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
 };
 use rand::thread_rng;
 use std::{
@@ -399,70 +399,6 @@ pub unsafe extern "C" fn pbmx_verify_shift(
         .map(|m| m.try_into().ok())
         .collect::<Option<_>>()?;
     vtmf.verify_mask_shift(&stack, &shift, proof.as_ref()?)
-        .ok()?;
-    PbmxResult::ok()
-}
-
-pub type PbmxInsertProof = Opaque<InsertProof>;
-ffi_deleter! { pbmx_delete_insert_proof(InsertProof) }
-
-#[no_mangle]
-pub unsafe extern "C" fn pbmx_insert(
-    state: Pbmx,
-    needle: *const PbmxMask,
-    len_needle: size_t,
-    stack: *const PbmxMask,
-    len_stack: size_t,
-    k: size_t,
-    inserted_out: *mut PbmxMask,
-    proof_out: *mut PbmxInsertProof,
-) -> PbmxResult {
-    let vtmf = &state.as_ref()?.vtmf;
-    let stack = slice::from_raw_parts(stack, len_stack);
-    let needle = slice::from_raw_parts(needle, len_needle);
-
-    let stack: Option<_> = stack.iter().cloned().map(|m| m.try_into().ok()).collect();
-    let needle: Option<_> = needle.iter().cloned().map(|m| m.try_into().ok()).collect();
-    let (inserted, _, proof) = vtmf.mask_insert(needle.as_ref()?, stack.as_ref()?, k);
-
-    let mut inserted_out = BufferFillPtr::new(inserted_out)?;
-    for mask in inserted.iter().cloned() {
-        inserted_out.push(mask.into());
-    }
-    proof_out.opt_write(Opaque::wrap(proof));
-    PbmxResult::ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn pbmx_verify_insert(
-    state: Pbmx,
-    needle: *const PbmxMask,
-    len_needle: size_t,
-    stack: *const PbmxMask,
-    len_stack: size_t,
-    inserted: *const PbmxMask,
-    proof: PbmxInsertProof,
-) -> PbmxResult {
-    let vtmf = &state.as_ref()?.vtmf;
-    let stack = slice::from_raw_parts(stack, len_stack);
-    let needle = slice::from_raw_parts(needle, len_needle);
-    let inserted = slice::from_raw_parts(inserted, len_stack + len_needle);
-    let stack = stack
-        .iter()
-        .cloned()
-        .map(|m| m.try_into().ok())
-        .collect::<Option<_>>()?;
-    let needle = needle
-        .iter()
-        .cloned()
-        .map(|m| m.try_into().ok())
-        .collect::<Option<_>>()?;
-    let inserted = inserted
-        .iter()
-        .cloned()
-        .map(|m| m.try_into().ok())
-        .collect::<Option<_>>()?;
-    vtmf.verify_mask_insert(&needle, &stack, &inserted, proof.as_ref()?)
         .ok()?;
     PbmxResult::ok()
 }

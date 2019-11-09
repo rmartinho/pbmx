@@ -2,7 +2,6 @@ use crate::{Config, Error, Result};
 use clap::ArgMatches;
 
 pub mod cut;
-pub mod insert;
 pub mod list;
 pub mod mask;
 pub mod name;
@@ -25,7 +24,6 @@ pub fn run(m: &ArgMatches, cfg: &Config) -> Result<()> {
         ("cut", Some(sub_m)) => cut::run(sub_m, cfg),
         ("take", Some(sub_m)) => take::run(sub_m, cfg),
         ("pile", Some(sub_m)) => pile::run(sub_m, cfg),
-        ("insert", Some(sub_m)) => insert::run(sub_m, cfg),
         _ => Err(Error::InvalidSubcommand),
     }
 }

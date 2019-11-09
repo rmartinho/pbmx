@@ -148,20 +148,6 @@ $S_i = N_{k_i}(S_{i-1}; R_i)$ for each player $i$.
 
 ### Inserting
 
-Inserting a card into a secret position in a deck can be modelled by performing
-a shift by some $k$, placing the card on top, and then performing a shift by
-$-k$, i.e. undoing the shift. This can be trivially extended to inserting a
-whole stack in a given position.
-
-$I_k(S_n, S_h; R_1, R_2) = N_{-k}(S_n \parallel N_k(S_h; R_1); R_2)$
-
-This cannot be built entirely out of existing primitives because the existing
-proofs are not sufficient: it is also necessary to prove that the two shifts
-are inverses of each other. This is accomplished by adding an additional proof
-that one of the top or bottom tokens of the result is the same as it was before
-insertion (without revealing which one is unchanged, so it is possible to
-insert at the top or the bottom).
-
 ### Entangled operations
 
 ## Random

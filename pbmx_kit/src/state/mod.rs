@@ -5,8 +5,8 @@ use crate::{
     crypto::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         vtmf::{
-            InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-            Stack, Vtmf,
+            EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
+            ShuffleProof, Stack, Vtmf,
         },
     },
 };
@@ -183,7 +183,7 @@ impl<'a> PayloadVisitor for BlockAdder<'a> {
     fn visit_pile_stack(&mut self, _: &Block, sources: &[Id], target: Id) {
         let stacks = &self.state.stacks;
         let mut srcs = sources.iter().map(|id| stacks.get_by_id(&id));
-        self.valid = self.valid && srcs.all(|x| x.is_some());
+        self.valid = self.valid && srcs.all(|s| s.is_some());
 
         if !self.valid {
             return;
@@ -196,33 +196,6 @@ impl<'a> PayloadVisitor for BlockAdder<'a> {
             .collect();
 
         self.valid = self.valid && stack.id() == target;
-
-        if self.valid {
-            self.state.stacks.insert(stack.clone());
-        }
-    }
-
-    fn visit_insert_stack(
-        &mut self,
-        _: &Block,
-        needle: Id,
-        haystack: Id,
-        stack: &Stack,
-        proof: &InsertProof,
-    ) {
-        self.valid = self.valid
-            && self
-                .state
-                .stacks
-                .get_by_id(&needle)
-                .and_then(|s1| self.state.stacks.get_by_id(&haystack).map(|s2| (s1, s2)))
-                .map(|(s1, s2)| {
-                    self.state
-                        .vtmf
-                        .verify_mask_insert(s1, s2, stack, proof)
-                        .is_ok()
-                })
-                .unwrap_or(false);
 
         if self.valid {
             self.state.stacks.insert(stack.clone());
@@ -315,5 +288,35 @@ impl<'a> PayloadVisitor for BlockAdder<'a> {
         if self.valid {
             e.unwrap().add_secret(fp, share);
         }
+    }
+
+    fn visit_prove_entanglement(
+        &mut self,
+        _block: &Block,
+        source_ids: &[Id],
+        shuffle_ids: &[Id],
+        proof: &EntanglementProof,
+    ) {
+        let stacks = &self.state.stacks;
+        let sources: Vec<_> = source_ids.iter().map(|id| stacks.get_by_id(id)).collect();
+        let shuffles: Vec<_> = shuffle_ids.iter().map(|id| stacks.get_by_id(id)).collect();
+
+        self.valid = self.valid
+            && sources.iter().all(Option::is_some)
+            && shuffles.iter().all(Option::is_some);
+
+        if !self.valid {
+            return;
+        }
+
+        let sources = sources.iter().map(|s| s.unwrap());
+        let shuffles = shuffles.iter().map(|s| s.unwrap());
+
+        self.valid = self.valid
+            && self
+                .state
+                .vtmf
+                .verify_entanglement(sources, shuffles, proof)
+                .is_ok();
     }
 }

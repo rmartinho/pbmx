@@ -1,7 +1,10 @@
 //! Proof of entanglement of stacks
 
 use super::TranscriptProtocol;
-use crate::crypto::{perm::Permutation, proofs::secret_shuffle, vtmf::Mask};
+use crate::{
+    crypto::{perm::Permutation, proofs::secret_shuffle, vtmf::Mask},
+    proto,
+};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use std::ops::{Add, Mul};
@@ -11,6 +14,8 @@ use std::ops::{Add, Mul};
 pub struct Proof {
     tangles: Vec<secret_shuffle::Proof>,
 }
+
+derive_opaque_proto_conversions!(Proof: proto::EntanglementProof);
 
 /// Public parameters
 #[derive(Copy, Clone)]

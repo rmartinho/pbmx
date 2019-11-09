@@ -3,11 +3,9 @@
 #![allow(clippy::many_single_char_names)]
 
 pub mod dlog_eq;
-mod dlog_eq_1of2;
 pub mod entanglement;
 mod known_rotation;
 mod known_shuffle;
-pub mod secret_insertion;
 pub mod secret_rotation;
 pub mod secret_shuffle;
 

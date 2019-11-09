@@ -26,6 +26,9 @@ version = "0.8"
 [dependencies.curve25519-dalek]
 version = "1.0"
 
+[dependencies.itertools]
+version = "0.8"
+
 [dependencies.nom]
 version = "4.2"
 

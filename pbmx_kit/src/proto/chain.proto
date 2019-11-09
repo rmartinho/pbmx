@@ -29,11 +29,11 @@ message Payload {
         NameStack name_stack = 7;
         TakeStack take_stack = 8;
         PileStacks pile_stacks = 9;
-        InsertStack insert_stack = 10;
         PublishShares publish_shares = 11;
         RandomSpec random_spec = 12;
         RandomEntropy random_entropy = 13;
         RandomReveal random_reveal = 14;
+        ProveEntanglement prove_entanglement = 16;
     }
 }
 
@@ -80,13 +80,6 @@ message PileStacks {
     bytes result_id = 2;
 }
 
-message InsertStack {
-    bytes haystack_id = 1;
-    bytes needle_id = 2;
-    pbmx.core.Stack inserted = 3;
-    pbmx.proof.InsertionProof proof = 4;
-}
-
 message PublishShares {
     bytes id = 1;
     repeated pbmx.core.SecretShare shares = 2;
@@ -107,4 +100,10 @@ message RandomReveal {
     string name = 1;
     pbmx.core.SecretShare share = 2;
     pbmx.proof.DlogEqProof proof = 3;
+}
+
+message ProveEntanglement {
+    repeated bytes source_ids = 1;
+    repeated bytes shuffle_ids = 2;
+    pbmx.proof.EntanglementProof proof = 3;
 }

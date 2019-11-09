@@ -5,8 +5,8 @@ use crate::{
     crypto::{
         keys::PublicKey,
         vtmf::{
-            InsertProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
-            Stack,
+            EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
+            ShuffleProof, Stack,
         },
     },
     proto,
@@ -38,8 +38,6 @@ pub enum Payload {
     TakeStack(Id, Vec<usize>, Id),
     /// A stack pile payload
     PileStacks(Vec<Id>, Id),
-    /// A insert token payload
-    InsertStack(Id, Id, Stack, InsertProof),
     /// A secret share payload
     PublishShares(Id, Vec<SecretShare>, Vec<SecretShareProof>),
     /// An rng specification payload
@@ -48,6 +46,8 @@ pub enum Payload {
     RandomEntropy(String, Mask),
     /// An rng reveal payload
     RandomReveal(String, SecretShare, SecretShareProof),
+    /// An entanglement proof payload
+    ProveEntanglement(Vec<Id>, Vec<Id>, EntanglementProof),
     /// Raw text payload
     Text(String),
     /// Raw byte payload
@@ -80,13 +80,11 @@ impl<'a> Display for DisplayShort<'a> {
             ShiftStack(id, stk, _) => write!(f, "cut {1:16} \u{21CB} {0:16}", id, stk.id()),
             TakeStack(id1, idxs, id2) => write!(f, "take {:16}{:?} {:16}", id1, idxs, id2),
             PileStacks(ids, id2) => write!(f, "pile {:16?} {:16}", ids, id2),
-            InsertStack(id1, id2, stk, _) => {
-                write!(f, "insert {:16} {:16} {:16}", id1, id2, stk.id())
-            }
             PublishShares(id, ..) => write!(f, "reveal {:16}", id),
             RandomSpec(id, ..) => write!(f, "new rng {}", id),
             RandomEntropy(id, ..) => write!(f, "add entropy {}", id),
             RandomReveal(id, ..) => write!(f, "open rng {}", id),
+            ProveEntanglement(ids1, ids2, ..) => write!(f, "entangled {:?} {:?}", ids1, ids2),
             Text(text) => write!(f, "text {}", text),
             Bytes(bytes) => write!(
                 f,
@@ -129,9 +127,6 @@ pub trait PayloadVisitor {
             PileStacks(ids, id2) => {
                 self.visit_pile_stack(block, ids, *id2);
             }
-            InsertStack(id1, id2, stk, proof) => {
-                self.visit_insert_stack(block, *id1, *id2, stk, proof);
-            }
             PublishShares(id, shares, proof) => {
                 self.visit_publish_shares(block, *id, shares, proof);
             }
@@ -143,6 +138,9 @@ pub trait PayloadVisitor {
             }
             RandomReveal(id, share, proof) => {
                 self.visit_random_reveal(block, id, share, proof);
+            }
+            ProveEntanglement(ids1, ids2, proof) => {
+                self.visit_prove_entanglement(block, ids1, ids2, proof);
             }
             Text(text) => {
                 self.visit_text(block, text);
@@ -180,16 +178,6 @@ pub trait PayloadVisitor {
     fn visit_take_stack(&mut self, _block: &Block, _id1: Id, _idxs: &[usize], _id2: Id) {}
     /// Visits a PileStack payload
     fn visit_pile_stack(&mut self, _block: &Block, _ids: &[Id], _id2: Id) {}
-    /// Visits a InsertToken payload
-    fn visit_insert_stack(
-        &mut self,
-        _block: &Block,
-        _id1: Id,
-        _id2: Id,
-        _stack: &Stack,
-        _proof: &InsertProof,
-    ) {
-    }
     /// Visits a NameStack payload
     fn visit_name_stack(&mut self, _block: &Block, _id: Id, _name: &str) {}
     /// Visits a PublishShares payload
@@ -212,6 +200,15 @@ pub trait PayloadVisitor {
         _name: &str,
         _share: &SecretShare,
         _proof: &SecretShareProof,
+    ) {
+    }
+    /// Visits a ProveEntanglement payload
+    fn visit_prove_entanglement(
+        &mut self,
+        _block: &Block,
+        _source_ids: &[Id],
+        _shuffle_ids: &[Id],
+        _proof: &EntanglementProof,
     ) {
     }
     /// Visits a Text payload
@@ -265,14 +262,6 @@ impl Proto for Payload {
                 source_ids: ids.iter().map(|id| id.to_vec()).collect(),
                 result_id: id2.to_vec(),
             }),
-            Payload::InsertStack(id1, id2, stk, proof) => {
-                PayloadKind::InsertStack(proto::InsertStack {
-                    haystack_id: id1.to_vec(),
-                    needle_id: id2.to_vec(),
-                    inserted: Some(stk.to_proto()?),
-                    proof: Some(proof.to_proto()?),
-                })
-            }
             Payload::PublishShares(id, shares, proof) => {
                 PayloadKind::PublishShares(proto::PublishShares {
                     id: id.to_vec(),
@@ -294,6 +283,13 @@ impl Proto for Payload {
                 PayloadKind::RandomReveal(proto::RandomReveal {
                     name: name.clone(),
                     share: Some(share.to_proto()?),
+                    proof: Some(proof.to_proto()?),
+                })
+            }
+            Payload::ProveEntanglement(ids1, ids2, proof) => {
+                PayloadKind::ProveEntanglement(proto::ProveEntanglement {
+                    source_ids: ids1.iter().map(|id| id.to_vec()).collect(),
+                    shuffle_ids: ids2.iter().map(|id| id.to_vec()).collect(),
                     proof: Some(proof.to_proto()?),
                 })
             }
@@ -348,12 +344,6 @@ impl Proto for Payload {
                         .ok()?,
                     Id::try_from(&p.result_id).ok()?,
                 ),
-                PayloadKind::InsertStack(p) => Payload::InsertStack(
-                    Id::try_from(&p.haystack_id).ok()?,
-                    Id::try_from(&p.needle_id).ok()?,
-                    Stack::from_proto(p.inserted.as_ref()?).ok()?,
-                    InsertProof::from_proto(p.proof.as_ref()?).ok()?,
-                ),
                 PayloadKind::PublishShares(p) => Payload::PublishShares(
                     Id::try_from(&p.id).ok()?,
                     vec_from_proto(&p.shares).ok()?,
@@ -368,6 +358,19 @@ impl Proto for Payload {
                     p.name.clone(),
                     SecretShare::from_proto(p.share.as_ref()?).ok()?,
                     SecretShareProof::from_proto(p.proof.as_ref()?).ok()?,
+                ),
+                PayloadKind::ProveEntanglement(p) => Payload::ProveEntanglement(
+                    p.source_ids
+                        .iter()
+                        .map(|id| Id::try_from(id))
+                        .collect::<Result<_>>()
+                        .ok()?,
+                    p.shuffle_ids
+                        .iter()
+                        .map(|id| Id::try_from(id))
+                        .collect::<Result<_>>()
+                        .ok()?,
+                    EntanglementProof::from_proto(p.proof.as_ref()?).ok()?,
                 ),
                 PayloadKind::Text(s) => Payload::Text(s.clone()),
                 PayloadKind::Raw(p) => Payload::Bytes(p.clone()),
