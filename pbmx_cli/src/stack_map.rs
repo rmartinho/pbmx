@@ -1,8 +1,9 @@
 use crate::Config;
 use pbmx_kit::{
     crypto::{
+        keys::Fingerprint,
         map,
-        vtmf::{Stack, Vtmf},
+        vtmf::{Mask, Stack, Vtmf},
     },
     state::{PrivateSecretMap, SecretMap},
 };
@@ -31,6 +32,52 @@ pub fn display_stack_contents<'a>(
     }
 }
 
+fn unmask_with_public_secrets(
+    mut m: Mask,
+    secrets: &SecretMap,
+    vtmf: &Vtmf,
+    my_fp: &Fingerprint,
+) -> Option<Mask> {
+    if let Some((d, fp)) = secrets.get(&m) {
+        m = vtmf.unmask(&m, d);
+        if !fp.contains(my_fp) {
+            m = vtmf.unmask_private(&m);
+            if fp.len() + 1 == vtmf.parties() {
+                return Some(m);
+            }
+        } else {
+            if fp.len() == vtmf.parties() {
+                return Some(m);
+            }
+        }
+    } else {
+        if m.is_open() {
+            return Some(m);
+        }
+    }
+    None
+}
+
+fn unmask_with_private_secrets(
+    mut m: Mask,
+    secrets: &SecretMap,
+    private_secrets: &PrivateSecretMap,
+    vtmf: &Vtmf,
+    my_fp: &Fingerprint,
+) -> Option<Mask> {
+    while let Some(d) = private_secrets.get(&m) {
+        m -= d;
+        if m.is_open() {
+            return Some(m);
+        }
+        let unmasked = unmask_with_public_secrets(m, secrets, vtmf, my_fp);
+        if unmasked.is_some() {
+            return unmasked;
+        }
+    }
+    None
+}
+
 impl<'a> Display for DisplayStackContents<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut first = true;
@@ -40,22 +87,17 @@ impl<'a> Display for DisplayStackContents<'a> {
         write!(f, "[")?;
         let my_fp = &self.vtmf.private_key().fingerprint();
         for m in self.stack.iter() {
-            let mut m = *m;
-            while let Some(d) = self.private_secrets.get(&m) {
-                m -= d;
-            }
-            let is_known = if let Some((d, fp)) = self.secrets.get(&m) {
-                m = self.vtmf.unmask(&m, d);
-                if !fp.contains(my_fp) {
-                    m = self.vtmf.unmask_private(&m);
-                    fp.len() + 1 == self.vtmf.parties()
-                } else {
-                    fp.len() == self.vtmf.parties()
-                }
-            } else {
-                m.is_open()
-            };
-            if is_known {
+            let m =
+                unmask_with_public_secrets(*m, &self.secrets, &self.vtmf, &my_fp).or_else(|| {
+                    unmask_with_private_secrets(
+                        *m,
+                        &self.secrets,
+                        &self.private_secrets,
+                        &self.vtmf,
+                        &my_fp,
+                    )
+                });
+            if let Some(m) = m {
                 let u = self.vtmf.unmask_open(&m);
                 let token = map::from_curve(&u);
                 if count_encrypted > 0 {
