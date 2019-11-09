@@ -489,6 +489,7 @@ pub unsafe extern "C" fn pbmx_add_masks(
 }
 
 #[no_mangle]
+#[allow(improper_ctypes)]
 pub unsafe extern "C" fn pbmx_unmask_random(
     state: Pbmx,
     mask: PbmxMask,
@@ -501,6 +502,7 @@ pub unsafe extern "C" fn pbmx_unmask_random(
 }
 
 #[no_mangle]
+#[allow(improper_ctypes)]
 pub unsafe extern "C" fn pbmx_read_xof(mut xof: PbmxXof, buf: *mut u8, len: size_t) -> PbmxResult {
     let buf = slice::from_raw_parts_mut(buf, len);
     xof.as_mut()?.read(buf);
@@ -508,6 +510,7 @@ pub unsafe extern "C" fn pbmx_read_xof(mut xof: PbmxXof, buf: *mut u8, len: size
 }
 
 #[no_mangle]
+#[allow(improper_ctypes)]
 pub unsafe extern "C" fn pbmx_delete_xof(xof: PbmxXof) {
     xof.delete();
 }
