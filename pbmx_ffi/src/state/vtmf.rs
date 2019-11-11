@@ -10,12 +10,17 @@ use crate::{
     result::PbmxResult,
     state::Pbmx,
 };
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::{
+    ristretto::{CompressedRistretto, RistrettoPoint},
+    scalar::Scalar,
+};
 use digest::XofReader;
 use libc::{c_char, size_t};
 use pbmx_kit::crypto::{
     map,
-    vtmf::{Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof},
+    vtmf::{
+        EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+    },
 };
 use rand::thread_rng;
 use std::{
@@ -126,6 +131,23 @@ impl Try for PbmxValue {
 
     fn from_error(_: Self::Error) -> Self {
         Self(u64::MAX)
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct PbmxScalar([u8; 32]);
+
+impl TryFrom<PbmxScalar> for Scalar {
+    type Error = NoneError;
+
+    fn try_from(scalar: PbmxScalar) -> Result<Self, Self::Error> {
+        Ok(Scalar::from_bytes_mod_order(scalar.0))
+    }
+}
+impl From<Scalar> for PbmxScalar {
+    fn from(scalar: Scalar) -> Self {
+        PbmxScalar(scalar.as_bytes().clone())
     }
 }
 
@@ -513,4 +535,106 @@ pub unsafe extern "C" fn pbmx_read_xof(mut xof: PbmxXof, buf: *mut u8, len: size
 #[allow(improper_ctypes)]
 pub unsafe extern "C" fn pbmx_delete_xof(xof: PbmxXof) {
     xof.delete();
+}
+
+pub type PbmxEntanglementProof = Opaque<EntanglementProof>;
+ffi_deleter! { pbmx_delete_entanglement_proof(EntanglementProof) }
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_prove_entanglement(
+    state: Pbmx,
+    sources: *const *const PbmxMask,
+    n_stacks: size_t,
+    stack_len: size_t,
+    shuffles: *const *const PbmxMask,
+    perm: *const size_t,
+    secrets: *const *const PbmxScalar,
+    proof_out: *mut PbmxEntanglementProof,
+) -> PbmxResult {
+    let vtmf = &state.as_ref()?.vtmf;
+    let source_ptrs = slice::from_raw_parts(sources, n_stacks);
+    let shuffle_ptrs = slice::from_raw_parts(shuffles, n_stacks);
+    let secret_ptrs = slice::from_raw_parts(secrets, n_stacks);
+    let perm = slice::from_raw_parts(perm, stack_len);
+
+    let sources: Vec<_> = source_ptrs
+        .iter()
+        .map(|ptr| {
+            slice::from_raw_parts(*ptr, stack_len)
+                .iter()
+                .cloned()
+                .map(|m| m.try_into().ok())
+                .collect::<Option<_>>()
+        })
+        .collect::<Option<_>>()?;
+    let shuffles: Vec<_> = shuffle_ptrs
+        .iter()
+        .map(|ptr| {
+            slice::from_raw_parts(*ptr, stack_len)
+                .iter()
+                .cloned()
+                .map(|m| m.try_into().ok())
+                .collect::<Option<_>>()
+        })
+        .collect::<Option<_>>()?;
+    let secrets: Vec<Vec<Scalar>> = secret_ptrs
+        .iter()
+        .map(|ptr| {
+            slice::from_raw_parts(*ptr, stack_len)
+                .iter()
+                .cloned()
+                .map(|m| m.try_into().ok())
+                .collect::<Option<_>>()
+        })
+        .collect::<Option<_>>()?;
+
+    let perm = perm.to_vec().try_into().ok()?;
+    let proof = vtmf.prove_entanglement(
+        sources.iter(),
+        shuffles.iter(),
+        &perm,
+        secrets.iter().map(|v| v.as_slice()),
+    );
+
+    proof_out.opt_write(Opaque::wrap(proof));
+    PbmxResult::ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_verify_entanglement(
+    state: Pbmx,
+    sources: *const *const PbmxMask,
+    n_stacks: size_t,
+    stack_len: size_t,
+    shuffles: *const *const PbmxMask,
+    proof: PbmxEntanglementProof,
+) -> PbmxResult {
+    let vtmf = &state.as_ref()?.vtmf;
+    let source_ptrs = slice::from_raw_parts(sources, n_stacks);
+    let shuffle_ptrs = slice::from_raw_parts(shuffles, n_stacks);
+
+    let sources: Vec<_> = source_ptrs
+        .iter()
+        .map(|ptr| {
+            slice::from_raw_parts(*ptr, stack_len)
+                .iter()
+                .cloned()
+                .map(|m| m.try_into().ok())
+                .collect::<Option<_>>()
+        })
+        .collect::<Option<_>>()?;
+    let shuffles: Vec<_> = shuffle_ptrs
+        .iter()
+        .map(|ptr| {
+            slice::from_raw_parts(*ptr, stack_len)
+                .iter()
+                .cloned()
+                .map(|m| m.try_into().ok())
+                .collect::<Option<_>>()
+        })
+        .collect::<Option<_>>()?;
+
+    vtmf.verify_entanglement(sources.iter(), shuffles.iter(), proof.as_ref()?)
+        .ok()?;
+    PbmxResult::ok()
 }
