@@ -329,6 +329,7 @@ pub unsafe extern "C" fn pbmx_shuffle(
     len: size_t,
     perm: *const size_t,
     shuffle_out: *mut PbmxMask,
+    secrets_out: *mut PbmxScalar,
     proof_out: *mut PbmxShuffleProof,
 ) -> PbmxResult {
     let vtmf = &state.as_ref()?.vtmf;
@@ -337,11 +338,15 @@ pub unsafe extern "C" fn pbmx_shuffle(
 
     let stack: Option<_> = stack.iter().cloned().map(|m| m.try_into().ok()).collect();
     let perm = perm.to_vec().try_into().ok()?;
-    let (shuffle, _, proof) = vtmf.mask_shuffle(stack.as_ref()?, &perm);
+    let (shuffle, secrets, proof) = vtmf.mask_shuffle(stack.as_ref()?, &perm);
 
     let mut shuffle_out = BufferFillPtr::new(shuffle_out)?;
     for mask in shuffle.iter().cloned() {
         shuffle_out.push(mask.into());
+    }
+    let mut secrets_out = BufferFillPtr::new(secrets_out)?;
+    for secret in secrets.iter().cloned() {
+        secrets_out.push(secret.into());
     }
     proof_out.opt_write(Opaque::wrap(proof));
     PbmxResult::ok()
@@ -383,17 +388,22 @@ pub unsafe extern "C" fn pbmx_shift(
     len: size_t,
     k: size_t,
     shift_out: *mut PbmxMask,
+    secrets_out: *mut PbmxScalar,
     proof_out: *mut PbmxShiftProof,
 ) -> PbmxResult {
     let vtmf = &state.as_ref()?.vtmf;
     let stack = slice::from_raw_parts(stack, len);
 
     let stack: Option<_> = stack.iter().cloned().map(|m| m.try_into().ok()).collect();
-    let (shift, _, proof) = vtmf.mask_shift(stack.as_ref()?, k);
+    let (shift, secrets, proof) = vtmf.mask_shift(stack.as_ref()?, k);
 
     let mut shift_out = BufferFillPtr::new(shift_out)?;
     for mask in shift.iter().cloned() {
         shift_out.push(mask.into());
+    }
+    let mut secrets_out = BufferFillPtr::new(secrets_out)?;
+    for secret in secrets.iter().cloned() {
+        secrets_out.push(secret.into());
     }
     proof_out.opt_write(Opaque::wrap(proof));
     PbmxResult::ok()
