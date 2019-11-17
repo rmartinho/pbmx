@@ -553,25 +553,30 @@ ffi_deleter! { pbmx_delete_entanglement_proof(EntanglementProof) }
 #[no_mangle]
 pub unsafe extern "C" fn pbmx_prove_entanglement(
     state: Pbmx,
-    sources: *const *const PbmxMask,
+    sources: *const PbmxMask,
     n_stacks: size_t,
     stack_len: size_t,
-    shuffles: *const *const PbmxMask,
+    shuffles: *const PbmxMask,
     perm: *const size_t,
-    secrets: *const *const PbmxScalar,
+    secrets: *const PbmxScalar,
     proof_out: *mut PbmxEntanglementProof,
 ) -> PbmxResult {
     let vtmf = &state.as_ref()?.vtmf;
-    let source_ptrs = slice::from_raw_parts(sources, n_stacks);
-    let shuffle_ptrs = slice::from_raw_parts(shuffles, n_stacks);
-    let secret_ptrs = slice::from_raw_parts(secrets, n_stacks);
+    let source_ptrs: Vec<_> = (0..n_stacks)
+        .map(|i| slice::from_raw_parts(sources.offset((i * stack_len) as _), stack_len))
+        .collect();
+    let shuffle_ptrs: Vec<_> = (0..n_stacks)
+        .map(|i| slice::from_raw_parts(shuffles.offset((i * stack_len) as _), stack_len))
+        .collect();
+    let secret_ptrs: Vec<_> = (0..n_stacks)
+        .map(|i| slice::from_raw_parts(secrets.offset((i * stack_len) as _), stack_len))
+        .collect();
     let perm = slice::from_raw_parts(perm, stack_len);
 
     let sources: Vec<_> = source_ptrs
         .iter()
-        .map(|ptr| {
-            slice::from_raw_parts(*ptr, stack_len)
-                .iter()
+        .map(|s| {
+            s.iter()
                 .cloned()
                 .map(|m| m.try_into().ok())
                 .collect::<Option<_>>()
@@ -579,9 +584,8 @@ pub unsafe extern "C" fn pbmx_prove_entanglement(
         .collect::<Option<_>>()?;
     let shuffles: Vec<_> = shuffle_ptrs
         .iter()
-        .map(|ptr| {
-            slice::from_raw_parts(*ptr, stack_len)
-                .iter()
+        .map(|s| {
+            s.iter()
                 .cloned()
                 .map(|m| m.try_into().ok())
                 .collect::<Option<_>>()
@@ -589,9 +593,8 @@ pub unsafe extern "C" fn pbmx_prove_entanglement(
         .collect::<Option<_>>()?;
     let secrets: Vec<Vec<Scalar>> = secret_ptrs
         .iter()
-        .map(|ptr| {
-            slice::from_raw_parts(*ptr, stack_len)
-                .iter()
+        .map(|s| {
+            s.iter()
                 .cloned()
                 .map(|m| m.try_into().ok())
                 .collect::<Option<_>>()
@@ -613,21 +616,24 @@ pub unsafe extern "C" fn pbmx_prove_entanglement(
 #[no_mangle]
 pub unsafe extern "C" fn pbmx_verify_entanglement(
     state: Pbmx,
-    sources: *const *const PbmxMask,
+    sources: *const PbmxMask,
     n_stacks: size_t,
     stack_len: size_t,
-    shuffles: *const *const PbmxMask,
+    shuffles: *const PbmxMask,
     proof: PbmxEntanglementProof,
 ) -> PbmxResult {
     let vtmf = &state.as_ref()?.vtmf;
-    let source_ptrs = slice::from_raw_parts(sources, n_stacks);
-    let shuffle_ptrs = slice::from_raw_parts(shuffles, n_stacks);
+    let source_ptrs: Vec<_> = (0..n_stacks)
+        .map(|i| slice::from_raw_parts(sources.offset((i * stack_len) as _), stack_len))
+        .collect();
+    let shuffle_ptrs: Vec<_> = (0..n_stacks)
+        .map(|i| slice::from_raw_parts(shuffles.offset((i * stack_len) as _), stack_len))
+        .collect();
 
     let sources: Vec<_> = source_ptrs
         .iter()
-        .map(|ptr| {
-            slice::from_raw_parts(*ptr, stack_len)
-                .iter()
+        .map(|s| {
+            s.iter()
                 .cloned()
                 .map(|m| m.try_into().ok())
                 .collect::<Option<_>>()
@@ -635,9 +641,8 @@ pub unsafe extern "C" fn pbmx_verify_entanglement(
         .collect::<Option<_>>()?;
     let shuffles: Vec<_> = shuffle_ptrs
         .iter()
-        .map(|ptr| {
-            slice::from_raw_parts(*ptr, stack_len)
-                .iter()
+        .map(|s| {
+            s.iter()
                 .cloned()
                 .map(|m| m.try_into().ok())
                 .collect::<Option<_>>()

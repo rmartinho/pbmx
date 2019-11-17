@@ -729,7 +729,7 @@ mod tests {
             .map(|p| vtmf0.mask(&p).0)
             .collect();
 
-        let pi = thread_rng().sample(&Shuffles(m0.len()));
+        let pi = rng.sample(&Shuffles(m0.len()));
         let m = [m0, m1, m2];
         let (shuffles, secrets): (Vec<_>, Vec<_>) = m
             .iter()
@@ -748,7 +748,8 @@ mod tests {
         let verified = vtmf1.verify_entanglement(m.iter(), shuffles.iter(), &proof);
         assert_eq!(verified, Ok(()));
         let mut bad_shuffles = shuffles;
-        bad_shuffles[1] = m[1].clone();
+        let pi2 = rng.sample(&Shuffles(m[1].len()));
+        bad_shuffles[1] = vtmf0.mask_shuffle(&m[1], &pi2).0;
         let invalid = vtmf1.verify_entanglement(m.iter(), bad_shuffles.iter(), &proof);
         assert_eq!(invalid, Err(()));
     }

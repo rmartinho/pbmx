@@ -6,7 +6,8 @@ use crate::{
     result::PbmxResult,
     state::{
         vtmf::{
-            PbmxMask, PbmxMaskProof, PbmxShare, PbmxShareProof, PbmxShiftProof, PbmxShuffleProof,
+            PbmxEntanglementProof, PbmxMask, PbmxMaskProof, PbmxShare, PbmxShareProof,
+            PbmxShiftProof, PbmxShuffleProof,
         },
         Pbmx,
     },
@@ -210,6 +211,28 @@ pub unsafe extern "C" fn pbmx_random_reveal_payload(
         share.try_into().ok()?,
         proof.as_ref().cloned()?,
     );
+    builder.as_mut()?.add_payload(payload);
+    PbmxResult::ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_prove_entanglement_payload(
+    mut builder: PbmxBlockBuilder,
+    sources: *const PbmxFingerprint,
+    len: size_t,
+    shuffles: *const PbmxFingerprint,
+    proof: PbmxEntanglementProof,
+) -> PbmxResult {
+    let sources = slice::from_raw_parts(sources, len);
+    let sources: Option<Vec<_>> = sources.iter().cloned().map(|s| s.try_into().ok()).collect();
+    let shuffles = slice::from_raw_parts(shuffles, len);
+    let shuffles: Option<Vec<_>> = shuffles
+        .iter()
+        .cloned()
+        .map(|s| s.try_into().ok())
+        .collect();
+    let payload =
+        Payload::ProveEntanglement(sources?.into(), shuffles?.into(), proof.as_ref().cloned()?);
     builder.as_mut()?.add_payload(payload);
     PbmxResult::ok()
 }
@@ -617,6 +640,27 @@ pub unsafe extern "C" fn pbmx_unwrap_random_reveal(
         Payload::RandomReveal(name, share, proof) => {
             return_string(name, name_out, name_len)?;
             share_out.opt_write(share.clone().into());
+            proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_prove_entanglement(
+    payload: PbmxPayload,
+    sources_out: *mut PbmxFingerprint,
+    len: *mut size_t,
+    shuffles_out: *mut PbmxFingerprint,
+    proof_out: *mut PbmxEntanglementProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::ProveEntanglement(sources, shuffles, proof) => {
+            let sources = sources.iter().map(|&m| m.into());
+            return_list(sources, sources_out, len)?;
+            let shuffles = shuffles.iter().map(|&m| m.into());
+            return_list(shuffles, shuffles_out, len)?;
             proof_out.opt_write(Opaque::wrap(proof.clone()));
             PbmxResult::ok()
         }

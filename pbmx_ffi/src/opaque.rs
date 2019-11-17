@@ -2,7 +2,7 @@ use libc::c_void;
 use std::{marker::PhantomData, ops::Try, option::NoneError, ptr};
 
 #[repr(transparent)]
-pub struct Opaque<T>(*mut c_void, PhantomData<T>);
+pub struct Opaque<T>(*mut c_void, PhantomData<*mut T>);
 
 impl<T> Opaque<T> {
     pub unsafe fn wrap(r: T) -> Self {
