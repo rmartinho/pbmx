@@ -5,8 +5,8 @@ use crate::{
     crypto::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         vtmf::{
-            EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
-            ShuffleProof, Stack, Vtmf,
+            DisjointProof, EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof,
+            ShiftProof, ShuffleProof, Stack, SubsetProof, SupersetProof, Vtmf,
         },
     },
 };
@@ -103,6 +103,12 @@ impl<'a> PayloadVisitor for BlockAdder<'a> {
     fn visit_open_stack(&mut self, _: &Block, stack: &Stack) {
         self.valid = self.valid && stack.iter().all(Mask::is_open);
 
+        if self.valid {
+            self.state.stacks.insert(stack.clone());
+        }
+    }
+
+    fn visit_hidden_stack(&mut self, _: &Block, stack: &Stack) {
         if self.valid {
             self.state.stacks.insert(stack.clone());
         }
@@ -318,5 +324,33 @@ impl<'a> PayloadVisitor for BlockAdder<'a> {
                 .vtmf
                 .verify_entanglement(sources, shuffles, proof)
                 .is_ok();
+    }
+
+    fn visit_prove_subset(
+        &mut self,
+        _block: &Block,
+        _sub_id: Id,
+        _sup_id: Id,
+        _proof: &SubsetProof,
+    ) {
+    }
+
+    fn visit_prove_superset(
+        &mut self,
+        _block: &Block,
+        _sup_id: Id,
+        _sub_id: Id,
+        _proof: &SupersetProof,
+    ) {
+    }
+
+    fn visit_prove_disjoint(
+        &mut self,
+        _block: &Block,
+        _id1: Id,
+        _id2: Id,
+        _sup_id: Id,
+        _proof: &DisjointProof,
+    ) {
     }
 }

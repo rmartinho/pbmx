@@ -34,6 +34,10 @@ message Payload {
         RandomEntropy random_entropy = 13;
         RandomReveal random_reveal = 14;
         ProveEntanglement prove_entanglement = 16;
+        HiddenStack hidden_stack = 17;
+        ProveSubset prove_subset = 18;
+        ProveSuperset prove_superset = 19;
+        ProveDisjoint prove_disjoint = 20;
     }
 }
 
@@ -106,4 +110,27 @@ message ProveEntanglement {
     repeated bytes source_ids = 1;
     repeated bytes shuffle_ids = 2;
     pbmx.proof.EntanglementProof proof = 3;
+}
+
+message HiddenStack {
+    pbmx.core.Stack stack = 1;
+}
+
+message ProveSubset {
+    bytes sub_id = 1;
+    bytes sup_id = 2;
+    pbmx.proof.SubsetProof proof = 3;
+}
+
+message ProveSuperset {
+    bytes sup_id = 1;
+    bytes sub_id = 2;
+    pbmx.proof.SupersetProof proof = 3;
+}
+
+message ProveDisjoint {
+    bytes id1 = 1;
+    bytes id2 = 2;
+    bytes sup_id = 3;
+    pbmx.proof.DisjointProof proof = 4;
 }

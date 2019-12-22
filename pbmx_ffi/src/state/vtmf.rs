@@ -19,7 +19,8 @@ use libc::{c_char, size_t};
 use pbmx_kit::crypto::{
     map,
     vtmf::{
-        EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof, ShuffleProof,
+        DisjointProof, EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof,
+        ShiftProof, ShuffleProof, SubsetProof, SupersetProof,
     },
 };
 use rand::thread_rng;
@@ -653,3 +654,12 @@ pub unsafe extern "C" fn pbmx_verify_entanglement(
         .ok()?;
     PbmxResult::ok()
 }
+
+pub type PbmxSubsetProof = Opaque<SubsetProof>;
+ffi_deleter! { pbmx_delete_subset_proof(SubsetProof) }
+
+pub type PbmxSupersetProof = Opaque<SupersetProof>;
+ffi_deleter! { pbmx_delete_superset_proof(SupersetProof) }
+
+pub type PbmxDisjointProof = Opaque<DisjointProof>;
+ffi_deleter! { pbmx_delete_disjoint_proof(DisjointProof) }
