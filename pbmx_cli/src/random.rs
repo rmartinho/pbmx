@@ -223,7 +223,7 @@ mod spec {
     }
 
     fn make_expr<T: Node + 'static>(t: T) -> Expr {
-        box t
+        Box::new(t)
     }
 
     named!(number(CompleteStr) -> u64,
