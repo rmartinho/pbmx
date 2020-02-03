@@ -41,7 +41,7 @@ pub struct Publics<'a> {
 pub struct Secrets {}
 
 impl Proof {
-    /// Generates a non-interactive zero-knowledge subset proof
+    /// Generates a non-interactive zero-knowledge disjoint stacks proof
     pub fn create(transcript: &mut Transcript, publics: Publics, _secrets: Secrets) -> Self {
         transcript.domain_sep(b"disjoint");
 

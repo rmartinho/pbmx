@@ -466,14 +466,11 @@ impl Vtmf {
     ) -> Result<(), ()> {
         let h = self.pk.point();
 
-        proof.verify(
-            &mut Transcript::new(b"subset"),
-            subset::Publics {
-                h: &h,
-                sub: &sub,
-                sup: &sup,
-            },
-        )
+        proof.verify(&mut Transcript::new(b"subset"), subset::Publics {
+            h: &h,
+            sub: &sub,
+            sup: &sup,
+        })
     }
 }
 
@@ -502,14 +499,11 @@ impl Vtmf {
     ) -> Result<(), ()> {
         let h = self.pk.point();
 
-        proof.verify(
-            &mut Transcript::new(b"superset"),
-            superset::Publics {
-                h: &h,
-                sup: &sup,
-                sub: &sub,
-            },
-        )
+        proof.verify(&mut Transcript::new(b"superset"), superset::Publics {
+            h: &h,
+            sup: &sup,
+            sub: &sub,
+        })
     }
 }
 
@@ -540,15 +534,12 @@ impl Vtmf {
     ) -> Result<(), ()> {
         let h = self.pk.point();
 
-        proof.verify(
-            &mut Transcript::new(b"disjoint"),
-            disjoint::Publics {
-                h: &h,
-                u: &u,
-                s0: &s0,
-                s1: &s1,
-            },
-        )
+        proof.verify(&mut Transcript::new(b"disjoint"), disjoint::Publics {
+            h: &h,
+            u: &u,
+            s0: &s0,
+            s1: &s1,
+        })
     }
 }
 

@@ -104,8 +104,8 @@ impl Proof {
 
         let mut fd: Vec<_> = (1..n)
             .map(|i| {
-                (e * (delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])
-                    - delta[i - 1] * d[i])
+                e * (delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])
+                    - delta[i - 1] * d[i]
             })
             .collect();
         fd.push(Scalar::zero());

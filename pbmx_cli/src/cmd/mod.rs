@@ -1,4 +1,5 @@
 pub mod bin;
+pub mod claim;
 pub mod init;
 pub mod issue;
 pub mod join;
