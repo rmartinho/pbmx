@@ -1,4 +1,4 @@
-//! Hoogh et al's verifiable rotation of known content
+//! Hoogh et al's rotation of known content argument
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::crypto::{commit::Pedersen, perm::Permutation};
@@ -36,8 +36,7 @@ pub struct Secrets<'a> {
 }
 
 impl Proof {
-    /// Generates a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Generates a non-interactive rotation of known content argument
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"known_rotation");
 
@@ -102,8 +101,7 @@ impl Proof {
         Self { f, l, t }
     }
 
-    /// Verifies a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Verifies a non-interactive rotation of known content argument
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
         transcript.domain_sep(b"known_rotation");
 

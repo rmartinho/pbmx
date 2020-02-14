@@ -1,4 +1,4 @@
-//! Groth's verifiable shuffle of known content
+//! Groth's shuffle of known content argument
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::crypto::{commit::Pedersen, perm::Permutation};
@@ -40,8 +40,7 @@ pub struct Secrets<'a> {
 }
 
 impl Proof {
-    /// Generates a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Generates a non-interactive shuffle of known content argument
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"known_shuffle");
 
@@ -104,8 +103,8 @@ impl Proof {
 
         let mut fd: Vec<_> = (1..n)
             .map(|i| {
-                (e * (delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])
-                    - delta[i - 1] * d[i])
+                e * (delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])
+                    - delta[i - 1] * d[i]
             })
             .collect();
         fd.push(Scalar::zero());
@@ -122,8 +121,7 @@ impl Proof {
         }
     }
 
-    /// Verifies a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Verifies a non-interactive shuffle of known content argument
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
         transcript.domain_sep(b"known_shuffle");
 

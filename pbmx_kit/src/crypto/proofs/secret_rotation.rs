@@ -18,7 +18,7 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
-    skr: known_rotation::Proof,
+    rkc: known_rotation::Proof,
     h: Vec<RistrettoPoint>,
     z: Vec<Mask>,
     v: Scalar,
@@ -134,7 +134,7 @@ impl Proof {
         let mu: Vec<_> = m.iter().zip(t.iter()).map(|(m, t)| m + l * t).collect();
         transcript.commit_scalars(b"mu", &mu);
 
-        let skr = known_rotation::Proof::create(
+        let rkc = known_rotation::Proof::create(
             transcript,
             known_rotation::Publics {
                 com: &com,
@@ -148,7 +148,7 @@ impl Proof {
         );
 
         Self {
-            skr,
+            rkc,
             h,
             z,
             v,
@@ -189,7 +189,7 @@ impl Proof {
         transcript.commit_scalars(b"rho", &self.rho);
         transcript.commit_scalars(b"mu", &self.mu);
 
-        self.skr.verify(transcript, known_rotation::Publics {
+        self.rkc.verify(transcript, known_rotation::Publics {
             com: &com,
             m: &a,
             c: &self.h,
