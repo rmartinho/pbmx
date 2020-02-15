@@ -93,7 +93,7 @@ impl Proof {
         Self { shuffle, proof }
     }
 
-    /// Verifies a non-interactive zero-knowledge proof of a secret shuffle
+    /// Verifies a non-interactive zero-knowledge superset proof
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
         transcript.domain_sep(b"superset");
 
