@@ -21,7 +21,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
 
     let id1 = stack.id();
     state.payloads.push(Payload::PublishShares(id1, s, p));
-    println!("{} {:16}", " + Publish secrets".green().bold(), id1,);
+    println!("{} {:16}", " + Publish secrets".green().bold(), id1);
 
     state.save_payloads()?;
     Ok(())

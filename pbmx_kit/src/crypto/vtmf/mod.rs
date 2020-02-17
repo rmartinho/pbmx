@@ -509,7 +509,13 @@ impl Vtmf {
 
 impl Vtmf {
     /// Proves that two stacks are disjoint
-    pub fn prove_disjoint<'a>(&self, s0: &Stack, s1: &Stack, u: &Stack) -> DisjointProof {
+    pub fn prove_disjoint<'a>(
+        &self,
+        s0: &Stack,
+        s1: &Stack,
+        u: &Stack,
+        extra: &Stack,
+    ) -> DisjointProof {
         let h = self.pk.point();
 
         DisjointProof::create(
@@ -517,10 +523,10 @@ impl Vtmf {
             disjoint::Publics {
                 h: &h,
                 u: &u,
-                s0: &s0,
-                s1: &s1,
+                s0,
+                s1,
             },
-            disjoint::Secrets {},
+            disjoint::Secrets { extra },
         )
     }
 

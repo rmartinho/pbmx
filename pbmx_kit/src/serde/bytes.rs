@@ -55,6 +55,19 @@ where
     }
 }
 
+impl<T> ToBytes for [T]
+where
+    T: Serialize,
+{
+    fn to_bytes(&self) -> Result<Vec<u8>> {
+        let bytes = bincode::config()
+            .big_endian()
+            .serialize(self)
+            .map_err(|_| Error::Encoding)?;
+        Ok(bytes)
+    }
+}
+
 impl<T> ToBytes for Vec<T>
 where
     T: Serialize,

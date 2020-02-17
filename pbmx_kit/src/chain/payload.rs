@@ -72,6 +72,15 @@ impl Payload {
     pub fn display_short<'a>(&'a self) -> impl Display + 'a {
         DisplayShort(self)
     }
+
+    /// Checks whether this payload represents a (multi-block) claim or not
+    pub fn is_claim(&self) -> bool {
+        use Payload::*;
+        match self {
+            ProveSubset(..) | ProveSuperset(..) | ProveDisjoint(..) => true,
+            _ => false,
+        }
+    }
 }
 
 struct DisplayShort<'a>(&'a Payload);

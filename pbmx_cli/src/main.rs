@@ -199,10 +199,6 @@ fn main() {
                 (about: "Takes part in the verification of a claim")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
-                (@group which =>
-                    (@arg ID: "The identifier of the claim")
-                    (@arg ALL: -a --all "All pending claims")
-                )
             )
             (@subcommand subset =>
                 (about: "Claims that a stack is a subset of another")
@@ -222,8 +218,8 @@ fn main() {
                 (about: "Claims that two stacks are disjoint")
                 (@setting DeriveDisplayOrder)
                 (@setting ColoredHelp)
-                (@arg STACK0: +required "The name or identifier of the first stack")
-                (@arg STACK1: +required "The name or identifier of the second stack")
+                (@arg STACK1: +required "The name or identifier of the first stack")
+                (@arg STACK2: +required "The name or identifier of the second stack")
                 (@arg UNIVERSE: +required "The name or identifier of the universe stack")
             )
         )

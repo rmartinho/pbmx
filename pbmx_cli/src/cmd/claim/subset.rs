@@ -43,6 +43,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
         id1,
         id2
     );
+    // TODO add initial verification payload
 
     state.save_payloads()?;
     Ok(())

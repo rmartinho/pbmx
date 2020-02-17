@@ -1,6 +1,6 @@
 //! Disjoint set proof
 
-use super::TranscriptProtocol;
+use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
     crypto::{perm::Shuffles, proofs::secret_shuffle, vtmf::Mask},
     proto,
@@ -8,16 +8,20 @@ use crate::{
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
+    scalar::Scalar,
 };
 use merlin::Transcript;
-use rand::{thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng, Rng};
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
-    shuffle: Vec<Mask>,
+    extra: Vec<Mask>,
+    /// A shuffle of the two stacks + some extras that should unmask to the
+    /// universe
+    pub shuffle: Vec<Mask>,
     proof: secret_shuffle::Proof,
 }
 
@@ -38,11 +42,14 @@ pub struct Publics<'a> {
 
 /// Secret parameters
 #[derive(Copy, Clone)]
-pub struct Secrets {}
+pub struct Secrets<'a> {
+    /// The rest of the universe
+    pub extra: &'a [Mask],
+}
 
 impl Proof {
     /// Generates a non-interactive zero-knowledge disjoint stacks proof
-    pub fn create(transcript: &mut Transcript, publics: Publics, _secrets: Secrets) -> Self {
+    pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"disjoint");
 
         transcript.commit_point(b"h", publics.h);
@@ -50,12 +57,22 @@ impl Proof {
         transcript.commit_masks(b"s0", publics.s0);
         transcript.commit_masks(b"s1", publics.s1);
 
-        let mut rng = transcript.build_rng().finalize(&mut thread_rng());
+        let mut rng = transcript
+            .build_rng()
+            .commit_masks(b"extra", secrets.extra)
+            .finalize(&mut thread_rng());
 
         let gh = Mask(G.basepoint(), *publics.h);
 
+        let mut extra: Vec<_> = secrets
+            .extra
+            .iter()
+            .map(|c| gh * Scalar::random(&mut rng) + c)
+            .collect();
+        extra.shuffle(&mut rng);
         let mut stacked = publics.s0.to_vec();
         stacked.extend_from_slice(publics.s1);
+        stacked.extend_from_slice(&extra);
         transcript.commit_masks(b"stacked", &stacked);
 
         let pi = rng.sample(&Shuffles(stacked.len()));
@@ -79,7 +96,11 @@ impl Proof {
             secret_shuffle::Secrets { pi: &pi, r: &r },
         );
 
-        Self { shuffle, proof }
+        Self {
+            extra,
+            shuffle,
+            proof,
+        }
     }
 
     /// Verifies a non-interactive zero-knowledge disjoint stacks proof
@@ -93,6 +114,7 @@ impl Proof {
 
         let mut stacked = publics.s0.to_vec();
         stacked.extend_from_slice(publics.s1);
+        stacked.extend_from_slice(&self.extra);
         transcript.commit_masks(b"stacked", &stacked);
 
         self.proof.verify(transcript, secret_shuffle::Publics {
@@ -130,9 +152,9 @@ mod tests {
             h: &h,
             u: &u,
             s0: &u[0..3],
-            s1: &u[3..8],
+            s1: &u[3..5],
         };
-        let secrets = Secrets {};
+        let secrets = Secrets { extra: &u[5..] };
 
         let proof = Proof::create(&mut Transcript::new(b"test"), publics, secrets);
 

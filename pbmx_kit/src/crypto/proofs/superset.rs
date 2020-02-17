@@ -2,11 +2,7 @@
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{
-        perm::{Permutation, Shuffles},
-        proofs::secret_shuffle,
-        vtmf::Mask,
-    },
+    crypto::{perm::Permutation, proofs::secret_shuffle, vtmf::Mask},
     proto,
 };
 use curve25519_dalek::{
@@ -14,7 +10,7 @@ use curve25519_dalek::{
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
 };
 use merlin::Transcript;
-use rand::{thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng};
 use std::convert::TryFrom;
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
@@ -22,7 +18,12 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
-    shuffle: Vec<Mask>,
+    /// A shuffle of the superset whose top should unmask to the same as the
+    /// subset
+    pub shuffle: Vec<Mask>,
+    /// How many masks from the top of the shuffle can be unmasked without
+    /// revealing secret information
+    pub n: usize,
     proof: secret_shuffle::Proof,
 }
 
@@ -63,10 +64,11 @@ impl Proof {
         let gh = Mask(G.basepoint(), *publics.h);
 
         let mut perm = secrets.idx.to_vec();
+        perm.shuffle(&mut rng);
         let mut extra: Vec<_> = (0..publics.sup.len())
             .filter(|i| !secrets.idx.contains(i))
             .collect();
-        rng.sample(Shuffles(extra.len())).apply_to(&mut extra);
+        extra.shuffle(&mut rng);
         perm.extend_from_slice(&extra);
         let pi = Permutation::try_from(perm).unwrap();
 
@@ -90,7 +92,11 @@ impl Proof {
             secret_shuffle::Secrets { pi: &pi, r: &r },
         );
 
-        Self { shuffle, proof }
+        Self {
+            shuffle,
+            n: secrets.idx.len(),
+            proof,
+        }
     }
 
     /// Verifies a non-interactive zero-knowledge superset proof

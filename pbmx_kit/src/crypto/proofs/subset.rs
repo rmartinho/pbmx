@@ -18,7 +18,9 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
     extra: Vec<Mask>,
-    shuffle: Vec<Mask>,
+    /// A shuffle of the subset + some extras that should unmask to the same as
+    /// the superset
+    pub shuffle: Vec<Mask>,
     proof: secret_shuffle::Proof,
 }
 
