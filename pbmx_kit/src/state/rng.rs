@@ -6,7 +6,7 @@ use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
 use digest::XofReader;
 use std::fmt::{self, Debug, Display, Formatter};
 
-/// An distributed random number generator
+/// A distributed random number generator
 #[derive(Debug, Clone)]
 pub struct Rng {
     parties: usize,

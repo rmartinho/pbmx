@@ -164,7 +164,7 @@ impl Fingerprint {
     /// Gets the fingerprint of some object
     pub fn of<T>(x: &T) -> Result<Fingerprint, Error>
     where
-        T: ToBytes,
+        T: ToBytes + ?Sized,
     {
         debug_assert!(Hash::output_size() >= FINGERPRINT_SIZE);
         let bytes = x.to_bytes()?;

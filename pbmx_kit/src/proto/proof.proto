@@ -17,3 +17,15 @@ message RotationProof {
 message EntanglementProof {
     bytes raw = 1;
 }
+
+message SubsetProof {
+    bytes raw = 1;
+}
+
+message SupersetProof {
+    bytes raw = 1;
+}
+
+message DisjointProof {
+    bytes raw = 1;
+}

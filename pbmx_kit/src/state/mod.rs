@@ -5,8 +5,8 @@ use crate::{
     crypto::{
         keys::{Fingerprint, PrivateKey, PublicKey},
         vtmf::{
-            EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
-            ShuffleProof, Stack, Vtmf,
+            DisjointProof, EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof,
+            ShiftProof, ShuffleProof, Stack, SubsetProof, SupersetProof, Vtmf,
         },
     },
 };
@@ -18,8 +18,12 @@ pub use stack_map::{PrivateSecretMap, SecretMap, StackMap};
 mod rng;
 pub use rng::Rng;
 
+mod claim;
+pub use claim::Claim;
+
 type PlayerMap = HashMap<Fingerprint, String>;
 type RngMap = HashMap<String, Rng>;
+type ClaimMap = HashMap<Id, Claim>;
 
 /// The end state of a chain
 #[derive(Debug)]
@@ -34,6 +38,8 @@ pub struct State {
     pub stacks: StackMap,
     /// The RNGs
     pub rngs: RngMap,
+    /// The claims
+    pub claims: ClaimMap,
 }
 
 impl State {
@@ -45,6 +51,7 @@ impl State {
             chain: Chain::new(),
             stacks: StackMap::new(),
             rngs: RngMap::new(),
+            claims: ClaimMap::new(),
         }
     }
 
@@ -83,6 +90,16 @@ impl<'a> BlockVisitor for BlockAdder<'a> {
             if !self.valid {
                 return;
             }
+            if payload.is_claim() {
+                let claim = Claim::new(payload.clone());
+                self.state.claims.insert(claim.id(), claim);
+            }
+            for claim in self.state.claims.values_mut() {
+                if claim.needs_share(payload) {
+                    claim.add_share(block.signer(), payload.clone());
+                }
+                claim.verify(&self.state.vtmf, &self.state.stacks);
+            }
         }
         if self.valid {
             self.state.chain.add_block(block.clone());
@@ -103,6 +120,12 @@ impl<'a> PayloadVisitor for BlockAdder<'a> {
     fn visit_open_stack(&mut self, _: &Block, stack: &Stack) {
         self.valid = self.valid && stack.iter().all(Mask::is_open);
 
+        if self.valid {
+            self.state.stacks.insert(stack.clone());
+        }
+    }
+
+    fn visit_hidden_stack(&mut self, _: &Block, stack: &Stack) {
         if self.valid {
             self.state.stacks.insert(stack.clone());
         }
@@ -318,5 +341,79 @@ impl<'a> PayloadVisitor for BlockAdder<'a> {
                 .vtmf
                 .verify_entanglement(sources, shuffles, proof)
                 .is_ok();
+    }
+
+    fn visit_prove_subset(&mut self, _block: &Block, sub_id: Id, sup_id: Id, proof: &SubsetProof) {
+        let stacks = &self.state.stacks;
+        let sub = stacks.get_by_id(&sub_id);
+        let sup = stacks.get_by_id(&sup_id);
+
+        self.valid = self.valid && sub.is_some() && sup.is_some();
+        if !self.valid {
+            return;
+        }
+        let sub = sub.unwrap();
+        let sup = sup.unwrap();
+
+        self.valid = self.valid && self.state.vtmf.verify_subset(sub, sup, proof).is_ok();
+
+        if self.valid {
+            self.state.stacks.insert(proof.shuffle[..].into());
+        }
+    }
+
+    fn visit_prove_superset(
+        &mut self,
+        _block: &Block,
+        sup_id: Id,
+        sub_id: Id,
+        proof: &SupersetProof,
+    ) {
+        let stacks = &self.state.stacks;
+        let sup = stacks.get_by_id(&sup_id);
+        let sub = stacks.get_by_id(&sub_id);
+
+        self.valid = self.valid && sup.is_some() && sub.is_some();
+
+        if !self.valid {
+            return;
+        }
+        let sup = sup.unwrap();
+        let sub = sub.unwrap();
+
+        self.valid = self.valid && self.state.vtmf.verify_superset(sup, sub, proof).is_ok();
+
+        if self.valid {
+            self.state.stacks.insert(proof.shuffle[..proof.n].into());
+        }
+    }
+
+    fn visit_prove_disjoint(
+        &mut self,
+        _block: &Block,
+        id1: Id,
+        id2: Id,
+        sup_id: Id,
+        proof: &DisjointProof,
+    ) {
+        let stacks = &self.state.stacks;
+        let s1 = stacks.get_by_id(&id1);
+        let s2 = stacks.get_by_id(&id2);
+        let sup = stacks.get_by_id(&sup_id);
+
+        self.valid = self.valid && s1.is_some() && s2.is_some() && sup.is_some();
+
+        if !self.valid {
+            return;
+        }
+        let s1 = s1.unwrap();
+        let s2 = s2.unwrap();
+        let sup = sup.unwrap();
+
+        self.valid = self.valid && self.state.vtmf.verify_disjoint(s1, s2, sup, proof).is_ok();
+
+        if self.valid {
+            self.state.stacks.insert(proof.shuffle[..].into());
+        }
     }
 }

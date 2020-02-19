@@ -6,8 +6,8 @@ use crate::{
     result::PbmxResult,
     state::{
         vtmf::{
-            PbmxEntanglementProof, PbmxMask, PbmxMaskProof, PbmxShare, PbmxShareProof,
-            PbmxShiftProof, PbmxShuffleProof,
+            PbmxDisjointProof, PbmxEntanglementProof, PbmxMask, PbmxMaskProof, PbmxShare,
+            PbmxShareProof, PbmxShiftProof, PbmxShuffleProof, PbmxSubsetProof, PbmxSupersetProof,
         },
         Pbmx,
     },
@@ -238,6 +238,43 @@ pub unsafe extern "C" fn pbmx_prove_entanglement_payload(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn pbmx_prove_subset_payload(
+    mut builder: PbmxBlockBuilder,
+    sub: PbmxFingerprint,
+    sup: PbmxFingerprint,
+    proof: PbmxSubsetProof,
+) -> PbmxResult {
+    let payload = Payload::ProveSubset(sub, sup, proof.as_ref().cloned()?);
+    builder.as_mut()?.add_payload(payload);
+    PbmxResult::ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_prove_superset_payload(
+    mut builder: PbmxBlockBuilder,
+    sup: PbmxFingerprint,
+    sub: PbmxFingerprint,
+    proof: PbmxSupersetProof,
+) -> PbmxResult {
+    let payload = Payload::ProveSuperset(sup, sub, proof.as_ref().cloned()?);
+    builder.as_mut()?.add_payload(payload);
+    PbmxResult::ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_prove_disjoint_payload(
+    mut builder: PbmxBlockBuilder,
+    id1: PbmxFingerprint,
+    id2: PbmxFingerprint,
+    sup: PbmxFingerprint,
+    proof: PbmxDisjointProof,
+) -> PbmxResult {
+    let payload = Payload::ProveDisjoint(id1, id2, sup, proof.as_ref().cloned()?);
+    builder.as_mut()?.add_payload(payload);
+    PbmxResult::ok()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn pbmx_text_payload(
     mut builder: PbmxBlockBuilder,
     text: *const c_char,
@@ -385,6 +422,7 @@ pub unsafe extern "C" fn pbmx_payloads(
 pub enum PayloadKind {
     PublishKey = 1,
     OpenStack,
+    HiddenStack,
     MaskStack,
     ShuffleStack,
     ShiftStack,
@@ -396,6 +434,9 @@ pub enum PayloadKind {
     RandomEntropy,
     RandomReveal,
     ProveEntanglement,
+    ProveSubset,
+    ProveSuperset,
+    ProveDisjoint,
     Text,
     Bytes,
 }
@@ -408,6 +449,7 @@ pub unsafe extern "C" fn pbmx_payload_kind(
     kind_out.opt_write(match payload.as_ref()? {
         Payload::PublishKey(..) => PayloadKind::PublishKey,
         Payload::OpenStack(_) => PayloadKind::OpenStack,
+        Payload::HiddenStack(_) => PayloadKind::HiddenStack,
         Payload::MaskStack(..) => PayloadKind::MaskStack,
         Payload::ShuffleStack(..) => PayloadKind::ShuffleStack,
         Payload::ShiftStack(..) => PayloadKind::ShiftStack,
@@ -419,6 +461,9 @@ pub unsafe extern "C" fn pbmx_payload_kind(
         Payload::RandomEntropy(..) => PayloadKind::RandomEntropy,
         Payload::RandomReveal(..) => PayloadKind::RandomReveal,
         Payload::ProveEntanglement(..) => PayloadKind::ProveEntanglement,
+        Payload::ProveSubset(..) => PayloadKind::ProveSubset,
+        Payload::ProveSuperset(..) => PayloadKind::ProveSuperset,
+        Payload::ProveDisjoint(..) => PayloadKind::ProveDisjoint,
         Payload::Text(_) => PayloadKind::Text,
         Payload::Bytes(_) => PayloadKind::Bytes,
     });
@@ -661,6 +706,59 @@ pub unsafe extern "C" fn pbmx_unwrap_prove_entanglement(
             return_list(sources, sources_out, len)?;
             let shuffles = shuffles.iter().map(|&m| m.into());
             return_list(shuffles, shuffles_out, len)?;
+            proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_prove_subset(
+    payload: PbmxPayload,
+    sub_out: *mut PbmxFingerprint,
+    sup_out: *mut PbmxFingerprint,
+    proof_out: *mut PbmxSubsetProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::ProveSubset(sub, sup, proof) => {
+            sub_out.opt_write(sub.clone().into());
+            sup_out.opt_write(sup.clone().into());
+            proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_prove_superset(
+    payload: PbmxPayload,
+    sup_out: *mut PbmxFingerprint,
+    sub_out: *mut PbmxFingerprint,
+    proof_out: *mut PbmxSupersetProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::ProveSuperset(sup, sub, proof) => {
+            sup_out.opt_write(sup.clone().into());
+            sub_out.opt_write(sub.clone().into());
+            proof_out.opt_write(Opaque::wrap(proof.clone()));
+            PbmxResult::ok()
+        }
+        _ => PbmxResult::err(),
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn pbmx_unwrap_prove_disjoint(
+    payload: PbmxPayload,
+    id1_out: *mut PbmxFingerprint,
+    id2_out: *mut PbmxFingerprint,
+    sup_out: *mut PbmxFingerprint,
+    proof_out: *mut PbmxDisjointProof,
+) -> PbmxResult {
+    match payload.as_ref()? {
+        Payload::ProveDisjoint(id1, id2, sup, proof) => {
+            id1_out.opt_write(id1.clone().into());
+            id2_out.opt_write(id2.clone().into());
+            sup_out.opt_write(sup.clone().into());
             proof_out.opt_write(Opaque::wrap(proof.clone()));
             PbmxResult::ok()
         }

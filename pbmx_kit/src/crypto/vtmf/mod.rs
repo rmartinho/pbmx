@@ -5,7 +5,9 @@ use crate::{
         hash::Xof,
         keys::{Fingerprint, PrivateKey, PublicKey},
         perm::Permutation,
-        proofs::{dlog_eq, entanglement, secret_rotation, secret_shuffle},
+        proofs::{
+            disjoint, dlog_eq, entanglement, secret_rotation, secret_shuffle, subset, superset,
+        },
     },
     proto,
     serde::serialize_flat_map,
@@ -22,8 +24,10 @@ use serde::{de, Deserialize, Deserializer};
 use std::{collections::HashMap, iter};
 
 pub use crate::crypto::proofs::{
-    dlog_eq::Proof as MaskProof, entanglement::Proof as EntanglementProof,
-    secret_rotation::Proof as ShiftProof, secret_shuffle::Proof as ShuffleProof,
+    disjoint::Proof as DisjointProof, dlog_eq::Proof as MaskProof,
+    entanglement::Proof as EntanglementProof, secret_rotation::Proof as ShiftProof,
+    secret_shuffle::Proof as ShuffleProof, subset::Proof as SubsetProof,
+    superset::Proof as SupersetProof,
 };
 
 mod mask;
@@ -399,7 +403,7 @@ impl Vtmf {
         let m: Vec<_> = m.map(|s| &s[..]).collect();
         let c: Vec<_> = c.map(|s| &s[..]).collect();
         let r: Vec<_> = secrets.collect();
-        entanglement::Proof::create(
+        EntanglementProof::create(
             &mut Transcript::new(b"entanglement"),
             entanglement::Publics {
                 h: &h,
@@ -410,8 +414,8 @@ impl Vtmf {
         )
     }
 
-    /// Proves that multiple stacks have been reordered according to the same
-    /// permutation
+    /// Verify a proof that multiple stacks have been reordered according to the
+    /// same permutation
     pub fn verify_entanglement<'a, It1, It2>(
         &self,
         m: It1,
@@ -434,6 +438,114 @@ impl Vtmf {
                 e1: &c,
             },
         )
+    }
+}
+
+impl Vtmf {
+    /// Proves that one stack is a subset of another
+    pub fn prove_subset<'a>(&self, sub: &Stack, sup: &Stack, diff: &Stack) -> SubsetProof {
+        let h = self.pk.point();
+
+        SubsetProof::create(
+            &mut Transcript::new(b"subset"),
+            subset::Publics {
+                h: &h,
+                sub: &sub,
+                sup: &sup,
+            },
+            subset::Secrets { diff: &diff },
+        )
+    }
+
+    /// Verifies a proof that one stack is a subset of another
+    pub fn verify_subset<'a>(
+        &self,
+        sub: &Stack,
+        sup: &Stack,
+        proof: &SubsetProof,
+    ) -> Result<(), ()> {
+        let h = self.pk.point();
+
+        proof.verify(&mut Transcript::new(b"subset"), subset::Publics {
+            h: &h,
+            sub: &sub,
+            sup: &sup,
+        })
+    }
+}
+
+impl Vtmf {
+    /// Proves that one stack is a superset of another
+    pub fn prove_superset<'a>(&self, sup: &Stack, sub: &Stack, idx: &[usize]) -> SupersetProof {
+        let h = self.pk.point();
+
+        SupersetProof::create(
+            &mut Transcript::new(b"superset"),
+            superset::Publics {
+                h: &h,
+                sup: &sup,
+                sub: &sub,
+            },
+            superset::Secrets { idx: &idx },
+        )
+    }
+
+    /// Verifies a proof that one stack is a superset of another
+    pub fn verify_superset<'a>(
+        &self,
+        sup: &Stack,
+        sub: &Stack,
+        proof: &SupersetProof,
+    ) -> Result<(), ()> {
+        let h = self.pk.point();
+
+        proof.verify(&mut Transcript::new(b"superset"), superset::Publics {
+            h: &h,
+            sup: &sup,
+            sub: &sub,
+        })
+    }
+}
+
+impl Vtmf {
+    /// Proves that two stacks are disjoint
+    pub fn prove_disjoint<'a>(
+        &self,
+        s0: &Stack,
+        s1: &Stack,
+        u: &Stack,
+        extra: &Stack,
+    ) -> DisjointProof {
+        let h = self.pk.point();
+
+        DisjointProof::create(
+            &mut Transcript::new(b"disjoint"),
+            disjoint::Publics {
+                h: &h,
+                u: &u,
+                s0,
+                s1,
+            },
+            disjoint::Secrets { extra },
+        )
+    }
+
+    /// Verifies a proof that two stacks are disjoint
+    pub fn verify_disjoint<'a>(
+        &self,
+        s0: &Stack,
+        s1: &Stack,
+        u: &Stack,
+        proof: &DisjointProof,
+    ) -> Result<(), ()> {
+        let h = self.pk.point();
+
+        proof.verify(&mut Transcript::new(b"disjoint"), disjoint::Publics {
+            h: &h,
+            u: &u,
+            s0: &s0,
+            s1: &s1,
+        })
     }
 }
 
