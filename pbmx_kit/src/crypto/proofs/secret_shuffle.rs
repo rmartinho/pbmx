@@ -61,11 +61,13 @@ impl Proof {
         let n = publics.e0.len();
         let com = transcript.challenge_pedersen(b"com", *publics.h, n);
 
-        let mut rng = transcript
-            .build_rng()
-            .commit_permutation(b"pi", secrets.pi)
-            .commit_scalars(b"r", secrets.r)
-            .finalize(&mut thread_rng());
+        let rekey_rng = |t: &Transcript| {
+            t.build_rng()
+                .commit_permutation(b"pi", secrets.pi)
+                .commit_scalars(b"r", secrets.r)
+                .finalize(&mut thread_rng())
+        };
+        let mut rng = rekey_rng(&transcript);
 
         let gh = Mask(G.basepoint(), *publics.h);
 
@@ -76,6 +78,8 @@ impl Proof {
             .collect();
         let (c, r) = com.commit_to(&p2, &mut rng);
         transcript.commit_point(b"c", &c);
+
+        let mut rng = rekey_rng(&transcript);
 
         let d: Vec<_> = iter::repeat_with(|| Scalar::random(&mut rng))
             .map(|d| -d)

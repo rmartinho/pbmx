@@ -63,16 +63,19 @@ impl Proof {
 
         let com = transcript.challenge_pedersen(b"com", *publics.h, 1);
 
-        let mut rng = transcript
-            .build_rng()
-            .commit_index(b"k", secrets.k)
-            .commit_scalars(b"r", secrets.r)
-            .finalize(&mut thread_rng());
+        let rekey_rng = |t: &Transcript| {
+            t.build_rng()
+                .commit_index(b"k", secrets.k)
+                .commit_scalars(b"r", secrets.r)
+                .finalize(&mut thread_rng())
+        };
 
         let n = publics.e0.len();
         let gh = Mask(G.basepoint(), *publics.h);
 
         let a = transcript.challenge_scalars(b"a", n);
+
+        let mut rng = rekey_rng(&transcript);
 
         let u = random_scalars(n, &mut rng);
         let t = random_scalars(n, &mut rng);
@@ -102,11 +105,7 @@ impl Proof {
             .sum::<Scalar>();
         transcript.commit_scalar(b"v", &v);
 
-        let mut rng = transcript
-            .build_rng()
-            .commit_index(b"k", secrets.k)
-            .commit_scalars(b"r", secrets.r)
-            .finalize(&mut thread_rng());
+        let mut rng = rekey_rng(&transcript);
 
         let o = random_scalars(n, &mut rng);
         let p = random_scalars(n, &mut rng);

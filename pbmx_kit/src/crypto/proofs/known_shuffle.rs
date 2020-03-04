@@ -48,11 +48,13 @@ impl Proof {
         transcript.commit_point(b"c", publics.c);
         transcript.commit_scalars(b"m", publics.m);
 
-        let mut rng = transcript
-            .build_rng()
-            .commit_permutation(b"pi", secrets.pi)
-            .commit_scalar(b"r", secrets.r)
-            .finalize(&mut thread_rng());
+        let rekey_rng = |t: &Transcript| {
+            t.build_rng()
+                .commit_permutation(b"pi", secrets.pi)
+                .commit_scalar(b"r", secrets.r)
+                .finalize(&mut thread_rng())
+        };
+        let mut rng = rekey_rng(&transcript);
 
         let n = publics.m.len();
 
@@ -77,13 +79,19 @@ impl Proof {
             })
             .collect();
 
+        let mut rng = rekey_rng(&transcript);
+
         let (cd, rd) = publics.com.commit_to(&d, &mut rng);
         transcript.commit_point(b"cd", &cd);
+
+        let mut rng = rekey_rng(&transcript);
 
         let mut dd: Vec<_> = (1..n).map(|i| (-delta[i - 1]) * d[i]).collect();
         dd.push(Scalar::zero());
         let (cdd, rdd) = publics.com.commit_to(&dd, &mut rng);
         transcript.commit_point(b"cdd", &cdd);
+
+        let mut rng = rekey_rng(&transcript);
 
         let mut da: Vec<_> = (1..n)
             .map(|i| delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])

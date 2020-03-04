@@ -53,10 +53,13 @@ impl Proof {
         transcript.commit_masks(b"sub", publics.sub);
         transcript.commit_masks(b"sup", publics.sup);
 
-        let mut rng = transcript
-            .build_rng()
-            .commit_masks(b"diff", secrets.diff)
-            .finalize(&mut thread_rng());
+        let rekey_rng = |t: &Transcript| {
+            t.build_rng()
+                .commit_masks(b"diff", secrets.diff)
+                .finalize(&mut thread_rng())
+        };
+
+        let mut rng = rekey_rng(&transcript);
 
         let gh = Mask(G.basepoint(), *publics.h);
 
@@ -71,6 +74,8 @@ impl Proof {
         let mut stacked = extra.clone();
         stacked.extend_from_slice(publics.sub);
         transcript.commit_masks(b"stacked", &stacked);
+
+        let mut rng = rekey_rng(&transcript);
 
         let pi = rng.sample(&Shuffles(stacked.len()));
         let mut r = super::random_scalars(stacked.len(), &mut rng);
