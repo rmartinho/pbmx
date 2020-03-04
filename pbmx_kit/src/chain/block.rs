@@ -5,16 +5,13 @@ use crate::{
         payload::{Payload, PayloadVisitor},
         Id,
     },
-    crypto::{
-        keys::{Fingerprint, PrivateKey, PublicKey},
-        Hash,
-    },
+    crypto::keys::{Fingerprint, PrivateKey, PublicKey},
     proto,
     serde::{vec_from_proto, vec_to_proto, FromBytes, Proto, ToBytes},
     Error,
 };
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-use digest::Digest;
+use digest::{generic_array::typenum::U64, Digest};
 use serde::{
     de::{Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -162,6 +159,11 @@ impl BlockBuilder {
     }
 }
 
+create_hash! {
+    /// The hash used for signatures
+    pub struct SignatureHash(Hash<U64>) = b"pbmx-signature";
+}
+
 fn block_signature_hash<'a, AckIt, PayloadIt>(
     acks: AckIt,
     payloads: PayloadIt,
@@ -171,7 +173,7 @@ where
     AckIt: Iterator<Item = &'a Id> + 'a,
     PayloadIt: Iterator<Item = &'a Payload> + 'a,
 {
-    let mut h = Hash::new();
+    let mut h = SignatureHash::new();
     for ack in acks {
         h = h.chain(&ack);
     }

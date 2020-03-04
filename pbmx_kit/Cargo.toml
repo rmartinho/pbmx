@@ -48,11 +48,12 @@ version = "1.0"
 [dependencies.serde_derive]
 version = "1.0"
 
-[dependencies.sha3]
-version = "0.8"
-
 [dependencies.subtle]
 version = "2.0"
+
+[dependencies.tiny-keccak]
+git = "https://github.com/rmartinho/tiny-keccak.git"
+features = ["k12"]
 
 [dependencies.tribool]
 version = "0.2"

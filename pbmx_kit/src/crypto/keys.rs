@@ -1,7 +1,6 @@
 //! ElGamal encryption scheme for elliptic curves
 
 use crate::{
-    crypto::hash::Hash,
     proto,
     serde::{FromBytes, Proto, ToBytes},
     Error,
@@ -12,7 +11,7 @@ use curve25519_dalek::{
     scalar::Scalar,
     traits::Identity,
 };
-use digest::Digest;
+use digest::{generic_array::typenum::U32, Digest};
 use rand::{thread_rng, CryptoRng, Rng};
 use std::{
     borrow::Borrow,
@@ -38,6 +37,11 @@ pub struct PublicKey {
 #[repr(C)]
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
+
+create_hash! {
+    /// The hash used for key fingerprints
+    pub struct FingerprintHash(Hash<U32>) = b"pbmx-fingerprint";
+}
 
 impl Deref for Fingerprint {
     type Target = [u8];
@@ -119,7 +123,11 @@ impl PublicKey {
 
     /// Gets this key's fingerprint
     pub fn fingerprint(&self) -> Fingerprint {
-        Fingerprint::of(self).unwrap()
+        let bytes = self.h.to_bytes().unwrap();
+        let hashed = FingerprintHash::new().chain(bytes).result();
+        let mut array = [0u8; FINGERPRINT_SIZE];
+        array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
+        Fingerprint(array)
     }
 
     /// Combines this public key with another one to form a shared key
@@ -166,9 +174,9 @@ impl Fingerprint {
     where
         T: ToBytes + ?Sized,
     {
-        debug_assert!(Hash::output_size() >= FINGERPRINT_SIZE);
+        debug_assert!(FingerprintHash::output_size() >= FINGERPRINT_SIZE);
         let bytes = x.to_bytes()?;
-        let hashed = Hash::new().chain(bytes).result();
+        let hashed = FingerprintHash::new().chain(bytes).result();
         let mut array = [0u8; FINGERPRINT_SIZE];
         array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
         Ok(Fingerprint(array))
@@ -250,7 +258,7 @@ impl<'a> TryFrom<&'a Vec<u8>> for Fingerprint {
     }
 }
 
-const FINGERPRINT_SIZE: usize = 20;
+const FINGERPRINT_SIZE: usize = 32;
 
 #[cfg(test)]
 mod tests {
@@ -331,8 +339,7 @@ mod tests {
 
     #[test]
     fn fingerprint_roundtrips_via_string() {
-        let v = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        let original = Fingerprint::of(&v).unwrap();
+        let original = Fingerprint::random(&mut thread_rng());
 
         let exported = original.to_string();
 
