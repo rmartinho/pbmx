@@ -13,7 +13,10 @@ use std::{
 
 /// A masked value
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Mask(pub RistrettoPoint, pub RistrettoPoint);
+pub struct Mask(
+    #[serde(with = "crate::serde::point")] pub RistrettoPoint,
+    #[serde(with = "crate::serde::point")] pub RistrettoPoint,
+);
 
 derive_opaque_proto_conversions!(Mask: proto::Mask);
 

@@ -5,12 +5,12 @@ use crate::{
         payload::{Payload, PayloadVisitor},
         Id,
     },
-    crypto::keys::{Fingerprint, PrivateKey, PublicKey},
+    crypto::keys::{Fingerprint, PrivateKey, PublicKey, Signature},
     proto,
-    serde::{vec_from_proto, vec_to_proto, FromBytes, Proto, ToBytes},
+    serde::{vec_from_proto, vec_to_proto, Proto},
     Error,
 };
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use curve25519_dalek::scalar::Scalar;
 use digest::{
     generic_array::typenum::{U32, U64},
     Digest,
@@ -245,7 +245,7 @@ impl Proto for BlockRaw {
             acks: self.acks.iter().map(|id| id.to_vec()).collect(),
             payloads: vec_to_proto(&self.payloads)?,
             fingerprint: self.fp.to_vec(),
-            signature: self.sig.to_bytes()?,
+            signature: Some(self.sig.to_proto()?),
         })
     }
 
@@ -258,7 +258,7 @@ impl Proto for BlockRaw {
                 .collect::<Result<_, _>>()?,
             payloads: vec_from_proto(&m.payloads)?,
             fp: Fingerprint::try_from(&m.fingerprint)?,
-            sig: Signature::from_bytes(&m.signature)?,
+            sig: Signature::from_proto(m.signature.as_ref().ok_or(Error::Decoding)?)?,
         })
     }
 }
@@ -276,8 +276,6 @@ impl Proto for Block {
 }
 
 derive_base64_conversions!(Block);
-
-type Signature = (RistrettoPoint, Scalar);
 
 /// A visitor for blocks
 pub trait BlockVisitor: PayloadVisitor {

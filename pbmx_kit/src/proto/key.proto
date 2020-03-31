@@ -9,3 +9,7 @@ message PublicKey {
 message PrivateKey {
     bytes raw = 1;
 }
+
+message Signature {
+    bytes raw = 1;
+}

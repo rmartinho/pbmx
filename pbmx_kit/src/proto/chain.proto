@@ -10,7 +10,7 @@ message Block {
     repeated bytes acks = 1;
     repeated Payload payloads = 2;
     bytes fingerprint = 3;
-    bytes signature = 4;
+    pbmx.key.Signature signature = 4;
 }
 
 message PayloadList {
@@ -20,7 +20,7 @@ message PayloadList {
 message Payload {
     oneof payload_kind {
         bytes raw = 1;
-        string text = 15;
+        string text = 14;
         PublishKey publish_key = 2;
         OpenStack open_stack = 3;
         MaskStack mask_stack = 4;
@@ -29,15 +29,15 @@ message Payload {
         NameStack name_stack = 7;
         TakeStack take_stack = 8;
         PileStacks pile_stacks = 9;
-        PublishShares publish_shares = 11;
-        RandomSpec random_spec = 12;
-        RandomEntropy random_entropy = 13;
-        RandomReveal random_reveal = 14;
-        ProveEntanglement prove_entanglement = 16;
-        HiddenStack hidden_stack = 17;
-        ProveSubset prove_subset = 18;
-        ProveSuperset prove_superset = 19;
-        ProveDisjoint prove_disjoint = 20;
+        PublishShares publish_shares = 10;
+        RandomSpec random_spec = 11;
+        RandomEntropy random_entropy = 12;
+        RandomReveal random_reveal = 13;
+        ProveEntanglement prove_entanglement = 15;
+        HiddenStack hidden_stack = 16;
+        ProveSubset prove_subset = 17;
+        ProveSuperset prove_superset = 18;
+        ProveDisjoint prove_disjoint = 19;
     }
 }
 
@@ -47,7 +47,7 @@ message PublishKey {
 }
 
 message OpenStack {
-    pbmx.core.Stack stack = 1;
+    repeated uint64 tokens = 1;
 }
 
 message MaskStack {

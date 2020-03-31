@@ -85,3 +85,187 @@ pub(crate) fn vec_from_proto<T: Proto>(v: &[T::Message]) -> Result<Vec<T>, Error
 pub(crate) fn vec_to_proto<T: Proto>(v: &[T]) -> Result<Vec<T::Message>, Error> {
     v.iter().map(Proto::to_proto).collect()
 }
+
+pub(crate) mod scalar {
+    use curve25519_dalek::scalar::Scalar;
+    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S>(s: &Scalar, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        s.as_bytes().serialize(serializer)
+    }
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Scalar, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Scalar::from_canonical_bytes(<[u8; 32]>::deserialize(deserializer)?)
+            .ok_or_else(|| de::Error::custom("invalid scalar value"))
+    }
+}
+
+pub(crate) mod point {
+    use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S>(p: &RistrettoPoint, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        p.compress().as_bytes().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<RistrettoPoint, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        CompressedRistretto(<[u8; 32]>::deserialize(deserializer)?)
+            .decompress()
+            .ok_or_else(|| de::Error::custom("invalid scalar value"))
+    }
+}
+
+pub(crate) mod vec_scalar {
+    use curve25519_dalek::scalar::Scalar;
+    use serde::{
+        de::{SeqAccess, Visitor},
+        ser::SerializeSeq,
+        Deserialize, Deserializer, Serialize, Serializer,
+    };
+    use std::fmt;
+
+    struct Wrapper(Scalar);
+
+    impl Serialize for Wrapper {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            super::scalar::serialize(&self.0, serializer)
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Wrapper {
+        fn deserialize<D>(deserializer: D) -> Result<Wrapper, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            Ok(Wrapper(super::scalar::deserialize(deserializer)?))
+        }
+    }
+
+    pub fn serialize<S>(v: &Vec<Scalar>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(v.len()))?;
+        for element in v {
+            seq.serialize_element(&Wrapper(*element))?;
+        }
+        seq.end()
+    }
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Scalar>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct VecVisitor;
+
+        impl<'de> Visitor<'de> for VecVisitor {
+            type Value = Vec<Scalar>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("vector of scalars")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Vec<Scalar>, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut v = if let Some(size) = seq.size_hint() {
+                    Vec::with_capacity(size)
+                } else {
+                    Vec::new()
+                };
+                while let Some(Wrapper(s)) = seq.next_element::<Wrapper>()? {
+                    v.push(s);
+                }
+                Ok(v)
+            }
+        }
+
+        deserializer.deserialize_seq(VecVisitor)
+    }
+}
+
+pub(crate) mod vec_point {
+    use curve25519_dalek::ristretto::RistrettoPoint;
+    use serde::{
+        de::{SeqAccess, Visitor},
+        ser::SerializeSeq,
+        Deserialize, Deserializer, Serialize, Serializer,
+    };
+    use std::fmt;
+
+    struct Wrapper(RistrettoPoint);
+
+    impl Serialize for Wrapper {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            super::point::serialize(&self.0, serializer)
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Wrapper {
+        fn deserialize<D>(deserializer: D) -> Result<Wrapper, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            Ok(Wrapper(super::point::deserialize(deserializer)?))
+        }
+    }
+
+    pub fn serialize<S>(v: &Vec<RistrettoPoint>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(v.len()))?;
+        for element in v {
+            seq.serialize_element(&Wrapper(*element))?;
+        }
+        seq.end()
+    }
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<RistrettoPoint>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct VecVisitor;
+
+        impl<'de> Visitor<'de> for VecVisitor {
+            type Value = Vec<RistrettoPoint>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("vector of points")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Vec<RistrettoPoint>, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut v = if let Some(size) = seq.size_hint() {
+                    Vec::with_capacity(size)
+                } else {
+                    Vec::new()
+                };
+                while let Some(Wrapper(s)) = seq.next_element::<Wrapper>()? {
+                    v.push(s);
+                }
+                Ok(v)
+            }
+        }
+
+        deserializer.deserialize_seq(VecVisitor)
+    }
+}

@@ -1,5 +1,4 @@
 //! Zero-knowledge proof of equality of discrete logarithms
-///
 // [CS97] Jan Camenisch, Markus Stadler:
 //          'Proof Systems for General Statements about Discrete Logarithms',
 //          Technical Report, 1997.
@@ -12,7 +11,9 @@ use rand::thread_rng;
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
+    #[serde(with = "crate::serde::scalar")]
     c: Scalar,
+    #[serde(with = "crate::serde::scalar")]
     r: Scalar,
 }
 

@@ -49,7 +49,8 @@ pub struct Vtmf {
 }
 
 /// One party's share of a secret
-pub type SecretShare = RistrettoPoint;
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct SecretShare(#[serde(with = "crate::serde::point")] pub RistrettoPoint);
 
 derive_opaque_proto_conversions!(SecretShare: proto::SecretShare);
 
@@ -216,7 +217,7 @@ impl Vtmf {
             dlog_eq::Secrets { x },
         );
 
-        (d, proof)
+        (SecretShare(d), proof)
     }
 
     /// Verifies a secret share of a masking operation
@@ -235,7 +236,7 @@ impl Vtmf {
             Some(pk) => pk,
         };
         proof.verify(&mut Transcript::new(b"mask_share"), dlog_eq::Publics {
-            a: &d,
+            a: &d.0,
             b: &pk.point(),
             g: &c.0,
             h: &G.basepoint(),
@@ -244,7 +245,7 @@ impl Vtmf {
 
     /// Undoes part of a masking operation
     pub fn unmask(&self, c: &Mask, d: &SecretShare) -> Mask {
-        Mask(c.0, c.1 - d)
+        Mask(c.0, c.1 - d.0)
     }
 
     /// Privately undoes a masking operation
@@ -372,7 +373,7 @@ impl Vtmf {
 
 create_hash! {
     /// The hash used for key fingerprints
-    struct RandomXof(Xof) = b"pbmx-random";
+    struct RngXof(Xof) = b"pbmx-random";
 }
 
 impl Vtmf {
@@ -384,7 +385,7 @@ impl Vtmf {
 
     /// Undoes a random mask
     pub fn unmask_random(&self, m: &Mask) -> impl XofReader {
-        let mut xof = RandomXof::default();
+        let mut xof = RngXof::default();
         xof.input(&m.1.compress().to_bytes());
         xof.xof_result()
     }

@@ -13,12 +13,19 @@ use std::iter;
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
+    #[serde(with = "crate::serde::point")]
     cd: RistrettoPoint,
+    #[serde(with = "crate::serde::point")]
     cdd: RistrettoPoint,
+    #[serde(with = "crate::serde::point")]
     cda: RistrettoPoint,
+    #[serde(with = "crate::serde::vec_scalar")]
     f: Vec<Scalar>,
+    #[serde(with = "crate::serde::scalar")]
     z: Scalar,
+    #[serde(with = "crate::serde::vec_scalar")]
     fd: Vec<Scalar>,
+    #[serde(with = "crate::serde::scalar")]
     zd: Scalar,
 }
 

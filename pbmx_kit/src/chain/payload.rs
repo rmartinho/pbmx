@@ -4,6 +4,7 @@ use crate::{
     chain::{block::Block, Id},
     crypto::{
         keys::PublicKey,
+        map,
         vtmf::{
             DisjointProof, EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof,
             ShiftProof, ShuffleProof, Stack, SubsetProof, SupersetProof,
@@ -296,7 +297,7 @@ impl Proto for Payload {
                 key: Some(pk.to_proto()?),
             }),
             Payload::OpenStack(stk) => PayloadKind::OpenStack(proto::OpenStack {
-                stack: Some(stk.to_proto()?),
+                tokens: stk.iter().map(|m| map::from_curve(&m.1)).collect(),
             }),
             Payload::HiddenStack(stk) => PayloadKind::HiddenStack(proto::HiddenStack {
                 stack: Some(stk.to_proto()?),
@@ -400,7 +401,12 @@ impl Proto for Payload {
                     PublicKey::from_proto(p.key.as_ref()?).ok()?,
                 ),
                 PayloadKind::OpenStack(p) => {
-                    Payload::OpenStack(Stack::from_proto(p.stack.as_ref()?).ok()?)
+                    let stack: Stack = p
+                        .tokens
+                        .iter()
+                        .map(|&t| Mask::open(map::to_curve(t)))
+                        .collect();
+                    Payload::OpenStack(Stack::from_proto(&stack.to_proto().ok()?).ok()?)
                 }
                 PayloadKind::HiddenStack(p) => {
                     Payload::HiddenStack(Stack::from_proto(p.stack.as_ref()?).ok()?)

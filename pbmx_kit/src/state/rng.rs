@@ -26,7 +26,7 @@ impl Rng {
             spec: RngSpec::parse(spec)?,
             entropy: Mask::open(RistrettoPoint::identity()),
             entropy_fp: Vec::new(),
-            secret: RistrettoPoint::identity(),
+            secret: SecretShare(RistrettoPoint::identity()),
             secret_fp: Vec::new(),
         })
     }
@@ -49,7 +49,7 @@ impl Rng {
 
     /// Adds a secret to this RNG
     pub fn add_secret(&mut self, party: Fingerprint, share: &SecretShare) {
-        self.secret += share;
+        self.secret.0 += share.0;
         self.secret_fp.push(party);
     }
 

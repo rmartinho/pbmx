@@ -237,12 +237,14 @@ impl TryFrom<PbmxShare> for SecretShare {
     type Error = NoneError;
 
     fn try_from(value: PbmxShare) -> Result<Self, Self::Error> {
-        Ok(CompressedRistretto::from_slice(&value.0).decompress()?)
+        Ok(Self(
+            CompressedRistretto::from_slice(&value.0).decompress()?,
+        ))
     }
 }
 impl From<SecretShare> for PbmxShare {
     fn from(value: SecretShare) -> Self {
-        PbmxShare(value.compress().to_bytes())
+        PbmxShare(value.0.compress().to_bytes())
     }
 }
 

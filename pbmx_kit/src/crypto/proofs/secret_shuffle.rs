@@ -23,10 +23,14 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
     skc: known_shuffle::Proof,
+    #[serde(with = "crate::serde::point")]
     c: RistrettoPoint,
+    #[serde(with = "crate::serde::point")]
     cd: RistrettoPoint,
     ed: Mask,
+    #[serde(with = "crate::serde::vec_scalar")]
     f: Vec<Scalar>,
+    #[serde(with = "crate::serde::scalar")]
     z: Scalar,
 }
 

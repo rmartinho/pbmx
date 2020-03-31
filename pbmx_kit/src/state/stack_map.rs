@@ -97,7 +97,7 @@ impl StackMap {
                 .entry(*m)
                 .and_modify(|(d, fp)| {
                     if !fp.contains(&owner) {
-                        *d += di;
+                        d.0 += di.0;
                         fp.push(owner);
                     }
                 })

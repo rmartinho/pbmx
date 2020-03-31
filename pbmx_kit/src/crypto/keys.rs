@@ -1,10 +1,6 @@
 //! ElGamal encryption scheme for elliptic curves
 
-use crate::{
-    proto,
-    serde::{FromBytes, Proto, ToBytes},
-    Error,
-};
+use crate::{proto, serde::ToBytes, Error};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -24,12 +20,14 @@ use std::{
 /// A private key
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrivateKey {
+    #[serde(with = "crate::serde::scalar")]
     x: Scalar,
 }
 
 /// A public key
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKey {
+    #[serde(with = "crate::serde::point")]
     h: RistrettoPoint,
 }
 
@@ -57,21 +55,16 @@ impl Borrow<[u8]> for Fingerprint {
     }
 }
 
-impl Proto for PrivateKey {
-    type Message = proto::PrivateKey;
-
-    fn to_proto(&self) -> Result<Self::Message, Error> {
-        Ok(proto::PrivateKey {
-            raw: self.to_bytes()?,
-        })
-    }
-
-    fn from_proto(m: &Self::Message) -> Result<Self, Error> {
-        PrivateKey::from_bytes(&m.raw)
-    }
-}
-
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
+
+/// A signature
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub struct Signature(
+    #[serde(with = "crate::serde::point")] RistrettoPoint,
+    #[serde(with = "crate::serde::scalar")] Scalar,
+);
+
+derive_opaque_proto_conversions!(Signature: proto::Signature);
 
 impl PrivateKey {
     /// Gets this key's secret value
@@ -101,7 +94,7 @@ impl PrivateKey {
     }
 
     /// Signs a given messages
-    pub fn sign(&self, m: &Scalar) -> (RistrettoPoint, Scalar) {
+    pub fn sign(&self, m: &Scalar) -> Signature {
         let mut rng = thread_rng();
         let zero = Scalar::zero();
         loop {
@@ -109,7 +102,7 @@ impl PrivateKey {
             let s0 = G * &k;
             let s1 = k.invert() * (m - self.x * point_to_scalar(&s0));
             if s1 != zero {
-                return (s0, s1);
+                return Signature(s0, s1);
             }
         }
     }
@@ -123,7 +116,7 @@ impl PublicKey {
 
     /// Gets this key's fingerprint
     pub fn fingerprint(&self) -> Fingerprint {
-        let bytes = self.h.to_bytes().unwrap();
+        let bytes = self.h.compress().to_bytes();
         let hashed = FingerprintHash::new().chain(bytes).result();
         let mut array = [0u8; FINGERPRINT_SIZE];
         array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
@@ -153,7 +146,7 @@ impl PublicKey {
     }
 
     /// Verifies a given signature
-    pub fn verify(&self, m: &Scalar, s: &(RistrettoPoint, Scalar)) -> Result<(), ()> {
+    pub fn verify(&self, m: &Scalar, s: &Signature) -> Result<(), ()> {
         let lhs = self.point() * point_to_scalar(&s.0) + s.0 * s.1;
         let rhs = G * m;
         if lhs == rhs {
@@ -196,7 +189,7 @@ impl AsRef<[u8]> for Fingerprint {
     }
 }
 
-derive_base64_conversions!(PrivateKey);
+derive_opaque_proto_conversions!(PrivateKey: proto::PrivateKey);
 derive_opaque_proto_conversions!(PublicKey: proto::PublicKey);
 
 impl Display for Fingerprint {

@@ -24,13 +24,19 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
     rkc: known_rotation::Proof,
+    #[serde(with = "crate::serde::vec_point")]
     h: Vec<RistrettoPoint>,
     z: Vec<Mask>,
+    #[serde(with = "crate::serde::scalar")]
     v: Scalar,
+    #[serde(with = "crate::serde::vec_point")]
     f: Vec<RistrettoPoint>,
     ff: Vec<Mask>,
+    #[serde(with = "crate::serde::vec_scalar")]
     tau: Vec<Scalar>,
+    #[serde(with = "crate::serde::vec_scalar")]
     rho: Vec<Scalar>,
+    #[serde(with = "crate::serde::vec_scalar")]
     mu: Vec<Scalar>,
 }
 

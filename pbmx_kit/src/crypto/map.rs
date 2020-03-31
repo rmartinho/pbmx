@@ -1,19 +1,29 @@
 //! Mapping integers to/from the elliptic curve
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use rand::{thread_rng, Rng};
+use digest::{ExtendableOutput, Input, XofReader};
 
 const START_BIT: usize = 12;
 const END_BIT: usize = START_BIT + 8;
 
+create_hash! {
+    /// The hash used for key fingerprints
+    struct CurveXof(Xof) = b"pbmx-curve-map";
+}
+
 /// Maps an integer to the curve
 pub fn to_curve(x: u64) -> RistrettoPoint {
-    let mut rng = thread_rng();
+    let bytes = x.to_le_bytes();
+
+    let mut xof = CurveXof::default();
+    xof.input(&bytes);
+    let mut xof = xof.xof_result();
+
     let mut buf = [0u8; 32];
-    buf[START_BIT..END_BIT].copy_from_slice(&x.to_le_bytes());
+    buf[START_BIT..END_BIT].copy_from_slice(&bytes);
     loop {
-        rng.fill(&mut buf[..START_BIT]);
-        rng.fill(&mut buf[END_BIT..]);
+        xof.read(&mut buf[..START_BIT]);
+        xof.read(&mut buf[END_BIT..]);
         if let Some(p) = CompressedRistretto::from_slice(&buf).decompress() {
             break p;
         }

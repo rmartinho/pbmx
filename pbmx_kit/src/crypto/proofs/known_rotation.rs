@@ -15,8 +15,11 @@ use subtle::{ConditionallySelectable, ConstantTimeEq};
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
+    #[serde(with = "crate::serde::vec_point")]
     f: Vec<RistrettoPoint>,
+    #[serde(with = "crate::serde::vec_scalar")]
     l: Vec<Scalar>,
+    #[serde(with = "crate::serde::vec_scalar")]
     t: Vec<Scalar>,
 }
 
