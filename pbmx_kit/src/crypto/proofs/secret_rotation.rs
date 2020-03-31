@@ -1,8 +1,9 @@
 //! Verifiable rotation of homomorphic encryptions
 
-// [HSSV09] Sebastiaan de Hoogh, Berry Schoenmakers, Boris Skoric, and Jose Villegas:
-//              'Verifiable Rotation of Homomorphic Encryptions',
-//              Public Key Cryptography 2009, LNCS 5443, pp. 393--410, Springer 2009.
+// [HSSV09] Sebastiaan de Hoogh, Berry Schoenmakers, Boris Skoric, and Jose
+// Villegas:              'Verifiable Rotation of Homomorphic Encryptions',
+//              Public Key Cryptography 2009, LNCS 5443, pp. 393--410, Springer
+// 2009.
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::{

@@ -10,9 +10,11 @@ use crate::{
     serde::{vec_from_proto, vec_to_proto, FromBytes, Proto, ToBytes},
     Error,
 };
-use digest::{generic_array::typenum::U32};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-use digest::{generic_array::typenum::U64, Digest};
+use digest::{
+    generic_array::typenum::{U32, U64},
+    Digest,
+};
 use serde::{
     de::{Deserialize, Deserializer},
     ser::{Serialize, Serializer},

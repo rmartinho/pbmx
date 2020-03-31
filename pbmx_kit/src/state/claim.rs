@@ -2,10 +2,14 @@
 
 use crate::{
     chain::{Id, Payload},
-    crypto::{keys::Fingerprint, map, vtmf::Vtmf,vtmf::Stack},
+    crypto::{
+        keys::Fingerprint,
+        map,
+        vtmf::{Stack, Vtmf},
+    },
     state::StackMap,
 };
-use digest::{generic_array::typenum::U32};
+use digest::generic_array::typenum::U32;
 use std::collections::HashMap;
 
 /// A claim that requires a interactive verification

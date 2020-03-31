@@ -1,13 +1,11 @@
 use crate::{
-    crypto::{vtmf::Mask},
+    chain::Id,
+    crypto::vtmf::Mask,
     proto,
     serde::{vec_from_proto, vec_to_proto, Proto},
     Result,
 };
-use crate::{
-    chain::{Id},
-};
-use digest::{generic_array::typenum::U32};
+use digest::generic_array::typenum::U32;
 use std::{
     borrow::{Borrow, BorrowMut},
     iter::FromIterator,

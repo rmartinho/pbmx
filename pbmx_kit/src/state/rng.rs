@@ -274,8 +274,8 @@ mod spec {
     }
 
     // [Lu13] Jérémie Lumbroso:
-    //          'Optimal Discrete Uniform Generation from Coin Flips, and Applications',
-    //          arXiv:1304.1916 [cs.DS], 2013
+    //          'Optimal Discrete Uniform Generation from Coin Flips, and
+    // Applications',          arXiv:1304.1916 [cs.DS], 2013
     fn fdr(d: u64, bits: &mut BitIterator) -> u64 {
         let mut range = 1u64;
         let mut value = 0u64;

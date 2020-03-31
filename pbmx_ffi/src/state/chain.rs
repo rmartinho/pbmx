@@ -15,8 +15,7 @@ use crate::{
 use libc::{c_char, c_int, size_t};
 use pbmx_kit::{
     chain::{Block, BlockBuilder, Payload},
-    crypto::vtmf::Mask,
-    crypto::vtmf::Stack,
+    crypto::vtmf::{Mask, Stack},
 };
 use std::{convert::TryInto, ffi::CStr, slice};
 

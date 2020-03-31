@@ -13,7 +13,7 @@ use crate::{
     serde::{vec_from_proto, vec_to_proto, Proto},
     Error, Result,
 };
-use digest::{generic_array::typenum::U32};
+use digest::generic_array::typenum::U32;
 use std::{
     convert::TryFrom,
     fmt::{self, Display, Formatter},
