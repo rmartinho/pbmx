@@ -2,9 +2,10 @@
 
 use crate::{
     chain::{Id, Payload},
-    crypto::{keys::Fingerprint, map, vtmf::Vtmf},
+    crypto::{keys::Fingerprint, map, vtmf::Vtmf,vtmf::Stack},
     state::StackMap,
 };
+use digest::{generic_array::typenum::U32};
 use std::collections::HashMap;
 
 /// A claim that requires a interactive verification
@@ -12,6 +13,11 @@ use std::collections::HashMap;
 pub struct Claim {
     payload: Payload,
     status: ClaimStatus,
+}
+
+create_hash! {
+    /// The hash used for claim IDs
+    pub struct ClaimHash(Hash<U32>) = b"pbmx-claim-id";
 }
 
 impl Claim {
@@ -107,12 +113,11 @@ impl Claim {
     fn proof_stack_id(&self) -> Id {
         use Payload::*;
         match &self.payload {
-            ProveSubset(_, _, proof) => Id::of(&proof.shuffle),
-            ProveSuperset(_, _, proof) => Id::of(&proof.shuffle[..proof.n]),
-            ProveDisjoint(_, _, _, proof) => Id::of(&proof.shuffle),
+            ProveSubset(_, _, proof) => Stack(proof.shuffle.to_vec()).id(),
+            ProveSuperset(_, _, proof) => Stack(proof.shuffle[..proof.n].to_vec()).id(),
+            ProveDisjoint(_, _, _, proof) => Stack(proof.shuffle.to_vec()).id(),
             _ => unreachable!(),
         }
-        .unwrap()
     }
 
     fn target_stack_id(&self) -> Id {
@@ -159,5 +164,5 @@ pub enum ClaimStatus {
     /// The claim was not completely verified
     ///
     /// Some of the payloads required for verification are available.
-    Unverified(HashMap<Fingerprint, Payload>),
+    Unverified(HashMap<Id, Payload>),
 }

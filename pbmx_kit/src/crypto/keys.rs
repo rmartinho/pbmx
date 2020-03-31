@@ -40,7 +40,7 @@ pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
 
 create_hash! {
     /// The hash used for key fingerprints
-    pub struct FingerprintHash(Hash<U32>) = b"pbmx-fingerprint";
+    pub struct FingerprintHash(Hash<U32>) = b"pbmx-key-fp";
 }
 
 impl Deref for Fingerprint {
@@ -170,15 +170,15 @@ fn point_to_scalar(x: &RistrettoPoint) -> Scalar {
 
 impl Fingerprint {
     /// Gets the fingerprint of some object
-    pub fn of<T>(x: &T) -> Result<Fingerprint, Error>
+    pub fn of<D>(x: &(dyn ToBytes)) -> Result<Fingerprint, Error>
     where
-        T: ToBytes + ?Sized,
+        D: Digest + Default,
     {
-        debug_assert!(FingerprintHash::output_size() >= FINGERPRINT_SIZE);
+        debug_assert!(D::output_size() == FINGERPRINT_SIZE);
         let bytes = x.to_bytes()?;
-        let hashed = FingerprintHash::new().chain(bytes).result();
+        let hashed = D::default().chain(bytes).result();
         let mut array = [0u8; FINGERPRINT_SIZE];
-        array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
+        array.copy_from_slice(&hashed[..]);
         Ok(Fingerprint(array))
     }
 

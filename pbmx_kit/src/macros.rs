@@ -1,12 +1,12 @@
 macro_rules! create_hash {
-    ( $(#[ $attr:meta ])* pub struct $id:ident (Hash< $n:ty >) = $custom:expr ; ) => {
+    ( $(#[ $attr:meta ])* pub struct $id:ident (Hash< $n:ty >) = $domain:expr ; ) => {
         $(#[ $attr ])*
         #[derive(Clone)]
         pub struct $id($crate::crypto::Hash<$n>);
 
         impl ::std::default::Default for $id {
             fn default() -> Self {
-                Self($crate::crypto::Hash::new($custom))
+                Self($crate::crypto::Hash::new($domain))
             }
         }
 
@@ -47,14 +47,14 @@ macro_rules! create_hash {
 }
 
 macro_rules! create_xof {
-    ( $(#[ $attr:meta ])* pub struct $id:ident = $custom:expr ; ) => {
+    ( $(#[ $attr:meta ])* pub struct $id:ident = $domain:expr ; ) => {
         $(#[ $attr ])*
         #[derive(Clone)]
         pub struct $id($crate::crypto::Xof);
 
         impl ::std::default::Default for $id {
             fn default() -> Self {
-                Self($crate::crypto::Xof::new($custom))
+                Self($crate::crypto::Xof::new($domain))
             }
         }
 

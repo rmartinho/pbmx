@@ -14,16 +14,16 @@ use tiny_keccak::{Hasher, KangarooTwelve, KangarooTwelveXof};
 #[derive(Clone)]
 pub struct Hash<N: ArrayLength<u8>> {
     k12: KangarooTwelve<&'static [u8]>,
-    custom_string: &'static [u8],
+    domain: &'static [u8],
     phantom: PhantomData<N>,
 }
 
 impl<N: ArrayLength<u8>> Hash<N> {
     /// Creates a customized instance of this hash function
-    pub fn new(custom_string: &'static [u8]) -> Self {
+    pub fn new(domain: &'static [u8]) -> Self {
         Self {
-            k12: KangarooTwelve::new(custom_string),
-            custom_string,
+            k12: KangarooTwelve::new(domain),
+            domain,
             phantom: PhantomData,
         }
     }
@@ -51,7 +51,7 @@ impl<N: ArrayLength<u8>> Input for Hash<N> {
 
 impl<N: ArrayLength<u8>> Reset for Hash<N> {
     fn reset(&mut self) {
-        self.k12 = KangarooTwelve::new(self.custom_string);
+        self.k12 = KangarooTwelve::new(self.domain);
     }
 }
 
@@ -70,15 +70,15 @@ impl<N: ArrayLength<u8>> Write for Hash<N> {
 #[derive(Clone)]
 pub struct Xof {
     k12: KangarooTwelve<&'static [u8]>,
-    custom_string: &'static [u8],
+    domain: &'static [u8],
 }
 
 impl Xof {
     /// Creates a customized instance of this XOF
-    pub fn new(custom_string: &'static [u8]) -> Self {
+    pub fn new(domain: &'static [u8]) -> Self {
         Self {
-            k12: KangarooTwelve::new(custom_string),
-            custom_string,
+            k12: KangarooTwelve::new(domain),
+            domain,
         }
     }
 }
@@ -100,7 +100,7 @@ impl Input for Xof {
 
 impl Reset for Xof {
     fn reset(&mut self) {
-        self.k12 = KangarooTwelve::new(self.custom_string);
+        self.k12 = KangarooTwelve::new(self.domain);
     }
 }
 

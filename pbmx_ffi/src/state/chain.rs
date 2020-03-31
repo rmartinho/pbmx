@@ -16,6 +16,7 @@ use libc::{c_char, c_int, size_t};
 use pbmx_kit::{
     chain::{Block, BlockBuilder, Payload},
     crypto::vtmf::Mask,
+    crypto::vtmf::Stack,
 };
 use std::{convert::TryInto, ffi::CStr, slice};
 
@@ -303,7 +304,7 @@ pub unsafe extern "C" fn pbmx_stack_id(stack: *const PbmxMask, len: size_t) -> P
     let stack: Option<_> = masks.iter().cloned().map(|m| m.try_into().ok()).collect();
     stack
         .as_ref()
-        .and_then(|s: &Vec<Mask>| PbmxFingerprint::of(s).ok())
+        .map(|s: &Vec<Mask>| Stack::from(s.to_vec()).id())
         .unwrap_or_else(Default::default)
 }
 

@@ -10,6 +10,7 @@ use crate::{
     serde::{vec_from_proto, vec_to_proto, FromBytes, Proto, ToBytes},
     Error,
 };
+use digest::{generic_array::typenum::U32};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use digest::{generic_array::typenum::U64, Digest};
 use serde::{
@@ -46,6 +47,11 @@ impl Proto for Vec<Payload> {
     }
 }
 
+create_hash! {
+    /// The hash used for block IDs
+    pub struct BlockHash(Hash<U32>) = b"pbmx-block-id";
+}
+
 impl Block {
     fn new_unchecked(
         acks: Vec<Id>,
@@ -65,7 +71,7 @@ impl Block {
 
     /// Gets this block's ID
     pub fn id(&self) -> Id {
-        Id::of(self).unwrap()
+        Id::of::<BlockHash>(self).unwrap()
     }
 
     /// Gets the fingerprint of the block's signing key
@@ -161,7 +167,7 @@ impl BlockBuilder {
 
 create_hash! {
     /// The hash used for signatures
-    pub struct SignatureHash(Hash<U64>) = b"pbmx-signature";
+    pub struct SignatureHash(Hash<U64>) = b"pbmx-block-sig";
 }
 
 fn block_signature_hash<'a, AckIt, PayloadIt>(
