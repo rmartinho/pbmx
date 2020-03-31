@@ -21,7 +21,7 @@ pub struct Claim {
 
 create_hash! {
     /// The hash used for claim IDs
-    pub struct ClaimHash(Hash<U32>) = b"pbmx-claim-id";
+    struct ClaimHash(Hash<U32>) = b"pbmx-claim-id";
 }
 
 impl Claim {

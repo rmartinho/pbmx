@@ -51,7 +51,7 @@ impl Proto for Vec<Payload> {
 
 create_hash! {
     /// The hash used for block IDs
-    pub struct BlockHash(Hash<U32>) = b"pbmx-block-id";
+    struct BlockHash(Hash<U32>) = b"pbmx-block-id";
 }
 
 impl Block {
@@ -169,7 +169,7 @@ impl BlockBuilder {
 
 create_hash! {
     /// The hash used for signatures
-    pub struct SignatureHash(Hash<U64>) = b"pbmx-block-sig";
+    struct BlockSignatureHash(Hash<U64>) = b"pbmx-block-sig";
 }
 
 fn block_signature_hash<'a, AckIt, PayloadIt>(
@@ -181,7 +181,7 @@ where
     AckIt: Iterator<Item = &'a Id> + 'a,
     PayloadIt: Iterator<Item = &'a Payload> + 'a,
 {
-    let mut h = SignatureHash::new();
+    let mut h = BlockSignatureHash::default();
     for ack in acks {
         h = h.chain(&ack);
     }

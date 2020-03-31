@@ -34,7 +34,7 @@ impl Proto for Stack {
 
 create_hash! {
     /// The hash used for stack IDs
-    pub struct StackHash(Hash<U32>) = b"pbmx-stack-id";
+    struct StackHash(Hash<U32>) = b"pbmx-stack-id";
 }
 
 impl Stack {

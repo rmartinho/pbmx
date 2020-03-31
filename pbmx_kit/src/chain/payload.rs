@@ -65,7 +65,7 @@ pub enum Payload {
 
 create_hash! {
     /// The hash used for payload IDs
-    pub struct PayloadHash(Hash<U32>) = b"pbmx-payload-id";
+    struct PayloadHash(Hash<U32>) = b"pbmx-payload-id";
 }
 
 impl Payload {

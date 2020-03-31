@@ -372,7 +372,7 @@ impl Vtmf {
 
 create_xof! {
     /// The hash used for key fingerprints
-    pub struct RandomXof = b"pbmx-random";
+    struct RandomXof = b"pbmx-random";
 }
 
 impl Vtmf {
