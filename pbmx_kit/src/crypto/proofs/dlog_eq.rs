@@ -1,4 +1,9 @@
-//! Chaum and Pedersen's zero-knowledge proof of equality of discrete logarithms
+//! Zero-knowledge proof of equality of discrete logarithms
+///
+
+// [CS97] Jan Camenisch, Markus Stadler:
+//          'Proof Systems for General Statements about Discrete Logarithms',
+//          Technical Report, 1997.
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::proto;

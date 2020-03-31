@@ -1,4 +1,8 @@
-//! Hoogh et al's rotation of known content argument
+//! Rotation of known content argument
+
+// [HSSV09] Sebastiaan de Hoogh, Berry Schoenmakers, Boris Skoric, and Jose Villegas:
+//              'Verifiable Rotation of Homomorphic Encryptions',
+//              Public Key Cryptography 2009, LNCS 5443, pp. 393--410, Springer 2009.
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::crypto::{commit::Pedersen, perm::Permutation};

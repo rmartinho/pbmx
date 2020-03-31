@@ -1,5 +1,8 @@
-//! Barnett and Smart's verifiable *k*-out-of-*k* Threshold Masking Function
+//! Verifiable *k*-out-of-*k* Threshold Masking Function
 
+// [BS03] Adam Barnett, Nigel P. Smart:
+//          'Mental Poker Revisited',
+//          Cryptography and Coding 2003, LNCS 2898, pp. 370--383, 2003
 use crate::{
     crypto::{
         keys::{Fingerprint, PrivateKey, PublicKey},

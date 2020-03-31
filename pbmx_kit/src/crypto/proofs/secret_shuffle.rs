@@ -1,4 +1,7 @@
-//! Groth's verifiable secret shuffle of homomorphic encryptions
+//! Verifiable secret shuffle of homomorphic encryptions
+
+// [Gr05] Jens Groth: 'A Verifiable Secret Shuffle of Homomorphic Encryptions',
+//          Cryptology ePrint Archive, Report 2005/246, 2005.
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{

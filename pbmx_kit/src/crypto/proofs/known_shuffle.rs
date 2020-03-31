@@ -1,4 +1,7 @@
-//! Groth's shuffle of known content argument
+//! Shuffle of known content argument
+
+// [Gr05] Jens Groth: 'A Verifiable Secret Shuffle of Homomorphic Encryptions',
+//          Cryptology ePrint Archive, Report 2005/246, 2005.
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::crypto::{commit::Pedersen, perm::Permutation};
