@@ -1,10 +1,6 @@
 //! ElGamal encryption scheme for elliptic curves
 
-use crate::{
-    proto,
-    serde::{FromBytes, Proto, ToBytes},
-    Error,
-};
+use crate::{proto, serde::ToBytes, Error};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -54,20 +50,6 @@ impl Deref for Fingerprint {
 impl Borrow<[u8]> for Fingerprint {
     fn borrow(&self) -> &[u8] {
         &self.0
-    }
-}
-
-impl Proto for PrivateKey {
-    type Message = proto::PrivateKey;
-
-    fn to_proto(&self) -> Result<Self::Message, Error> {
-        Ok(proto::PrivateKey {
-            raw: self.to_bytes()?,
-        })
-    }
-
-    fn from_proto(m: &Self::Message) -> Result<Self, Error> {
-        PrivateKey::from_bytes(&m.raw)
     }
 }
 
@@ -196,7 +178,7 @@ impl AsRef<[u8]> for Fingerprint {
     }
 }
 
-derive_base64_conversions!(PrivateKey);
+derive_opaque_proto_conversions!(PrivateKey: proto::PrivateKey);
 derive_opaque_proto_conversions!(PublicKey: proto::PublicKey);
 
 impl Display for Fingerprint {
