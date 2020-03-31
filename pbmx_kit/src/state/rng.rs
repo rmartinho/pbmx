@@ -102,7 +102,7 @@ impl RngSpec {
     }
 
     fn gen(&self, reader: &mut dyn XofReader) -> u64 {
-        self.0.apply(reader)
+        self.0.apply(&mut spec::bits(reader))
     }
 }
 
@@ -111,7 +111,6 @@ mod spec {
     use nom::{digit, types::CompleteStr};
     use std::{
         fmt::{self, Display, Formatter},
-        iter,
         str::FromStr,
     };
 
@@ -127,7 +126,7 @@ mod spec {
     #[derive(Debug, Clone, PartialEq, Eq)]
     enum Node {
         Const(u64),
-        Die { n: u64, d: u64, max: u64 },
+        Die { n: u64, d: u64 },
         Op(Expr, OpKind, Expr),
     }
 
@@ -135,34 +134,26 @@ mod spec {
         fn fmt(&self, f: &mut Formatter) -> fmt::Result {
             match self {
                 Node::Const(k) => write!(f, "{}", k),
-                Node::Die { n, d, .. } => write!(f, "{}d{}", n, d),
+                Node::Die { n, d } => write!(f, "{}d{}", n, d),
                 Node::Op(l, o, r) => write!(f, "{}{}{}", l, o, r),
             }
         }
     }
 
     impl Node {
-        fn apply(&self, reader: &mut dyn XofReader) -> u64 {
+        fn apply(&self, bits: &mut BitIterator) -> u64 {
             match self {
                 Node::Const(k) => *k,
-                Node::Die { n, d, max } => {
+                Node::Die { n, d } => {
                     let mut sum = 0u64;
                     for _ in 0..*n {
-                        loop {
-                            let mut buf = [0u8; 8];
-                            reader.read(&mut buf);
-                            let x = u64::from_be_bytes(buf);
-                            if x < *max {
-                                sum += x % *d;
-                                break;
-                            }
-                        }
+                        sum += fdr(*d, bits);
                     }
                     sum
                 }
                 Node::Op(l, o, r) => {
-                    let left = l.apply(reader);
-                    let right = r.apply(reader);
+                    let left = l.apply(bits);
+                    let right = r.apply(bits);
                     match o {
                         OpKind::Add => left + right,
                         OpKind::Sub => left - right,
@@ -172,19 +163,7 @@ mod spec {
         }
 
         fn die(n: u64, d: u64) -> Self {
-            let max = iter::repeat(d)
-                .scan(1u64, |s, x| {
-                    let (r, overflow) = s.overflowing_mul(x);
-                    if overflow {
-                        None
-                    } else {
-                        *s = r;
-                        Some(*s)
-                    }
-                })
-                .last()
-                .unwrap();
-            Node::Die { n, d, max }
+            Node::Die { n, d }
         }
     }
 
@@ -219,8 +198,8 @@ mod spec {
                 .map_err(|_| ParseError)
         }
 
-        pub fn apply(&self, reader: &mut dyn XofReader) -> u64 {
-            self.0.apply(reader)
+        pub fn apply(&self, bits: &mut BitIterator) -> u64 {
+            self.0.apply(bits)
         }
 
         fn make(node: Node) -> Self {
@@ -262,4 +241,53 @@ mod spec {
             map!(die, Expr::make)
         ))
     );
+
+    pub struct BitIterator<'a> {
+        reader: &'a mut dyn XofReader,
+        available: usize,
+        current: u64,
+    }
+
+    impl<'a> Iterator for BitIterator<'a> {
+        type Item = bool;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.available == 0 {
+                let mut buffer = [0u8; 8];
+                self.reader.read(&mut buffer);
+                self.current = u64::from_le_bytes(buffer);
+                self.available = 64;
+            }
+            let bit = self.current & 1;
+            self.available -= 1;
+            self.current >>= 1;
+            Some(bit != 0)
+        }
+    }
+
+    pub fn bits(reader: &mut dyn XofReader) -> BitIterator {
+        BitIterator {
+            reader,
+            available: 0,
+            current: 0,
+        }
+    }
+
+    fn fdr(d: u64, bits: &mut BitIterator) -> u64 {
+        let mut range = 1u64;
+        let mut value = 0u64;
+        loop {
+            let b = bits.next().unwrap() as u64;
+            range <<= 1;
+            value = value << 1 | b;
+            if range >= d {
+                if value < d {
+                    return value;
+                } else {
+                    range -= d;
+                    value -= d;
+                }
+            }
+        }
+    }
 }
