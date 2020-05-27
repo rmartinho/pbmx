@@ -1,5 +1,8 @@
 [workspace]
 members = [
-    "pbmx-cli",
     "pbmx-kit",
+    "pbmx-cli",
+]
+exclude = [
+    "pbmx-web"
 ]

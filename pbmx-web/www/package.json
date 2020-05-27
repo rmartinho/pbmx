@@ -1,0 +1,21 @@
+{
+  "scripts": {
+    "start": "snowpack dev",
+    "wasm-pack": "cd .. && wasm-pack build --target web",
+    "build": "snowpack build",
+    "test": "echo \"Vue 3.0 test support is still in progress.\" && exit 1"
+  },
+  "dependencies": {
+    "idb": "^5.0.4",
+    "pbmx-web": "file:../pkg",
+    "vue": "^3.0.0-0"
+  },
+  "devDependencies": {
+    "@snowpack/app-scripts-vue": "^1.1.4",
+    "snowpack": "^2.2.0"
+  },
+  "snowpack": {
+    "extends": "@snowpack/app-scripts-vue",
+    "exclude": ["*.sw?"]
+  }
+}
