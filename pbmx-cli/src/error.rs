@@ -13,7 +13,6 @@ pub enum Error {
 }
 
 impl Error {
-    #[allow(clippy::cyclomatic_complexity)] // triggers a clippy bug
     pub fn exit(&self) -> ! {
         match self {
             Error::Io(e) => clap::Error {
