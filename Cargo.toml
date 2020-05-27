@@ -2,5 +2,4 @@
 members = [
     "pbmx_cli",
     "pbmx_kit",
-    "pbmx_ffi",
 ]

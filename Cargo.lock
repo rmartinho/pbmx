@@ -342,17 +342,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pbmx_ffi"
-version = "0.1.0"
-dependencies = [
- "curve25519-dalek 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.65 (registry+https://github.com/rust-lang/crates.io-index)",
- "pbmx_kit 0.1.0",
- "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "pbmx_kit"
 version = "0.1.0"
 dependencies = [
