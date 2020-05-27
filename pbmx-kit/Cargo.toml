@@ -1,46 +1,39 @@
 [package]
-name = "pbmx_kit"
-version = "0.1.0"
+name = "pbmx-kit"
+version = "0.1.99"
 authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
 edition = "2018"
 
 [dependencies.base64]
-version = "0.10"
+version = "0.12"
 
 [dependencies.bincode]
 version = "1.0"
 
-[dependencies.bitvec]
-version = "0.14"
-
 [dependencies.bytes]
-version = "0.4"
+version = "0.5"
 
 [dependencies.curve25519-dalek]
-version = "1.0"
+version = "2.0"
 features = ["serde"]
 
 [dependencies.digest]
 version = "0.8"
 
 [dependencies.merlin]
-version = "1.0"
+version = "2.0"
 
 [dependencies.nom]
-version = "4.2"
+version = "5.0"
 
 [dependencies.qp-trie]
-git = "https://github.com/messense/qp-trie-rs"
-branch = "fix-compilation"
+version = "0.7"
 
 [dependencies.prost]
-version = "0.5"
-
-[dependencies.prost-build]
-version = "0.5"
+version = "0.6"
 
 [dependencies.rand]
-version = "0.6"
+version = "0.7"
 
 [dependencies.serde]
 version = "1.0"
@@ -59,4 +52,4 @@ features = ["k12"]
 version = "0.2"
 
 [build-dependencies.prost-build]
-version = "0.5"
+version = "0.6"

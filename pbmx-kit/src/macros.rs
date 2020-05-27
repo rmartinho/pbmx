@@ -102,3 +102,24 @@ macro_rules! create_hash {
         }
     };
 }
+
+// Copy&pasted from nom's source to avoid deprecation warnings
+macro_rules! ws {
+    ($i:expr, $($args:tt)*) => {
+        {
+            use ::nom::Err;
+            use ::nom::lib::std::result::Result::*;
+            use ::nom::character::complete::multispace0;
+
+            match sep!($i, multispace0, $($args)*) {
+                Err(e) => Err(e),
+                Ok((i1,o))    => {
+                    match (multispace0)(i1) {
+                        Err(e) => Err(Err::convert(e)),
+                        Ok((i2,_))    => Ok((i2, o))
+                    }
+                }
+            }
+        }
+    }
+}

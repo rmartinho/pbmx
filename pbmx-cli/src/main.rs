@@ -6,9 +6,6 @@
 extern crate clap;
 
 #[macro_use]
-extern crate nom;
-
-#[macro_use]
 extern crate serde_derive;
 
 mod config;
@@ -18,7 +15,6 @@ mod error;
 use error::{Error, Result};
 mod file;
 mod indices;
-mod random;
 mod stack_map;
 mod state;
 

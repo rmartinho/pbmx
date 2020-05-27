@@ -2,6 +2,7 @@ use crate::crypto::{
     keys::Fingerprint,
     vtmf::{Mask, SecretShare, Vtmf},
 };
+use crate::Error;
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
 use digest::XofReader;
 use std::fmt::{self, Debug, Display, Formatter};
@@ -20,7 +21,7 @@ pub struct Rng {
 impl Rng {
     /// Creates a new random number generator distributed over several parties,
     /// with the given specification for the result
-    pub fn new(parties: usize, spec: &str) -> Result<Self, spec::ParseError> {
+    pub fn new(parties: usize, spec: &str) -> Result<Self, Error> {
         Ok(Self {
             parties,
             spec: RngSpec::parse(spec)?,
@@ -108,12 +109,13 @@ impl RngSpec {
 
 mod spec {
     use digest::XofReader;
-    use nom::{digit, types::CompleteStr};
+    use nom::character::streaming::digit1;
     use std::{
         fmt::{self, Display, Formatter},
         str::FromStr,
     };
 
+    /// An error in parsing an RNG specification
     #[derive(Debug)]
     pub struct ParseError;
 
@@ -193,9 +195,7 @@ mod spec {
 
     impl Expr {
         pub fn parse(input: &str) -> Result<Self, ParseError> {
-            expr(CompleteStr(input))
-                .map(|(_, x)| x)
-                .map_err(|_| ParseError)
+            expr(input).map(|(_, x)| x).map_err(|_| ParseError)
         }
 
         pub fn apply(&self, bits: &mut BitIterator) -> u64 {
@@ -207,13 +207,13 @@ mod spec {
         }
     }
 
-    named!(number(CompleteStr) -> u64,
-        ws!(map_res!(digit, |s: CompleteStr| u64::from_str(s.0)))
+    named!(number(&str) -> u64,
+        ws!(map_res!(digit1, |s: &str| u64::from_str(s)))
     );
-    named!(constant(CompleteStr) -> Node,
+    named!(constant(&str) -> Node,
         ws!(map!(number, Node::Const))
     );
-    named!(die(CompleteStr) -> Node,
+    named!(die(&str) -> Node,
         ws!(do_parse!(
             n: number >>
             char!('d') >>
@@ -221,13 +221,13 @@ mod spec {
             (Node::die(n, d))
         ))
     );
-    named!(op_kind(CompleteStr) -> OpKind,
+    named!(op_kind(&str) -> OpKind,
         ws!(alt!(
             value!(OpKind::Add, char!('+')) |
             value!(OpKind::Sub, char!('-'))
         ))
     );
-    named!(op(CompleteStr) -> Node,
+    named!(op(&str) -> Node,
         ws!(do_parse!(
             l: die >>
             o: op_kind >>
@@ -235,7 +235,7 @@ mod spec {
             (Node::Op(Expr::make(l), o, Expr::make(r)))
         ))
     );
-    named!(expr(CompleteStr) -> Expr,
+    named!(expr(&str) -> Expr,
         ws!(alt!(
             map!(op, Expr::make) |
             map!(die, Expr::make)

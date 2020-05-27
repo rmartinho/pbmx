@@ -1,4 +1,5 @@
-use crate::{random::Rng, state::State, Config, Error, Result};
+use crate::{state::State, Config, Error, Result};
+use pbmx_kit::state::Rng;
 use clap::ArgMatches;
 use colored::Colorize;
 use pbmx_kit::chain::Payload;
