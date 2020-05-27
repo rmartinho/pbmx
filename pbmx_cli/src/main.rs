@@ -1,3 +1,4 @@
+#![feature(box_syntax)]
 #![deny(clippy::correctness)]
 #![allow(dead_code)]
 
@@ -22,7 +23,7 @@ mod stack_map;
 mod state;
 
 mod cmd;
-use cmd::{bin, claim, init, issue, join, log, message, reset, rng, stack, status};
+use cmd::{bin, init, issue, join, log, message, reset, rng, stack, status};
 
 fn main() {
     let cfg = Config::read().unwrap();
@@ -45,10 +46,8 @@ fn main() {
             (about: "Resets the current block")
             (@setting DeriveDisplayOrder)
             (@setting ColoredHelp)
-            (@group which =>
-                (@arg LAST: -l --last "Undoes only the latest payload")
-                (@arg INDEX: -p --payload +takes_value +hidden "Undoes only the payload with the given index (experimental)")
-            )
+            (@arg LAST: -l --last conflicts_with[INDEX] "Undoes only the latest payload")
+            (@arg INDEX: -p --payload +takes_value +hidden conflicts_with[LAST] "Undoes only the payload with the given index (experimental)")
         )
         (@subcommand issue =>
             (about: "Issues the current block")
@@ -156,15 +155,11 @@ fn main() {
                 (@setting ColoredHelp)
                 (@arg SOURCE: +required "The name or identifier of the source stack")
                 (@arg INDICES: +required +multiple +use_delimiter "The indices of the tokens to remove")
-                (@group location =>
-                    (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
-                    (@arg OVER: -o --over +takes_value "Piles the tokens on top of this stack")
-                    (@arg UNDER: -u --under +takes_value "Piles the tokens at the bottom of this stack")
-                )
-                (@group mode =>
-                    (@arg REMOVE: -r --remove "Remove the tokens from the source stack (default)")
-                    (@arg CLONE: -c --clone "Clones the tokens into the target stack")
-                )
+                (@arg TARGET: -t --to +takes_value conflicts_with[OVER] conflicts_with[UNDER] "The name or identifier for the target stack")
+                (@arg OVER: -o --over +takes_value conflicts_with[UNDER] conflicts_with[TARGET] "Piles the tokens on top of this stack")
+                (@arg UNDER: -u --under +takes_value conflicts_with[OVER] conflicts_with[TARGET] "Piles the tokens at the bottom of this stack")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stack (default)")
+                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack")
             )
             (@subcommand pile =>
                 (about: "Piles several stacks together")
@@ -172,55 +167,8 @@ fn main() {
                 (@setting ColoredHelp)
                 (@arg STACKS: +required +multiple "The name or identifier of the source stacks, from top to bottom")
                 (@arg TARGET: -t --to +takes_value "The name or identifier for the target stack")
-                (@group mode =>
-                    (@arg REMOVE: -r --remove "Remove the tokens from the source stacks (default)")
-                    (@arg CLONE: -c --clone "Clones the tokens into the target stack")
-                )
-            )
-        )
-        (@subcommand claim =>
-            (about: "Verifiable claims")
-            (@setting DeriveDisplayOrder)
-            (@setting ColoredHelp)
-            (@setting SubcommandRequiredElseHelp)
-            (@setting VersionlessSubcommands)
-            (@setting DisableHelpSubcommand)
-            (@subcommand list =>
-                (about: "Lists existing claims")
-                (@setting DeriveDisplayOrder)
-                (@setting ColoredHelp)
-                (@group filter =>
-                    (@arg ALL: -a --all "List all claims (default)")
-                    (@arg PENDING: -p --pending "List only claims pending verification")
-                    (@arg VERIFIED: -v --verified "List only fully verified claims")
-                )
-            )
-            (@subcommand verify =>
-                (about: "Takes part in the verification of a claim")
-                (@setting DeriveDisplayOrder)
-                (@setting ColoredHelp)
-            )
-            (@subcommand subset =>
-                (about: "Claims that a stack is a subset of another")
-                (@setting DeriveDisplayOrder)
-                (@setting ColoredHelp)
-                (@arg SUBSET: +required "The name or identifier of the subset stack")
-                (@arg SUPERSET: +required "The name or identifier of the superset stack")
-            )
-            (@subcommand superset =>
-                (about: "Claims that a stack is a superset of another")
-                (@setting DeriveDisplayOrder)
-                (@setting ColoredHelp)
-                (@arg SUPERSET: +required "The name or identifier of the superset stack")
-                (@arg SUBSET: +required "The name or identifier of the subset stack")
-            )
-            (@subcommand disjoint =>
-                (about: "Claims that two stacks are disjoint")
-                (@setting DeriveDisplayOrder)
-                (@setting ColoredHelp)
-                (@arg STACK1: +required "The name or identifier of the first stack")
-                (@arg STACK2: +required "The name or identifier of the second stack")
-                (@arg UNIVERSE: +required "The name or identifier of the universe stack")
+                (@arg REMOVE: -r --remove conflicts_with[CLONE] "Remove the tokens from the source stacks (default)")
+                (@arg CLONE: -c --clone conflicts_with[REMOVE] "Clones the tokens into the target stack")
             )
         )
         (@subcommand rng =>
@@ -275,7 +223,6 @@ fn main() {
         ("bin", Some(sub_m)) => bin::run(sub_m, &cfg),
         ("message", Some(sub_m)) => message::run(sub_m, &cfg),
         ("stack", Some(sub_m)) => stack::run(sub_m, &cfg),
-        ("claim", Some(sub_m)) => claim::run(sub_m, &cfg),
         ("rng", Some(sub_m)) => rng::run(sub_m, &cfg),
         _ => Err(Error::InvalidSubcommand),
     }

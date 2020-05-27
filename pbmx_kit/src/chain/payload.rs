@@ -5,8 +5,8 @@ use crate::{
     crypto::{
         keys::PublicKey,
         vtmf::{
-            DisjointProof, EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof,
-            ShiftProof, ShuffleProof, Stack, SubsetProof, SupersetProof,
+            EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
+            ShuffleProof, Stack,
         },
     },
     proto,
@@ -27,8 +27,6 @@ pub enum Payload {
     PublishKey(String, PublicKey),
     /// An open stack payload
     OpenStack(Stack),
-    /// A hidden stack payload
-    HiddenStack(Stack),
     /// A stack mask payload
     MaskStack(Id, Stack, Vec<MaskProof>),
     /// A stack shuffle payload
@@ -51,12 +49,6 @@ pub enum Payload {
     RandomReveal(String, SecretShare, SecretShareProof),
     /// An entanglement proof payload
     ProveEntanglement(Vec<Id>, Vec<Id>, EntanglementProof),
-    /// A subset proof payload
-    ProveSubset(Id, Id, SubsetProof),
-    /// A superset proof payload
-    ProveSuperset(Id, Id, SupersetProof),
-    /// A disjoint sets proof payload
-    ProveDisjoint(Id, Id, Id, DisjointProof),
     /// Raw text payload
     Text(String),
     /// Raw byte payload
@@ -78,15 +70,6 @@ impl Payload {
     pub fn display_short<'a>(&'a self) -> impl Display + 'a {
         DisplayShort(self)
     }
-
-    /// Checks whether this payload represents a (multi-block) claim or not
-    pub fn is_claim(&self) -> bool {
-        use Payload::*;
-        match self {
-            ProveSubset(..) | ProveSuperset(..) | ProveDisjoint(..) => true,
-            _ => false,
-        }
-    }
 }
 
 struct DisplayShort<'a>(&'a Payload);
@@ -97,7 +80,6 @@ impl<'a> Display for DisplayShort<'a> {
         match self.0 {
             PublishKey(name, pk) => write!(f, "publish key {} {:16}", name, pk.fingerprint()),
             OpenStack(stk) => write!(f, "open stack {:16}", stk.id()),
-            HiddenStack(stk) => write!(f, "hidden stack {:16}", stk.id()),
             NameStack(id, name) => write!(f, "name {:16} {}", id, name),
             MaskStack(id, stk, _) => write!(f, "mask {1:16} \u{21AC} {0:16}", id, stk.id()),
             ShuffleStack(id, stk, _) => write!(f, "shuffle {1:16} \u{224B} {0:16}", id, stk.id()),
@@ -108,10 +90,7 @@ impl<'a> Display for DisplayShort<'a> {
             RandomSpec(id, ..) => write!(f, "new rng {}", id),
             RandomEntropy(id, ..) => write!(f, "add entropy {}", id),
             RandomReveal(id, ..) => write!(f, "open rng {}", id),
-            ProveEntanglement(ids1, ids2, ..) => write!(f, "entangled {:16?} {:16?}", ids1, ids2),
-            ProveSubset(id1, id2, ..) => write!(f, "subset {:16} \u{2286} {:16}", id1, id2),
-            ProveSuperset(id1, id2, ..) => write!(f, "superset {:16} \u{2287} {:16}", id1, id2),
-            ProveDisjoint(id1, id2, ..) => write!(f, "disjoint {:16} \u{2260} {:16}", id1, id2),
+            ProveEntanglement(ids1, ids2, ..) => write!(f, "entangled {:?} {:?}", ids1, ids2),
             Text(text) => write!(f, "text {}", text),
             Bytes(bytes) => write!(
                 f,
@@ -135,9 +114,6 @@ pub trait PayloadVisitor {
             }
             OpenStack(stk) => {
                 self.visit_open_stack(block, stk);
-            }
-            HiddenStack(stk) => {
-                self.visit_hidden_stack(block, stk);
             }
             MaskStack(id, stk, proof) => {
                 self.visit_mask_stack(block, *id, stk, proof);
@@ -172,15 +148,6 @@ pub trait PayloadVisitor {
             ProveEntanglement(ids1, ids2, proof) => {
                 self.visit_prove_entanglement(block, ids1, ids2, proof);
             }
-            ProveSubset(id1, id2, proof) => {
-                self.visit_prove_subset(block, *id1, *id2, proof);
-            }
-            ProveSuperset(id1, id2, proof) => {
-                self.visit_prove_superset(block, *id1, *id2, proof);
-            }
-            ProveDisjoint(id1, id2, id3, proof) => {
-                self.visit_prove_disjoint(block, *id1, *id2, *id3, proof);
-            }
             Text(text) => {
                 self.visit_text(block, text);
             }
@@ -193,8 +160,6 @@ pub trait PayloadVisitor {
     fn visit_publish_key(&mut self, _block: &Block, _name: &str, _key: &PublicKey) {}
     /// Visits a OpenStack payload
     fn visit_open_stack(&mut self, _block: &Block, _stack: &Stack) {}
-    /// Visits a HiddenStack payload
-    fn visit_hidden_stack(&mut self, _block: &Block, _stack: &Stack) {}
     /// Visits a MaskStack payload
     fn visit_mask_stack(
         &mut self,
@@ -252,31 +217,6 @@ pub trait PayloadVisitor {
         _proof: &EntanglementProof,
     ) {
     }
-    /// Visits a ProveSubset payload
-    fn visit_prove_subset(
-        &mut self,
-        _block: &Block,
-        _sub_id: Id,
-        _sup_id: Id,
-        _proof: &SubsetProof,
-    );
-    /// Visits a ProveSuperset payload
-    fn visit_prove_superset(
-        &mut self,
-        _block: &Block,
-        _sup_id: Id,
-        _sub_id: Id,
-        _proof: &SupersetProof,
-    );
-    /// Visits a ProveDisjoint payload
-    fn visit_prove_disjoint(
-        &mut self,
-        _block: &Block,
-        _id1: Id,
-        _id2: Id,
-        _sup_id: Id,
-        _proof: &DisjointProof,
-    );
     /// Visits a Text payload
     fn visit_text(&mut self, _block: &Block, _text: &str) {}
 
@@ -296,9 +236,6 @@ impl Proto for Payload {
                 key: Some(pk.to_proto()?),
             }),
             Payload::OpenStack(stk) => PayloadKind::OpenStack(proto::OpenStack {
-                stack: Some(stk.to_proto()?),
-            }),
-            Payload::HiddenStack(stk) => PayloadKind::HiddenStack(proto::HiddenStack {
                 stack: Some(stk.to_proto()?),
             }),
             Payload::NameStack(id, name) => PayloadKind::NameStack(proto::NameStack {
@@ -362,26 +299,6 @@ impl Proto for Payload {
                     proof: Some(proof.to_proto()?),
                 })
             }
-            Payload::ProveSubset(id1, id2, proof) => PayloadKind::ProveSubset(proto::ProveSubset {
-                sub_id: id1.to_vec(),
-                sup_id: id2.to_vec(),
-                proof: Some(proof.to_proto()?),
-            }),
-            Payload::ProveSuperset(id1, id2, proof) => {
-                PayloadKind::ProveSuperset(proto::ProveSuperset {
-                    sup_id: id1.to_vec(),
-                    sub_id: id2.to_vec(),
-                    proof: Some(proof.to_proto()?),
-                })
-            }
-            Payload::ProveDisjoint(id1, id2, id3, proof) => {
-                PayloadKind::ProveDisjoint(proto::ProveDisjoint {
-                    id1: id1.to_vec(),
-                    id2: id2.to_vec(),
-                    sup_id: id3.to_vec(),
-                    proof: Some(proof.to_proto()?),
-                })
-            }
             Payload::Text(text) => PayloadKind::Text(text.clone()),
             Payload::Bytes(bytes) => PayloadKind::Raw(bytes.clone()),
         };
@@ -401,9 +318,6 @@ impl Proto for Payload {
                 ),
                 PayloadKind::OpenStack(p) => {
                     Payload::OpenStack(Stack::from_proto(p.stack.as_ref()?).ok()?)
-                }
-                PayloadKind::HiddenStack(p) => {
-                    Payload::HiddenStack(Stack::from_proto(p.stack.as_ref()?).ok()?)
                 }
                 PayloadKind::MaskStack(p) => Payload::MaskStack(
                     Id::try_from(&p.id).ok()?,
@@ -463,22 +377,6 @@ impl Proto for Payload {
                         .collect::<Result<_>>()
                         .ok()?,
                     EntanglementProof::from_proto(p.proof.as_ref()?).ok()?,
-                ),
-                PayloadKind::ProveSubset(p) => Payload::ProveSubset(
-                    Id::try_from(&p.sub_id).ok()?,
-                    Id::try_from(&p.sup_id).ok()?,
-                    SubsetProof::from_proto(p.proof.as_ref()?).ok()?,
-                ),
-                PayloadKind::ProveSuperset(p) => Payload::ProveSuperset(
-                    Id::try_from(&p.sup_id).ok()?,
-                    Id::try_from(&p.sub_id).ok()?,
-                    SupersetProof::from_proto(p.proof.as_ref()?).ok()?,
-                ),
-                PayloadKind::ProveDisjoint(p) => Payload::ProveDisjoint(
-                    Id::try_from(&p.id1).ok()?,
-                    Id::try_from(&p.id2).ok()?,
-                    Id::try_from(&p.sup_id).ok()?,
-                    DisjointProof::from_proto(p.proof.as_ref()?).ok()?,
                 ),
                 PayloadKind::Text(s) => Payload::Text(s.clone()),
                 PayloadKind::Raw(p) => Payload::Bytes(p.clone()),

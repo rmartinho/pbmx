@@ -2,15 +2,12 @@
 
 #![allow(clippy::many_single_char_names)]
 
-pub mod disjoint;
 pub mod dlog_eq;
 pub mod entanglement;
 mod known_rotation;
 mod known_shuffle;
 pub mod secret_rotation;
 pub mod secret_shuffle;
-pub mod subset;
-pub mod superset;
 
 use crate::crypto::{commit::Pedersen, perm::Permutation, vtmf::Mask};
 use curve25519_dalek::{
@@ -122,7 +119,6 @@ impl TranscriptProtocol for Transcript {
 trait TranscriptRngProtocol {
     fn commit_bit(self, label: &'static [u8], bit: bool) -> Self;
     fn commit_index(self, label: &'static [u8], index: usize) -> Self;
-    fn commit_indices(self, label: &'static [u8], index: &[usize]) -> Self;
     fn commit_scalar(self, label: &'static [u8], scalar: &Scalar) -> Self;
     fn commit_scalars(self, label: &'static [u8], scalars: &[Scalar]) -> Self;
     fn commit_mask(self, label: &'static [u8], mask: &Mask) -> Self;
@@ -137,14 +133,6 @@ impl TranscriptRngProtocol for TranscriptRngBuilder {
 
     fn commit_index(self, label: &'static [u8], index: usize) -> Self {
         self.rekey_with_witness_bytes(label, &index.to_be_bytes())
-    }
-
-    fn commit_indices(self, label: &'static [u8], indices: &[usize]) -> Self {
-        let mut builder = self.rekey_with_witness_bytes(b"$vec", &indices.len().to_le_bytes());
-        for &i in indices.iter() {
-            builder = builder.commit_index(label, i);
-        }
-        builder
     }
 
     fn commit_scalar(self, label: &'static [u8], scalar: &Scalar) -> Self {

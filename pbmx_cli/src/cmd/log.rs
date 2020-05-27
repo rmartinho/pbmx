@@ -6,8 +6,8 @@ use pbmx_kit::{
     crypto::{
         keys::PublicKey,
         vtmf::{
-            DisjointProof, EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof,
-            ShiftProof, ShuffleProof, Stack, SubsetProof, SupersetProof,
+            EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
+            ShuffleProof, Stack,
         },
     },
 };
@@ -57,10 +57,6 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
     }
 
     fn visit_open_stack(&mut self, _: &Block, stack: &Stack) {
-        println!("    {} {:8}", "stack".green().bold(), stack.id());
-    }
-
-    fn visit_hidden_stack(&mut self, _: &Block, stack: &Stack) {
         println!("    {} {:8}", "stack".green().bold(), stack.id());
     }
 
@@ -148,33 +144,6 @@ impl<'a> PayloadVisitor for LogPrinter<'a> {
             "entangled".green().bold(),
             ids1,
             ids2
-        );
-    }
-
-    fn visit_prove_subset(&mut self, _: &Block, sub_id: Id, sup_id: Id, _: &SubsetProof) {
-        println!(
-            "    {} {:8?} \u{2286} {:8?}",
-            "subset".green().bold(),
-            sub_id,
-            sup_id
-        );
-    }
-
-    fn visit_prove_superset(&mut self, _: &Block, sup_id: Id, sub_id: Id, _: &SupersetProof) {
-        println!(
-            "    {} {:8?} \u{2287} {:8?}",
-            "superset".green().bold(),
-            sup_id,
-            sub_id,
-        );
-    }
-
-    fn visit_prove_disjoint(&mut self, _: &Block, id1: Id, id2: Id, _: Id, _: &DisjointProof) {
-        println!(
-            "    {} {:8?} \u{2260} {:8?}",
-            "disjoint".green().bold(),
-            id1,
-            id2,
         );
     }
 

@@ -63,7 +63,7 @@ impl Pedersen {
     /// Creates a commitment to a given sequence of scalars by a given
     /// randomizer.
     pub fn commit_by(&self, m: &[Scalar], r: &Scalar) -> RistrettoPoint {
-        assert!(m.len() == self.g.len(), "{} {}", m.len(), self.g.len());
+        assert!(m.len() == self.g.len());
 
         let gm = RistrettoPoint::multiscalar_mul(m.iter(), self.g.iter());
 

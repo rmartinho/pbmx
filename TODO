@@ -1,4 +1,5 @@
 # refactoring
+- move more toolkit-ish stuff out of CLI
 - reduce duplication
 
 # cli improvements
@@ -12,4 +13,5 @@
 - mid-game join/part
 - commits for e.g. bidding
 - subset/superset/disjoint/no suit proofs
+- "glueing"/linked shuffles
 - oblivious transfers?

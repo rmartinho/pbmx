@@ -17,9 +17,8 @@ impl Permutation {
 
     /// Creates a new cyclic shift permutation
     pub fn shift(n: usize, c: usize) -> Self {
-        let mut p = Self::identity(n);
-        p.0.rotate_right(c);
-        p
+        let v = (0..n).map(|i| (i + n - c) % n).collect();
+        Self(v)
     }
 
     /// Creates a permutation equivalent to applying this permutation after

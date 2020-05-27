@@ -78,22 +78,6 @@ fn unmask_with_private_secrets(
     None
 }
 
-pub fn unmask_stack(
-    stack: &Stack,
-    secrets: &SecretMap,
-    private_secrets: &PrivateSecretMap,
-    vtmf: &Vtmf,
-    my_fp: &Fingerprint,
-) -> Option<Stack> {
-    stack
-        .iter()
-        .map(|m| {
-            unmask_with_public_secrets(*m, secrets, vtmf, my_fp)
-                .or_else(|| unmask_with_private_secrets(*m, secrets, private_secrets, vtmf, my_fp))
-        })
-        .collect()
-}
-
 impl<'a> Display for DisplayStackContents<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut first = true;
