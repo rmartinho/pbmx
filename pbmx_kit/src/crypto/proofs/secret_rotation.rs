@@ -1,4 +1,9 @@
-//! Hoogh et al's verifiable rotation of homomorphic encryptions
+//! Verifiable rotation of homomorphic encryptions
+
+// [HSSV09] Sebastiaan de Hoogh, Berry Schoenmakers, Boris Skoric, and Jose
+// Villegas:              'Verifiable Rotation of Homomorphic Encryptions',
+//              Public Key Cryptography 2009, LNCS 5443, pp. 393--410, Springer
+// 2009.
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
@@ -18,7 +23,7 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Proof {
-    skr: known_rotation::Proof,
+    rkc: known_rotation::Proof,
     h: Vec<RistrettoPoint>,
     z: Vec<Mask>,
     v: Scalar,
@@ -63,16 +68,19 @@ impl Proof {
 
         let com = transcript.challenge_pedersen(b"com", *publics.h, 1);
 
-        let mut rng = transcript
-            .build_rng()
-            .commit_index(b"k", secrets.k)
-            .commit_scalars(b"r", secrets.r)
-            .finalize(&mut thread_rng());
+        let rekey_rng = |t: &Transcript| {
+            t.build_rng()
+                .commit_index(b"k", secrets.k)
+                .commit_scalars(b"r", secrets.r)
+                .finalize(&mut thread_rng())
+        };
 
         let n = publics.e0.len();
         let gh = Mask(G.basepoint(), *publics.h);
 
         let a = transcript.challenge_scalars(b"a", n);
+
+        let mut rng = rekey_rng(&transcript);
 
         let u = random_scalars(n, &mut rng);
         let t = random_scalars(n, &mut rng);
@@ -102,11 +110,7 @@ impl Proof {
             .sum::<Scalar>();
         transcript.commit_scalar(b"v", &v);
 
-        let mut rng = transcript
-            .build_rng()
-            .commit_index(b"k", secrets.k)
-            .commit_scalars(b"r", secrets.r)
-            .finalize(&mut thread_rng());
+        let mut rng = rekey_rng(&transcript);
 
         let o = random_scalars(n, &mut rng);
         let p = random_scalars(n, &mut rng);
@@ -134,7 +138,7 @@ impl Proof {
         let mu: Vec<_> = m.iter().zip(t.iter()).map(|(m, t)| m + l * t).collect();
         transcript.commit_scalars(b"mu", &mu);
 
-        let skr = known_rotation::Proof::create(
+        let rkc = known_rotation::Proof::create(
             transcript,
             known_rotation::Publics {
                 com: &com,
@@ -148,7 +152,7 @@ impl Proof {
         );
 
         Self {
-            skr,
+            rkc,
             h,
             z,
             v,
@@ -189,7 +193,7 @@ impl Proof {
         transcript.commit_scalars(b"rho", &self.rho);
         transcript.commit_scalars(b"mu", &self.mu);
 
-        self.skr.verify(transcript, known_rotation::Publics {
+        self.rkc.verify(transcript, known_rotation::Publics {
             com: &com,
             m: &a,
             c: &self.h,

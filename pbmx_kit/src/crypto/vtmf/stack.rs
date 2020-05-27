@@ -1,9 +1,11 @@
 use crate::{
-    crypto::{keys::Fingerprint, vtmf::Mask},
+    chain::Id,
+    crypto::vtmf::Mask,
     proto,
     serde::{vec_from_proto, vec_to_proto, Proto},
     Result,
 };
+use digest::generic_array::typenum::U32;
 use std::{
     borrow::{Borrow, BorrowMut},
     iter::FromIterator,
@@ -30,10 +32,15 @@ impl Proto for Stack {
     }
 }
 
+create_hash! {
+    /// The hash used for stack IDs
+    struct StackHash(Hash<U32>) = b"pbmx-stack-id";
+}
+
 impl Stack {
     /// Gets an ID for this stack
-    pub fn id(&self) -> Fingerprint {
-        Fingerprint::of(self).unwrap()
+    pub fn id(&self) -> Id {
+        Id::of::<StackHash>(self).unwrap()
     }
 }
 

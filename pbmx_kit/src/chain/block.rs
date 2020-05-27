@@ -5,16 +5,16 @@ use crate::{
         payload::{Payload, PayloadVisitor},
         Id,
     },
-    crypto::{
-        keys::{Fingerprint, PrivateKey, PublicKey},
-        Hash,
-    },
+    crypto::keys::{Fingerprint, PrivateKey, PublicKey},
     proto,
     serde::{vec_from_proto, vec_to_proto, FromBytes, Proto, ToBytes},
     Error,
 };
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-use digest::Digest;
+use digest::{
+    generic_array::typenum::{U32, U64},
+    Digest,
+};
 use serde::{
     de::{Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -49,6 +49,11 @@ impl Proto for Vec<Payload> {
     }
 }
 
+create_hash! {
+    /// The hash used for block IDs
+    struct BlockHash(Hash<U32>) = b"pbmx-block-id";
+}
+
 impl Block {
     fn new_unchecked(
         acks: Vec<Id>,
@@ -68,7 +73,7 @@ impl Block {
 
     /// Gets this block's ID
     pub fn id(&self) -> Id {
-        Id::of(self).unwrap()
+        Id::of::<BlockHash>(self).unwrap()
     }
 
     /// Gets the fingerprint of the block's signing key
@@ -162,6 +167,11 @@ impl BlockBuilder {
     }
 }
 
+create_hash! {
+    /// The hash used for signatures
+    struct BlockSignatureHash(Hash<U64>) = b"pbmx-block-sig";
+}
+
 fn block_signature_hash<'a, AckIt, PayloadIt>(
     acks: AckIt,
     payloads: PayloadIt,
@@ -171,7 +181,7 @@ where
     AckIt: Iterator<Item = &'a Id> + 'a,
     PayloadIt: Iterator<Item = &'a Payload> + 'a,
 {
-    let mut h = Hash::new();
+    let mut h = BlockSignatureHash::default();
     for ack in acks {
         h = h.chain(&ack);
     }

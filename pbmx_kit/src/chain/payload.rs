@@ -13,6 +13,7 @@ use crate::{
     serde::{vec_from_proto, vec_to_proto, Proto},
     Error, Result,
 };
+use digest::generic_array::typenum::U32;
 use std::{
     convert::TryFrom,
     fmt::{self, Display, Formatter},
@@ -54,10 +55,15 @@ pub enum Payload {
     Bytes(Vec<u8>),
 }
 
+create_hash! {
+    /// The hash used for payload IDs
+    struct PayloadHash(Hash<U32>) = b"pbmx-payload-id";
+}
+
 impl Payload {
     /// Gets the id of this payload
     pub fn id(&self) -> Id {
-        Id::of(self).unwrap()
+        Id::of::<PayloadHash>(self).unwrap()
     }
 
     /// Gets a short string description of this payload

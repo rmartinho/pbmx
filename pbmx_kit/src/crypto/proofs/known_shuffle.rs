@@ -1,4 +1,7 @@
-//! Groth's verifiable shuffle of known content
+//! Shuffle of known content argument
+
+// [Gr05] Jens Groth: 'A Verifiable Secret Shuffle of Homomorphic Encryptions',
+//          Cryptology ePrint Archive, Report 2005/246, 2005.
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::crypto::{commit::Pedersen, perm::Permutation};
@@ -40,8 +43,7 @@ pub struct Secrets<'a> {
 }
 
 impl Proof {
-    /// Generates a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Generates a non-interactive shuffle of known content argument
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"known_shuffle");
 
@@ -49,11 +51,13 @@ impl Proof {
         transcript.commit_point(b"c", publics.c);
         transcript.commit_scalars(b"m", publics.m);
 
-        let mut rng = transcript
-            .build_rng()
-            .commit_permutation(b"pi", secrets.pi)
-            .commit_scalar(b"r", secrets.r)
-            .finalize(&mut thread_rng());
+        let rekey_rng = |t: &Transcript| {
+            t.build_rng()
+                .commit_permutation(b"pi", secrets.pi)
+                .commit_scalar(b"r", secrets.r)
+                .finalize(&mut thread_rng())
+        };
+        let mut rng = rekey_rng(&transcript);
 
         let n = publics.m.len();
 
@@ -78,13 +82,19 @@ impl Proof {
             })
             .collect();
 
+        let mut rng = rekey_rng(&transcript);
+
         let (cd, rd) = publics.com.commit_to(&d, &mut rng);
         transcript.commit_point(b"cd", &cd);
+
+        let mut rng = rekey_rng(&transcript);
 
         let mut dd: Vec<_> = (1..n).map(|i| (-delta[i - 1]) * d[i]).collect();
         dd.push(Scalar::zero());
         let (cdd, rdd) = publics.com.commit_to(&dd, &mut rng);
         transcript.commit_point(b"cdd", &cdd);
+
+        let mut rng = rekey_rng(&transcript);
 
         let mut da: Vec<_> = (1..n)
             .map(|i| delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])
@@ -104,8 +114,8 @@ impl Proof {
 
         let mut fd: Vec<_> = (1..n)
             .map(|i| {
-                (e * (delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])
-                    - delta[i - 1] * d[i])
+                e * (delta[i] - (publics.m[secrets.pi[i]] - x) * delta[i - 1] - a[i - 1] * d[i])
+                    - delta[i - 1] * d[i]
             })
             .collect();
         fd.push(Scalar::zero());
@@ -122,8 +132,7 @@ impl Proof {
         }
     }
 
-    /// Verifies a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Verifies a non-interactive shuffle of known content argument
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
         transcript.domain_sep(b"known_shuffle");
 

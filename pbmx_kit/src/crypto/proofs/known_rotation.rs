@@ -1,4 +1,9 @@
-//! Hoogh et al's verifiable rotation of known content
+//! Rotation of known content argument
+
+// [HSSV09] Sebastiaan de Hoogh, Berry Schoenmakers, Boris Skoric, and Jose
+// Villegas:              'Verifiable Rotation of Homomorphic Encryptions',
+//              Public Key Cryptography 2009, LNCS 5443, pp. 393--410, Springer
+// 2009.
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::crypto::{commit::Pedersen, perm::Permutation};
@@ -36,8 +41,7 @@ pub struct Secrets<'a> {
 }
 
 impl Proof {
-    /// Generates a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Generates a non-interactive rotation of known content argument
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"known_rotation");
 
@@ -102,8 +106,7 @@ impl Proof {
         Self { f, l, t }
     }
 
-    /// Verifies a non-interactive zero-knowledge proof of a shuffle of known
-    /// content
+    /// Verifies a non-interactive rotation of known content argument
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
         transcript.domain_sep(b"known_rotation");
 

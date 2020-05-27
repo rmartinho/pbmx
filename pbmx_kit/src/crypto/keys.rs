@@ -1,18 +1,13 @@
 //! ElGamal encryption scheme for elliptic curves
 
-use crate::{
-    crypto::hash::Hash,
-    proto,
-    serde::{FromBytes, Proto, ToBytes},
-    Error,
-};
+use crate::{proto, serde::ToBytes, Error};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
     scalar::Scalar,
     traits::Identity,
 };
-use digest::Digest;
+use digest::{generic_array::typenum::U32, Digest};
 use rand::{thread_rng, CryptoRng, Rng};
 use std::{
     borrow::Borrow,
@@ -39,6 +34,11 @@ pub struct PublicKey {
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
 
+create_hash! {
+    /// The hash used for key fingerprints
+    pub struct FingerprintHash(Hash<U32>) = b"pbmx-key-fp";
+}
+
 impl Deref for Fingerprint {
     type Target = [u8];
 
@@ -50,20 +50,6 @@ impl Deref for Fingerprint {
 impl Borrow<[u8]> for Fingerprint {
     fn borrow(&self) -> &[u8] {
         &self.0
-    }
-}
-
-impl Proto for PrivateKey {
-    type Message = proto::PrivateKey;
-
-    fn to_proto(&self) -> Result<Self::Message, Error> {
-        Ok(proto::PrivateKey {
-            raw: self.to_bytes()?,
-        })
-    }
-
-    fn from_proto(m: &Self::Message) -> Result<Self, Error> {
-        PrivateKey::from_bytes(&m.raw)
     }
 }
 
@@ -119,7 +105,11 @@ impl PublicKey {
 
     /// Gets this key's fingerprint
     pub fn fingerprint(&self) -> Fingerprint {
-        Fingerprint::of(self).unwrap()
+        let bytes = self.h.to_bytes().unwrap();
+        let hashed = FingerprintHash::new().chain(bytes).result();
+        let mut array = [0u8; FINGERPRINT_SIZE];
+        array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
+        Fingerprint(array)
     }
 
     /// Combines this public key with another one to form a shared key
@@ -162,15 +152,15 @@ fn point_to_scalar(x: &RistrettoPoint) -> Scalar {
 
 impl Fingerprint {
     /// Gets the fingerprint of some object
-    pub fn of<T>(x: &T) -> Result<Fingerprint, Error>
+    pub fn of<D>(x: &(dyn ToBytes)) -> Result<Fingerprint, Error>
     where
-        T: ToBytes,
+        D: Digest + Default,
     {
-        debug_assert!(Hash::output_size() >= FINGERPRINT_SIZE);
+        debug_assert!(D::output_size() == FINGERPRINT_SIZE);
         let bytes = x.to_bytes()?;
-        let hashed = Hash::new().chain(bytes).result();
+        let hashed = D::default().chain(bytes).result();
         let mut array = [0u8; FINGERPRINT_SIZE];
-        array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
+        array.copy_from_slice(&hashed[..]);
         Ok(Fingerprint(array))
     }
 
@@ -188,7 +178,7 @@ impl AsRef<[u8]> for Fingerprint {
     }
 }
 
-derive_base64_conversions!(PrivateKey);
+derive_opaque_proto_conversions!(PrivateKey: proto::PrivateKey);
 derive_opaque_proto_conversions!(PublicKey: proto::PublicKey);
 
 impl Display for Fingerprint {
@@ -250,7 +240,7 @@ impl<'a> TryFrom<&'a Vec<u8>> for Fingerprint {
     }
 }
 
-const FINGERPRINT_SIZE: usize = 20;
+const FINGERPRINT_SIZE: usize = 32;
 
 #[cfg(test)]
 mod tests {
@@ -331,8 +321,7 @@ mod tests {
 
     #[test]
     fn fingerprint_roundtrips_via_string() {
-        let v = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        let original = Fingerprint::of(&v).unwrap();
+        let original = Fingerprint::random(&mut thread_rng());
 
         let exported = original.to_string();
 

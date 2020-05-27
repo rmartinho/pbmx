@@ -11,6 +11,9 @@ extern crate nom;
 extern crate serde_derive;
 
 #[macro_use]
+mod macros;
+
+#[macro_use]
 pub mod serde;
 
 pub mod chain;

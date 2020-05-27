@@ -1,8 +1,10 @@
-//! Barnett and Smart's verifiable *k*-out-of-*k* Threshold Masking Function
+//! Verifiable *k*-out-of-*k* Threshold Masking Function
 
+// [BS03] Adam Barnett, Nigel P. Smart:
+//          'Mental Poker Revisited',
+//          Cryptography and Coding 2003, LNCS 2898, pp. 370--383, 2003
 use crate::{
     crypto::{
-        hash::Xof,
         keys::{Fingerprint, PrivateKey, PublicKey},
         perm::Permutation,
         proofs::{dlog_eq, entanglement, secret_rotation, secret_shuffle},
@@ -364,6 +366,11 @@ impl Vtmf {
     }
 }
 
+create_hash! {
+    /// The hash used for key fingerprints
+    struct RandomXof(Xof) = b"pbmx-random";
+}
+
 impl Vtmf {
     /// Applies a random mask
     pub fn mask_random<R: Rng + CryptoRng>(&self, rng: &mut R) -> Mask {
@@ -373,7 +380,7 @@ impl Vtmf {
 
     /// Undoes a random mask
     pub fn unmask_random(&self, m: &Mask) -> impl XofReader {
-        let mut xof = Xof::default();
+        let mut xof = RandomXof::default();
         xof.input(&m.1.compress().to_bytes());
         xof.xof_result()
     }
