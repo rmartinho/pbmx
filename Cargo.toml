@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "pbmx_cli",
-    "pbmx_kit",
+    "pbmx-cli",
+    "pbmx-kit",
 ]
