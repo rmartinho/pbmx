@@ -198,7 +198,7 @@ impl Vtmf {
 impl Vtmf {
     /// Obtains one share of a masking operation
     pub fn unmask_share(&self, c: &Mask) -> (SecretShare, SecretShareProof) {
-        let x = self.sk.exponent();
+        let x = &self.sk.exponent();
 
         let d = c.0 * x;
         let proof = MaskProof::create(

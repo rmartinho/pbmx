@@ -1,6 +1,6 @@
 //! ElGamal encryption scheme for elliptic curves
 
-use crate::{proto, serde::ToBytes, Error};
+use crate::{proto, random::thread_rng, serde::ToBytes, Error};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -8,7 +8,9 @@ use curve25519_dalek::{
     traits::Identity,
 };
 use digest::{generic_array::typenum::U32, Digest};
-use rand::{thread_rng, CryptoRng, Rng};
+use merlin::Transcript;
+use rand::{CryptoRng, Rng};
+use schnorrkel::{self, Signature};
 use std::{
     borrow::Borrow,
     convert::TryFrom,
@@ -19,9 +21,7 @@ use std::{
 
 /// A private key
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PrivateKey {
-    x: Scalar,
-}
+pub struct PrivateKey(schnorrkel::SecretKey);
 
 /// A public key
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -57,19 +57,21 @@ const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 impl PrivateKey {
     /// Gets this key's secret value
-    pub fn exponent(&self) -> &Scalar {
-        &self.x
+    pub fn exponent(&self) -> Scalar {
+        let bytes = self.0.to_bytes();
+        let mut array = [0u8; 32];
+        array.copy_from_slice(&bytes[..32]);
+        Scalar::from_bits(array)
     }
 
     /// Generates a random Ristretto secret key
     pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
-        let x = Scalar::random(rng);
-        Self { x }
+        Self(schnorrkel::SecretKey::generate_with(rng))
     }
 
     /// Gets a public key that corresponds with this key
     pub fn public_key(&self) -> PublicKey {
-        PublicKey { h: G * &self.x }
+        PublicKey { h: self.0.to_public().into_point() }
     }
 
     /// Gets the public key fingerprint
@@ -79,21 +81,13 @@ impl PrivateKey {
 
     /// Decrypts a given ciphertext
     pub fn decrypt(&self, c: &(RistrettoPoint, RistrettoPoint)) -> RistrettoPoint {
-        c.1 - c.0 * self.x
+        c.1 - c.0 * self.exponent()
     }
 
-    /// Signs a given messages
-    pub fn sign(&self, m: &Scalar) -> (RistrettoPoint, Scalar) {
-        let mut rng = thread_rng();
-        let zero = Scalar::zero();
-        loop {
-            let k = Scalar::random(&mut rng);
-            let s0 = G * &k;
-            let s1 = k.invert() * (m - self.x * point_to_scalar(&s0));
-            if s1 != zero {
-                return (s0, s1);
-            }
-        }
+    /// Signs a given transcript under a given context
+    pub fn sign(&self, t: &mut Transcript) -> Signature {
+        let pk = self.0.to_public();
+        self.0.sign(t, &pk)
     }
 }
 
@@ -134,20 +128,11 @@ impl PublicKey {
         (c0, c1)
     }
 
-    /// Verifies a given signature
-    pub fn verify(&self, m: &Scalar, s: &(RistrettoPoint, Scalar)) -> Result<(), ()> {
-        let lhs = self.point() * point_to_scalar(&s.0) + s.0 * s.1;
-        let rhs = G * m;
-        if lhs == rhs {
-            Ok(())
-        } else {
-            Err(())
-        }
+    /// Verifies a given transcript signature
+    pub fn verify(&self, t: &mut Transcript, s: &Signature) -> Result<(), ()> {
+        let pk = schnorrkel::PublicKey::from_point(self.h.clone());
+        pk.verify(t, s).map_err(|_| ())
     }
-}
-
-fn point_to_scalar(x: &RistrettoPoint) -> Scalar {
-    Scalar::from_bytes_mod_order(x.compress().to_bytes())
 }
 
 impl Fingerprint {
@@ -248,6 +233,7 @@ mod tests {
     use crate::serde::{FromBase64, ToBase64};
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use rand::thread_rng;
+    use schnorrkel::signing_context;
     use std::str::FromStr;
 
     #[test]
@@ -256,7 +242,7 @@ mod tests {
         let sk = PrivateKey::random(&mut rng);
         let pk = sk.public_key();
 
-        assert_eq!(pk.point(), G * &sk.x);
+        assert_eq!(pk.point(), G * &sk.exponent());
     }
 
     #[test]
@@ -268,7 +254,7 @@ mod tests {
 
         let recovered = PrivateKey::from_base64(&exported).unwrap();
 
-        assert_eq!(original.x, recovered.x);
+        assert_eq!(original.exponent(), recovered.exponent());
     }
 
     #[test]
@@ -306,15 +292,17 @@ mod tests {
         let pk = sk.public_key();
 
         let m = Scalar::random(&mut rng);
+        let mut t = signing_context(b"test").bytes(&m.to_bytes());
+        let s = sk.sign(&mut t);
 
-        let s = sk.sign(&m);
-
-        let r = pk.verify(&m, &s);
+        let mut t = signing_context(b"test").bytes(&m.to_bytes());
+        let r = pk.verify(&mut t, &s);
 
         assert_eq!(r, Ok(()));
 
         let m = m + Scalar::one();
-        let r = pk.verify(&m, &s);
+        let mut t = signing_context(b"test").bytes(&m.to_bytes());
+        let r = pk.verify(&mut t, &s);
 
         assert_eq!(r, Err(()));
     }

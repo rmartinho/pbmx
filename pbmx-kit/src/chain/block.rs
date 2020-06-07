@@ -7,14 +7,11 @@ use crate::{
     },
     crypto::keys::{Fingerprint, PrivateKey, PublicKey},
     proto,
-    serde::{vec_from_proto, vec_to_proto, FromBytes, Proto, ToBytes},
+    serde::{vec_from_proto, vec_to_proto, Proto},
     Error,
 };
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-use digest::{
-    generic_array::typenum::{U32, U64},
-    Digest,
-};
+use digest::{generic_array::typenum::U32, Input};
+use schnorrkel::{signing_context, Signature};
 use serde::{
     de::{Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -83,9 +80,10 @@ impl Block {
 
     /// Checks whether this block's signature is valid
     pub fn is_valid(&self, pk: &HashMap<Fingerprint, PublicKey>) -> Tribool {
-        let m = block_signature_hash(self.acks.iter(), self.payloads(), &self.fp);
+        let h = block_signature_hash(self.acks.iter(), self.payloads(), &self.fp);
         pk.get(&self.fp).map_or(Tribool::Indeterminate, |pk| {
-            pk.verify(&m, &self.sig).is_ok().into()
+            let mut t = signing_context(BLOCK_SIGNING_CONTEXT).xof(h);
+            pk.verify(&mut t, &self.sig).is_ok().into()
         })
     }
 
@@ -155,8 +153,9 @@ impl BlockBuilder {
     /// Builds the block, consuming the builder
     pub fn build(self, sk: &PrivateKey) -> Block {
         let fp = sk.fingerprint();
-        let m = block_signature_hash(self.acks.iter(), self.payloads.iter(), &fp);
-        let sig = sk.sign(&m);
+        let h = block_signature_hash(self.acks.iter(), self.payloads.iter(), &fp);
+        let mut t = signing_context(BLOCK_SIGNING_CONTEXT).xof(h);
+        let sig = sk.sign(&mut t);
         Block {
             acks: self.acks,
             payload_order: self.payloads.iter().map(Payload::id).collect(),
@@ -167,16 +166,17 @@ impl BlockBuilder {
     }
 }
 
+const BLOCK_SIGNING_CONTEXT: &'static [u8] = b"pbmx-block";
 create_hash! {
     /// The hash used for signatures
-    struct BlockSignatureHash(Hash<U64>) = b"pbmx-block-sig";
+    struct BlockSignatureHash(Xof) = b"pbmx-block-sig";
 }
 
 fn block_signature_hash<'a, AckIt, PayloadIt>(
     acks: AckIt,
     payloads: PayloadIt,
     fp: &Fingerprint,
-) -> Scalar
+) -> BlockSignatureHash
 where
     AckIt: Iterator<Item = &'a Id> + 'a,
     PayloadIt: Iterator<Item = &'a Payload> + 'a,
@@ -189,7 +189,7 @@ where
         h = h.chain(&payload.id());
     }
     h = h.chain(&fp);
-    Scalar::from_hash(h)
+    h
 }
 
 impl Serialize for Block {
@@ -245,7 +245,7 @@ impl Proto for BlockRaw {
             acks: self.acks.iter().map(|id| id.to_vec()).collect(),
             payloads: vec_to_proto(&self.payloads)?,
             fingerprint: self.fp.to_vec(),
-            signature: self.sig.to_bytes()?,
+            signature: self.sig.to_bytes().to_vec(),
         })
     }
 
@@ -258,7 +258,7 @@ impl Proto for BlockRaw {
                 .collect::<Result<_, _>>()?,
             payloads: vec_from_proto(&m.payloads)?,
             fp: Fingerprint::try_from(&m.fingerprint)?,
-            sig: Signature::from_bytes(&m.signature)?,
+            sig: Signature::from_bytes(&m.signature).map_err(|_| Error::Decoding)?,
         })
     }
 }
@@ -276,8 +276,6 @@ impl Proto for Block {
 }
 
 derive_base64_conversions!(Block);
-
-type Signature = (RistrettoPoint, Scalar);
 
 /// A visitor for blocks
 pub trait BlockVisitor: PayloadVisitor {
