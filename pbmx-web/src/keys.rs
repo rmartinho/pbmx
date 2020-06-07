@@ -22,6 +22,7 @@ impl PrivateKey {
         Self(kit::PrivateKey::random(&mut rng))
     }
 
+    #[wasm_bindgen(js_name = publicKey)]
     pub fn public_key(&self) -> PublicKey {
         PublicKey(self.0.public_key())
     }
@@ -74,8 +75,6 @@ impl Fingerprint {
     pub fn import(s: &str) -> Result<Fingerprint, JsValue> {
         use std::str::FromStr;
         let e = "invalid fingerprint";
-        Ok(Self(
-            kit::Fingerprint::from_str(s).map_err(|_| e)?
-        ))
+        Ok(Self(kit::Fingerprint::from_str(s).map_err(|_| e)?))
     }
 }

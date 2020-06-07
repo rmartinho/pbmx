@@ -1,14 +1,10 @@
 <template>
-    <div class="app">
-        <game></game>
+    <div class="view">
     </div>
 </template>
 
 <script>
-import game from "./game.vue";
-
 export default {
-    components: { game },
     data() {
         return {
         };
@@ -17,7 +13,7 @@ export default {
 </script>
 
 <style>
-.app {
+.view {
 }
 </style>
 
