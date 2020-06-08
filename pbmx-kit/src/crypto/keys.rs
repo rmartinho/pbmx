@@ -10,7 +10,7 @@ use curve25519_dalek::{
 use digest::{generic_array::typenum::U32, Digest};
 use merlin::Transcript;
 use rand::{CryptoRng, Rng};
-use schnorrkel::{self, Signature};
+use schnorrkel::{self, Signature, context::attach_rng};
 use std::{
     borrow::Borrow,
     convert::TryFrom,
@@ -89,7 +89,7 @@ impl PrivateKey {
     /// Signs a given transcript under a given context
     pub fn sign(&self, t: &mut Transcript) -> Signature {
         let pk = self.0.to_public();
-        self.0.sign(t, &pk)
+        self.0.sign(attach_rng(t, &mut thread_rng()), &pk)
     }
 }
 
