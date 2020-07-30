@@ -348,6 +348,7 @@ version = "0.1.99"
 dependencies = [
  "base64",
  "console_error_panic_hook",
+ "js-sys",
  "pbmx-kit",
  "rand",
  "wasm-bindgen",

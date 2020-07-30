@@ -1,4 +1,4 @@
-use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi};
+use wasm_bindgen::convert::FromWasmAbi;
 
 #[allow(dead_code)]
 pub fn set_panic_hook() {
@@ -12,12 +12,4 @@ where
     T::Abi: Copy,
 {
     slice.iter().map(|u| unsafe { T::from_abi(*u) })
-}
-
-pub fn vec_to_wasm<It>(it: It) -> Vec<<It::Item as IntoWasmAbi>::Abi>
-where
-    It: Iterator,
-    It::Item: IntoWasmAbi,
-{
-    it.map(|t| t.into_abi()).collect()
 }

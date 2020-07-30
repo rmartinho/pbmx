@@ -16,6 +16,9 @@ path = "../pbmx-kit"
 [dependencies.base64]
 version = "0.12"
 
+[dependencies.js-sys]
+version = "0.3"
+
 [dependencies.rand]
 version = "0.7"
 

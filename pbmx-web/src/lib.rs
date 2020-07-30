@@ -1,4 +1,5 @@
 pub mod chain;
+pub mod game;
 pub mod keys;
 pub mod vtmf;
 

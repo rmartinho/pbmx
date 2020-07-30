@@ -1,10 +1,9 @@
 {
   "scripts": {
     "start": "snowpack dev",
-    "build-wasm": "(cd .. && wasm-pack build --dev --target web --no-typescript) && npm install ../pkg",
+    "build-wasm": "(cd .. && wasm-pack build --dev --target web --no-typescript) && npm install ../pkg && snowpack --reload",
     "build": "snowpack build",
-    "build-final": "(cd .. && wasm-pack build --release --target web --no-typescript) && npm install ../pkg && npm run build",
-    "test": "echo \"Vue 3.0 test support is still in progress.\" && exit 1"
+    "build-final": "(cd .. && wasm-pack build --release --target web --no-typescript) && npm install ../pkg && snowpack --reload && npm run build"
   },
   "dependencies": {
     "pbmx-web": "file:../pkg",

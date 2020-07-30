@@ -10,7 +10,7 @@ use curve25519_dalek::{
 use digest::{generic_array::typenum::U32, Digest};
 use merlin::Transcript;
 use rand::{CryptoRng, Rng};
-use schnorrkel::{self, Signature, context::attach_rng};
+use schnorrkel::{self, context::attach_rng, Signature};
 use std::{
     borrow::Borrow,
     convert::TryFrom,

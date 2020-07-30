@@ -6,13 +6,10 @@ use crate::{
         ShuffleProof, Stack,
     },
 };
+use js_sys::Array;
 use wasm_bindgen::prelude::*;
 
 use pbmx_kit::chain as kit;
-
-#[wasm_bindgen]
-#[repr(transparent)]
-pub struct Chain(pub(crate) kit::Chain);
 
 #[wasm_bindgen]
 #[repr(transparent)]
@@ -27,27 +24,6 @@ pub struct BlockBuilder(pub(crate) kit::BlockBuilder);
 pub struct Payload(pub(crate) kit::Payload);
 
 #[wasm_bindgen]
-impl Chain {
-    pub fn new() -> Chain {
-        Self(kit::Chain::new())
-    }
-
-    pub fn count(&self) -> usize {
-        self.0.count()
-    }
-
-    #[wasm_bindgen(js_name = buildBlock)]
-    pub fn build_block(&self) -> BlockBuilder {
-        BlockBuilder(self.0.build_block())
-    }
-
-    #[wasm_bindgen(js_name = addBlock)]
-    pub fn add_block(&mut self, block: Block) {
-        self.0.add_block(block.0);
-    }
-}
-
-#[wasm_bindgen]
 impl Block {
     pub fn id(&self) -> Fingerprint {
         Fingerprint(self.0.id())
@@ -60,12 +36,21 @@ impl Block {
     // is_valid
 
     #[wasm_bindgen(js_name = parentIds)]
-    pub fn parent_ids(&self) -> Vec<u32> {
-        let it = self.0.parent_ids().iter().map(|id| Fingerprint(*id));
-        utils::vec_to_wasm(it)
+    pub fn parent_ids(&self) -> Array {
+        self.0
+            .parent_ids()
+            .iter()
+            .map(|id| JsValue::from(Fingerprint(*id)))
+            .collect()
     }
 
-    // payloads
+    pub fn payloads(&self) -> Array {
+        let array = Array::new();
+        for p in self.0.payloads().cloned() {
+            array.push(&Payload(p).into());
+        }
+        array
+    }
 
     // visit
 
@@ -102,6 +87,10 @@ impl BlockBuilder {
 impl Payload {
     pub fn id(&self) -> Fingerprint {
         Fingerprint(self.0.id())
+    }
+
+    pub fn kind(&self) -> String {
+        format!("{}", self.0.display_short())
     }
 
     #[wasm_bindgen(js_name = publishKey)]
