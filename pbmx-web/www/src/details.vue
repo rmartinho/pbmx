@@ -58,6 +58,7 @@ export default {
         async join() {
             const block = mutGame(g => g.finishBlock(g.join(this.name)));
             await saveBlock(block);
+            this.$parent.lastBlock = block;
             this.$parent.exportedBlock = formatBase64(block.export());
         },
     },

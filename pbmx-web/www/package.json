@@ -6,6 +6,7 @@
     "build-final": "(cd .. && wasm-pack build --release --target web --no-typescript) && npm install ../pkg && snowpack --reload && npm run build"
   },
   "dependencies": {
+    "autobahn-browser": "^20.7.2",
     "pbmx-web": "file:../pkg",
     "vue": "^3.0.0-0"
   },

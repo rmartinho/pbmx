@@ -16,6 +16,7 @@
                 <div>
                     <pre class="block-output">{{ exportedBlock }}</pre>
                 </div>
+                <button v-on:click="publishBlock">Publish</button>
                 <button v-on:click="exportedBlock = null">Done</button>
             </div>
         </div>
@@ -29,6 +30,7 @@ import rngs from "./rngs.vue";
 import blocks from "./blocks.vue";
 import details from "./details.vue";
 import { debugReset } from "./storage.js";
+import { pushBlock } from "./exchange.js";
 
 const tabs = [
     {
@@ -54,6 +56,7 @@ export default {
         return {
             tabs: tabs,
             currentTab: tabs[0],
+            lastBlock: null,
             exportedBlock: null,
         };
     },
@@ -61,6 +64,10 @@ export default {
         async resetGame() {
             await debugReset();
             location.reload();
+        },
+        async publishBlock() {
+            await pushBlock(this.lastBlock);
+            this.exportedBlock = null;
         }
     },
 };
