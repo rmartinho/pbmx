@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://pbmx.herokuapp.com; upgrade-insecure-requests; block-all-mixed-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="PBMX">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="PBMX" />
     <script type="module" src="/_dist_/index.js"></script>
     <title>PBMX</title>
   </head>

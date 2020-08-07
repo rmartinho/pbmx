@@ -6,8 +6,8 @@ let server = {
     realm: "pbmx"
 };
 
-const newBlockTopic = "io.pbmx.block.new";
-const getBlocksTopic = "io.pbmx.block.get";
+const newBlockTopic = "io.pbmx.block.push";
+const pullBlocksTopic = "io.pbmx.block.pull";
 
 export function setServer(url = "wss://pbmx.herokuapp.com/ws", realm = "pbmx") {
     server = { url: url, realm: realm };
@@ -35,14 +35,14 @@ export function pushBlock(block) {
     });
 }
 
-export function getBlocks(days = 7) {
+export function pullBlocks(days = 7) {
     return new Promise((resolve, reject) => {
         const gameId = getGame().fingerprint().export();
 
         const conn = new autobahn.Connection(server);
         conn.onopen = session => {
             const args = [gameId, days];
-            session.call(getBlocksTopic, args).then(
+            session.call(pullBlocksTopic, args).then(
                 r => {
                     conn.close();
                     resolve(r);

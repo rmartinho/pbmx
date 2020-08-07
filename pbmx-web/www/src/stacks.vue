@@ -1,5 +1,9 @@
 <template>
     <div class="view">
+        <stack
+            v-for="stack in stacks"
+            v-bind:stack="stack"
+        />
     </div>
 </template>
 
@@ -7,6 +11,7 @@
 export default {
     data() {
         return {
+            stacks: [],
         };
     }
 };

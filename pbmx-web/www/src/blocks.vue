@@ -3,6 +3,7 @@
         <div>
             <div><textarea v-model="newBlock" v-bind:readonly="addingBlock" class="block-input" placeholder="paste a block here"></textarea></div>
             <button v-on:click="addBlock" v-bind:disabled="!newBlock || addingBlock">Add block</button>
+            <button v-on:click="fetchBlocks" v-bind:disabled="addingBlock">Fetch blocks</button>
         </div>
         <div>Blocks: {{ blockCount }}</div>
         <div>
@@ -17,8 +18,9 @@
 
 <script>
 import block from "./block.vue";
-import { saveBlock } from "./storage.js";
+import { saveBlock, hasBlock } from "./storage.js";
 import { getGame, mutGame } from "./state.js";
+import { pullBlocks } from "./exchange.js";
 import { Block } from "pbmx-web";
 
 function glue(str) {
@@ -44,11 +46,22 @@ export default {
     methods: {
         async addBlock() {
             this.addingBlock = true;
-            const block = mutGame(g => g.addBlock(Block.import(glue(this.newBlock))));
-            await saveBlock(block);
+            const block = Block.import(glue(this.newBlock));
+            await saveBlock(mutGame(g => g.addBlock(block)));
             this.newBlock = null;
             this.addingBlock = false;
         },
+        async fetchBlocks() {
+            this.addingBlock = true;
+            let blocks = await pullBlocks();
+            for(const raw of blocks) {
+                const block = Block.import(raw);
+                if(!await hasBlock(block.id().export())) {
+                    await saveBlock(mutGame(g => g.addBlock(block)));
+                }
+            }
+            this.addingBlock = false;
+        }
     },
 };
 </script>
