@@ -1,6 +1,7 @@
 use crate::{
     chain::{Block, BlockBuilder, Payload},
     keys::{Fingerprint, PrivateKey, PublicKey},
+    vtmf::{Mask, SecretShare, SecretShareProof},
 };
 use js_sys::{Array, Map};
 use wasm_bindgen::prelude::*;
@@ -102,15 +103,53 @@ impl Game {
         }
         map
     }
+
+    #[wasm_bindgen(js_name = maskRandom)]
+    pub fn mask_random(&self) -> Mask {
+        Mask(self.0.vtmf.mask_random(&mut pbmx_kit::random::thread_rng()))
+    }
+
+    #[wasm_bindgen(js_name = unmaskShare)]
+    pub fn unmask_share(&self, mask: &Mask) -> Array {
+        let array = Array::new();
+        let (share, proof) = self.0.vtmf.unmask_share(&mask.0);
+        array.push(&SecretShare(share).into());
+        array.push(&SecretShareProof(proof).into());
+        array
+    }
 }
 
 #[wasm_bindgen]
 impl Rng {
-    pub fn new(parties: usize, spec: &str) -> Self {
-        Self(kit::Rng::new(parties, spec).unwrap())
-    }
-
     pub fn spec(&self) -> String {
         self.0.spec()
+    }
+
+    pub fn mask(&self) -> Mask {
+        Mask(*self.0.mask())
+    }
+
+    pub fn state(&self, game: &Game) -> String {
+        let fp = game.player_fingerprint().0;
+        if !self.0.is_generated() {
+            if self.0.entropy_parties().contains(&fp) {
+                "waitEntropy"
+            } else {
+                "entropy"
+            }
+        } else if !self.0.is_revealed() {
+            if self.0.secret_parties().contains(&fp) {
+                "waitReveal"
+            } else {
+                "reveal"
+            }
+        } else {
+            "generated"
+        }
+        .into()
+    }
+
+    pub fn value(&self, game: &Game) -> u64 {
+        self.0.gen(&game.0.vtmf)
     }
 }

@@ -9,7 +9,7 @@ use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::crypto::{commit::Pedersen, perm::Permutation};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
-use rand::thread_rng;
+use crate::random::thread_rng;
 use subtle::{ConditionallySelectable, ConstantTimeEq};
 
 /// Non-interactive proof

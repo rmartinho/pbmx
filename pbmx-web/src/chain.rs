@@ -63,10 +63,8 @@ impl Block {
         use pbmx_kit::serde::Message;
         let e = "invalid block";
         Ok(Self(
-            kit::Block::decode(
-                &base64::decode_config(s, base64::URL_SAFE_NO_PAD).map_err(|_| e)?,
-            )
-            .map_err(|_| e)?,
+            kit::Block::decode(&base64::decode_config(s, base64::URL_SAFE_NO_PAD).map_err(|_| e)?)
+                .map_err(|_| e)?,
         ))
     }
 }

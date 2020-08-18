@@ -10,6 +10,7 @@ use crate::{
         proofs::{dlog_eq, entanglement, secret_rotation, secret_shuffle},
     },
     proto,
+    random::thread_rng,
     serde::serialize_flat_map,
 };
 use curve25519_dalek::{
@@ -19,7 +20,7 @@ use curve25519_dalek::{
 };
 use digest::{ExtendableOutput, Input, XofReader};
 use merlin::Transcript;
-use rand::{thread_rng, CryptoRng, Rng};
+use rand::{CryptoRng, Rng};
 use serde::{de, Deserialize, Deserializer};
 use std::{collections::HashMap, iter};
 
@@ -367,7 +368,7 @@ impl Vtmf {
 }
 
 create_hash! {
-    /// The hash used for key fingerprints
+    /// The XOF used as PRF
     struct RandomXof(Xof) = b"pbmx-random";
 }
 

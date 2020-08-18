@@ -7,7 +7,7 @@ use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::proto;
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
-use rand::thread_rng;
+use crate::random::thread_rng;
 
 /// Non-interactive proof
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

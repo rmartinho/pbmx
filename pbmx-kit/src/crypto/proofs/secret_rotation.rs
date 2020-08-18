@@ -16,7 +16,7 @@ use curve25519_dalek::{
     scalar::Scalar,
 };
 use merlin::Transcript;
-use rand::thread_rng;
+use crate::random::thread_rng;
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
