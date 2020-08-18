@@ -7,8 +7,10 @@ import initGame from "./state.js";
 (async function() {
     await initPbmx();
     await initDB();
-    await initGame();
+    if (window.location.hash) {
+        const id = window.location.hash.substring(1);
+        await initGame(id);
+    }
 
-    const app = createApp(App);
-    app.mount("#app");
+    createApp(App).mount("#app");
 })();

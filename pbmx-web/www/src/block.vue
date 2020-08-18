@@ -13,13 +13,12 @@
 </template>
 
 <script>
-import identifier from "./identifier.vue";
 import payload from "./payload.vue";
 import { getGame } from "./state.js";
 import { shortFingerprint } from "./display.vue";
 
 export default {
-    components: { identifier, payload },
+    components: { payload },
     props: ["block"],
     computed: {
         id() {

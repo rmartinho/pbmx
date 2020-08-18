@@ -12,6 +12,10 @@ pub use pbmx_kit::state as kit;
 pub struct Game(pub(crate) kit::State);
 
 #[wasm_bindgen]
+#[repr(transparent)]
+pub struct Rng(pub(crate) kit::Rng);
+
+#[wasm_bindgen]
 impl Game {
     pub fn new(sk: PrivateKey) -> Self {
         Self(kit::State::new(sk.0))
@@ -89,5 +93,24 @@ impl Game {
     #[wasm_bindgen(js_name = playerFingerprint)]
     pub fn player_fingerprint(&self) -> Fingerprint {
         Fingerprint(self.0.vtmf.public_key().fingerprint())
+    }
+
+    pub fn rngs(&self) -> Map {
+        let mut map = Map::new();
+        for (n, r) in self.0.rngs.iter() {
+            map = map.set(&n.into(), &Rng(r.clone()).into());
+        }
+        map
+    }
+}
+
+#[wasm_bindgen]
+impl Rng {
+    pub fn new(parties: usize, spec: &str) -> Self {
+        Self(kit::Rng::new(parties, spec).unwrap())
+    }
+
+    pub fn spec(&self) -> String {
+        self.0.spec()
     }
 }

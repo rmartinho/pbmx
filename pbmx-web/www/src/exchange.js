@@ -15,7 +15,7 @@ export function setServer(url = "wss://pbmx.herokuapp.com/ws", realm = "pbmx") {
 
 export function pushBlock(block) {
     return new Promise((resolve, reject) => {
-        const gameId = getGame().fingerprint().export();
+        const gameId = getGame().id;
         const blockId = block.id().export();
         const blockRaw = block.export();
 
@@ -37,7 +37,7 @@ export function pushBlock(block) {
 
 export function pullBlocks(days = 7) {
     return new Promise((resolve, reject) => {
-        const gameId = getGame().fingerprint().export();
+        const gameId = getGame().id;
 
         const conn = new autobahn.Connection(server);
         conn.onopen = session => {

@@ -55,15 +55,15 @@ impl Block {
     // visit
 
     pub fn export(&self) -> String {
-        use pbmx_kit::serde::ToBytes;
-        base64::encode_config(self.0.to_bytes().unwrap(), base64::URL_SAFE_NO_PAD)
+        use pbmx_kit::serde::Message;
+        base64::encode_config(self.0.encode().unwrap(), base64::URL_SAFE_NO_PAD)
     }
 
     pub fn import(s: &str) -> Result<Block, JsValue> {
-        use pbmx_kit::serde::FromBytes;
+        use pbmx_kit::serde::Message;
         let e = "invalid block";
         Ok(Self(
-            kit::Block::from_bytes(
+            kit::Block::decode(
                 &base64::decode_config(s, base64::URL_SAFE_NO_PAD).map_err(|_| e)?,
             )
             .map_err(|_| e)?,
