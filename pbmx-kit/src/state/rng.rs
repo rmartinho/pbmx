@@ -111,11 +111,44 @@ impl RngSpec {
 
 mod spec {
     use digest::XofReader;
-    use nom::character::streaming::digit1;
-    use std::{
-        fmt::{self, Display, Formatter},
-        str::FromStr,
-    };
+    use std::fmt::{self, Display, Formatter};
+
+    #[derive(Parser)]
+    #[grammar = "state/rng.pest"]
+    pub struct RngParser;
+
+    use pest::{iterators::*, prec_climber::*, Parser};
+
+    fn parse(pairs: Pairs<Rule>) -> Node {
+        let climber = PrecClimber::new(vec![
+            Operator::new(Rule::plus, Assoc::Left) | Operator::new(Rule::minus, Assoc::Left),
+            Operator::new(Rule::roll, Assoc::Right),
+        ]);
+
+        let unconst = |n: Node| match n {
+            Node::Const(u) => u,
+            _ => unreachable!(),
+        };
+        climber.climb(
+            pairs,
+            |pair| match pair.as_rule() {
+                Rule::constant | Rule::nonzero => {
+                    Node::Const(pair.as_str().parse::<u64>().unwrap())
+                }
+                Rule::expr => parse(pair.into_inner()),
+                _ => unreachable!(),
+            },
+            |lhs, op, rhs| match op.as_rule() {
+                Rule::roll => Node::Die {
+                    n: unconst(lhs),
+                    d: unconst(rhs),
+                },
+                Rule::plus => Node::Op(Expr::new(lhs), OpKind::Add, Expr::new(rhs)),
+                Rule::minus => Node::Op(Expr::new(lhs), OpKind::Sub, Expr::new(rhs)),
+                _ => unreachable!(),
+            },
+        )
+    }
 
     /// An error in parsing an RNG specification
     #[derive(Debug)]
@@ -128,7 +161,7 @@ mod spec {
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
-    enum Node {
+    pub enum Node {
         Const(u64),
         Die { n: u64, d: u64 },
         Op(Expr, OpKind, Expr),
@@ -165,14 +198,10 @@ mod spec {
                 }
             }
         }
-
-        fn die(n: u64, d: u64) -> Self {
-            Node::Die { n, d }
-        }
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
-    enum OpKind {
+    pub enum OpKind {
         Add,
         Sub,
     }
@@ -197,52 +226,17 @@ mod spec {
 
     impl Expr {
         pub fn parse(input: &str) -> Result<Self, ParseError> {
-            expr(input).map(|(_, x)| x).map_err(|_| ParseError)
+            RngParser::parse(Rule::spec, input).map(parse).map(Expr::new).map_err(|_| ParseError)
         }
 
         pub fn apply(&self, bits: &mut BitIterator) -> u64 {
             self.0.apply(bits)
         }
 
-        fn make(node: Node) -> Self {
+        pub fn new(node: Node) -> Self {
             Self(box node)
         }
     }
-
-    named!(number(&str) -> u64,
-        ws!(map_res!(digit1, |s: &str| u64::from_str(s)))
-    );
-    named!(constant(&str) -> Node,
-        ws!(map!(number, Node::Const))
-    );
-    named!(die(&str) -> Node,
-        ws!(do_parse!(
-            n: number >>
-            char!('d') >>
-            d: number >>
-            (Node::die(n, d))
-        ))
-    );
-    named!(op_kind(&str) -> OpKind,
-        ws!(alt!(
-            value!(OpKind::Add, char!('+')) |
-            value!(OpKind::Sub, char!('-'))
-        ))
-    );
-    named!(op(&str) -> Node,
-        ws!(do_parse!(
-            l: die >>
-            o: op_kind >>
-            r: constant >>
-            (Node::Op(Expr::make(l), o, Expr::make(r)))
-        ))
-    );
-    named!(expr(&str) -> Expr,
-        ws!(alt!(
-            map!(op, Expr::make) |
-            map!(die, Expr::make)
-        ))
-    );
 
     pub struct BitIterator<'a> {
         reader: &'a mut dyn XofReader,

@@ -1,0 +1,14 @@
+constant = @{ "0" | '1'..'9' ~ '0'..'9'* }
+nonzero = @{ '1'..'9' ~ '0'..'9'* }
+
+op = _{ plus | minus }
+plus = { "+" }
+minus = { "-" }
+
+dice = _{ nonzero ~ (roll ~ nonzero) }
+roll = { "d" }
+
+expr = { term ~ (op ~ term)* }
+term = _{ dice | constant }
+
+spec = _{ SOI ~ expr ~ EOI }
