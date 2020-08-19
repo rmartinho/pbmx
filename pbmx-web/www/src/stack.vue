@@ -1,4 +1,3 @@
-<!-- v-bind:key="block.id().export()" -->
 <template>
     <div class="stack">
         <div class="blob">235A7B34</div>
@@ -6,8 +5,8 @@
         <div class="token-list">
             <div
                 v-for="token in tokens"
-                v-bind:token="token"
-                v-bind:class="{ visible: false, selected: false }"
+                :token="token"
+                :class="{ visible: false, selected: false }"
                 class="token"
             >
                 {{ token.display() }}

@@ -2,22 +2,21 @@
     <div class="game">
         <button
             v-for="tab in tabs"
-            v-bind:key="tab.name"
-            v-bind:class="{ active: currentTab.name === tab.name }"
+            :key="tab.name"
+            :class="{ active: currentTab.name === tab.name }"
             v-on:click="currentTab = tab" 
             class="tab-button"
         >{{ tab.name }}</button>
         <div>
-            <component v-bind:is="currentTab.component" class="tab"></component>
+            <component :is="currentTab.component" class="tab"></component>
         </div>
         <div v-if="exportedBlock">
             <div class="export-block">
-                Copy this block and broadcast it to the other players
                 <div>
                     <pre class="block-output">{{ exportedBlock }}</pre>
                 </div>
-                <button v-on:click="publishBlock">Publish</button>
-                <button v-on:click="exportedBlock = null">Done</button>
+                <button :disabled="publishing" v-on:click="publishBlock">Publish</button>
+                <button :disabled="publishing" v-on:click="exportedBlock = null">Done</button>
             </div>
         </div>
         <button v-on:click="resetGame">RESET</button>
@@ -58,6 +57,7 @@ export default {
             currentTab: tabs[0],
             lastBlock: null,
             exportedBlock: null,
+            publishing: false,
         };
     },
     methods: {
@@ -66,7 +66,9 @@ export default {
             location.reload();
         },
         async publishBlock() {
+            this.publishing = true;
             await pushBlock(this.lastBlock);
+            this.publishing = false;
             this.exportedBlock = null;
         }
     },

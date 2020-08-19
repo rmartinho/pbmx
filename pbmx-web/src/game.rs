@@ -68,16 +68,16 @@ impl Game {
     }
 
     #[wasm_bindgen(js_name = addBlock)]
-    pub fn add_block(&mut self, block: Block) -> Block {
-        self.0.add_block(&block.0).unwrap();
-        block
+    pub fn add_block(&mut self, block: Block) -> Option<Block> {
+        self.0.add_block(&block.0).ok()?;
+        Some(block)
     }
 
     #[wasm_bindgen(js_name = finishBlock)]
-    pub fn finish_block(&mut self, builder: BlockBuilder) -> Block {
+    pub fn finish_block(&mut self, builder: BlockBuilder) -> Option<Block> {
         let block = builder.0.build(&self.0.vtmf.private_key());
-        self.0.add_block(&block).unwrap();
-        Block(block)
+        self.0.add_block(&block).ok()?;
+        Some(Block(block))
     }
 
     pub fn join(&mut self, name: String) -> BlockBuilder {

@@ -2,11 +2,11 @@
     <div class="view">
         <div v-if="joined">
             <div>Game fingerprint</div>
-            <identifier v-bind:value="gameFingerprint"/>
+            <identifier :value="gameFingerprint"/>
         </div>
         <div>
             <div>Your fingerprint</div>
-            <identifier v-bind:value="playerFingerprint"/>
+            <identifier :value="playerFingerprint"/>
         </div>
         <div v-if="!joined">
             You have not joined this game.
@@ -15,9 +15,9 @@
         </div>
         <div class="player-list">
             <div v-for="player in players"
-                 v-bind:key="player.id"
+                 :key="player.id"
             >
-                {{ player.name }} : <identifier inline v-bind:value="player.id"/>
+                {{ player.name }} : <identifier inline :value="player.id"/>
             </div>
         </div>
     </div>

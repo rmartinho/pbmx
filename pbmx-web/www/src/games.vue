@@ -3,7 +3,7 @@
         <button v-on:click="start">New game</button>
         <div
             v-for="game in games.value"
-            v-bind:key="game.id"
+            :key="game.id"
         >
             <button v-on:click="load(game)">{{ game.id }}</button>
         </div>

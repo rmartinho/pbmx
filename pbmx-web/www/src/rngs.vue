@@ -2,9 +2,9 @@
     <div class="view">
         <rng
             v-for="rng in rngs"
-            v-bind:key="rng[0]"
-            v-bind:name="rng[0]"
-            v-bind:rng="rng[1]"
+            :key="rng[0]"
+            :name="rng[0]"
+            :rng="rng[1]"
         />
     </div>
     <div>
@@ -23,6 +23,12 @@ import { Payload } from "pbmx-web";
 
 export default {
     components: { rng },
+    data() {
+        return {
+            name: "",
+            spec: "",
+        };
+    },
     computed: {
         rngs() {
             return getGame().rngs();

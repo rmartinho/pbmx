@@ -6,8 +6,8 @@
         </div>
         <payload
             v-for="payload in block.payloads()"
-            v-bind:key="payload.id().export()"
-            v-bind:payload="payload"
+            :key="payload.id().export()"
+            :payload="payload"
             />
     </div>
 </template>

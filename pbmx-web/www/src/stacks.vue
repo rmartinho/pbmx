@@ -2,7 +2,7 @@
     <div class="view">
         <stack
             v-for="stack in stacks"
-            v-bind:stack="stack"
+            :stack="stack"
         />
     </div>
 </template>

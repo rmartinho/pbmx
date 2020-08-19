@@ -1,17 +1,17 @@
 <template>
     <div class="view">
         <div>
-            <div><textarea v-model="newBlock" v-bind:readonly="addingBlock" class="block-input" placeholder="paste a block here"></textarea></div>
-            <button v-on:click="addBlock" v-bind:disabled="!newBlock || addingBlock">Add block</button>
-            <button v-on:click="fetchBlocks" v-bind:disabled="addingBlock">Fetch blocks</button>
+            <div><textarea v-model="newBlock" :readonly="addingBlock" class="block-input" placeholder="paste a block here"></textarea></div>
+            <button v-on:click="addBlock" :disabled="!newBlock || addingBlock">Add block</button>
+            <button v-on:click="fetchBlocks" :disabled="addingBlock">Fetch blocks</button>
         </div>
         <div>Blocks: {{ blockCount }}</div>
         <div>
             <block
                 v-for="block in blocks"
-                v-bind:key="block.id().export()"
-                v-bind:block="block"
-            />
+                :key="block.id().export()"
+                :block="block"
+                />
         </div>
     </div>
 </template>
