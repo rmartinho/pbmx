@@ -5,13 +5,125 @@
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://pbmx.herokuapp.com; upgrade-insecure-requests; block-all-mixed-content">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="PBMX">
+    <meta name="description" content="Secure and fair play-by-mail games">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <script type="module" src="/_dist_/index.js"></script>
-    <title>PBMX</title>
+    <title>pbmx</title>
   </head>
   <body>
     <div id="app">Loading...</div>
-    <noscript>You need to enable JavaScript to run PBMX. Sorry.</noscript>
+    <noscript>You need to enable JavaScript to run pbmx. Sorry.</noscript>
+
+    <div>
+        <h1>About</h1>
+
+        <p>With pbmx you can play games that are secure, fair, decentralized, trustless, and asynchronous over any
+        transport. The core code has been well-tested, but the bits that interact with the users and the outside world
+        are <em>very experimental at the moment, so expect bugs at every corner, unsightly and confusing UI, and general
+        wonkiness</em>.
+
+        <p>At the moment, pbmx does not implement the rules for any specific game. It provides generic tools to
+        manipulate stacks of cards: shuffle stacks, turn cards face-up, move cards around, show cards to specific
+        players, etc. With these the players can play games as they would with physical cards: the physical cards don't
+        enforce any particular game's rules, they merely provide a way to manipulate hidden information.
+
+        <h1>Instructions</h1>
+
+        <h2>Basics</h2>
+
+        <p>The core worflow in a pbmx game consists of players exchanging "blocks" with each other. Each block describes
+        one or more actions, though at the moment fitting multiple actions in a single block is not supported by this
+        interface. A player takes an action and pbmx generates a block for it.
+
+        <p>The player must then broadcast that block to the other players. There is no prescribed way to do this:
+        generated blocks are presented as base64 strings that can simply be copied and pasted to and from wherever is
+        desired. However, for convenience, there is a simple server available that can automate the exchange of blocks.
+
+        <p>Whenever a block is generated you will see what looks like a bunch of gibberish and two buttons, labeled
+        "Publish" and "Done". The gibberish is a representation of the block in base64. You now need to broadcast this
+        block to other players.
+        
+        <p>If you click "Publish", the block will be sent to the block exchange server. It will remain available for a
+        few days for other players to retrieve it.
+        
+        <p>If for some reason you don't want to use the block exchanger, or if the block exchanger is unavailable, you
+        can just copy the block representation and send it to the other players through any other means available to
+        you (e-mail, Signal, Twitter, postcard, etc). Once you have copied the representation elsewhere, you can click
+        "Done".
+
+        <p>There are two ways to receive blocks from other players. If using the block exchanger, you can go to the
+        "Blocks" tab, and press "Fetch blocks". This will automatically retrieve any blocks you do not yet have that are
+        available at the block exchanger.
+
+        <p>If you received a block representation through other means instead, you can paste it in the box in the
+        "Blocks" tab and press "Add block". At the moment you can only add one block at a time in this manner.
+
+        <h2>Starting a game</h2>
+
+        <p>A new game can be started by clicking "New game". A random identifier will be assigned to that game and
+        appended to the current URL. In order for other players to join, you can broadcast this URL to them. When a game
+        starts, you're presented with the option to provide your nickname for joining the game. Once you click "Join", a
+        private/public key pair for you; for now this is stored in your browser. After this, a block will be generated
+        and needs to be broadcast to all the other players.
+
+        <p>All the players must perform this joining step. Only once everyone has joined and published their "joining"
+        blocks can the game begin. (Note: this is currently not enforced; if a player joins after another player has
+        already taken an action, this is likely to cause all sorts of problems and weird behaviour.) All players can
+        generate their joining blocks concurrently, so long as no one takes any other action before they all publish
+        their joining blocks.
+        
+        <h2>Coin flipping, or dice rolling</h2>
+
+        <p>At the moment, the only pbmx feature available on this web page is the generation of shared random numbers.
+        This process gives the players the guarantee that no player or group of players can cheat and influence the
+        result, as long as at least one player is honest (so, if at least <em>you</em> are honest, the other players
+        cannot band together to influence the result). Additionally, no player can predict the result from the
+        information available to them before the generation is complete. This works in a decentralized fashion without
+        the need to trust a third party.
+
+        <p>This is provided for games where coins are flipped, dice are rolled, or random numbers are otherwise
+        necessary. This could be simulated with cards: a coin flip is equivalent to shuffling two cards and taking the
+        top one. However, doing this using stacks of cards all the time might get cumbersome, so pbmx includes a
+        dedicated process for random numbers.
+
+        <p>This feature is available in the "RNGs" tab. Everything is modeled as a series of dice rolls (a coin flip is
+        equivalent to rolling a two-sided die). The first step in generating a random number is to specify how the
+        number is to be generated. This is done using D&amp;D dice rolling notation: "2d6+3" means "roll 2 six-sided
+        dice, and add 3". A simple coin flip can be notated as "1d2". Different dice can be mixed, e.g. "1d6+1d4" means
+        "roll a six-sided and a four-sided die and add them together". An <em>n</em>-sided die will generate numbers
+        from 0 to <em>n</em>-1, so a six-sided die will produce 0, 1, 2, 3, 4, or 5.
+
+        <p>One player must initiate the process by giving the roll a name, which must be unique but can be anything,
+        specifying the dice to roll using D&amp;D notation, and then pressing "New RNG". This will generate a new block,
+        which as always, needs to be broadcast to the other players.
+
+        <p>Now each one of the other players receives that block and then needs to contribute with some entropy to the
+        roll. This step can be done concurrently by the players. In order to do so, they need to click the "Provide
+        entropy" button on the appropriate generator entry. The browser will generate some random bits and pack them up
+        in a new block, which once more needs to be broadcast. A player trying to cheat could attempt to use non-random
+        bits, but as explained above, if at least one player is honest and doesn't tamper with the generation of random
+        bits, the result will be uniformly random.
+
+        <p>The first player does not need to perform this step, because, in order to streamline the process, it was
+        already performed when creating the RNG.
+
+        <p>Once entropy blocks from all players are broadcast and received, the result can be revealed. In order for
+        this to be done each player needs to provide a secret value. This is done by clicking "Reveal" in the
+        appropriate generator entry, and publishing the corresponding block.
+
+        <p>When all reveal blocks have been received, the RNG entry will merely display the generated number.
+
+        <h1>More info</h1>
+
+        <p>pbmx is an open-source library. The <a href="https://github.com/rmartinho/pbmx">library source code</a> is
+        available on GitHub. This website uses that library as a WebAssembly module. It is currently served by GitHub
+        Pages, from this <a href="https://github.com/pbmx/pbmx.github.io">repository</a>. The library is
+        feature-complete, but this web interface is in very early stages. Everything works without server-generated
+        content on this page; everything runs in your browser, with one exception: there is a
+        <a href="https://pbmx.herokuapp.com">server for exchanging blocks</a> running on Heroku provided for those who
+        want the extra convenience, but its use is entirely optional. You can simply replace any use of that server with
+        manually exchanging the blocks over the transport of your choice.
+
+    </div>
   </body>
 </html>

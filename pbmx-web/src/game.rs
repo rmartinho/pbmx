@@ -129,6 +129,21 @@ impl Rng {
         Mask(*self.0.mask())
     }
 
+    #[wasm_bindgen(js_name = addEntropy)]
+    pub fn add_entropy(&mut self, party: &Fingerprint, mask: &Mask) {
+        self.0.add_entropy(party.0, &mask.0);
+    }
+
+    #[wasm_bindgen(js_name = isGenerated)]
+    pub fn is_generated(&self) -> bool {
+        self.0.is_generated()
+    }
+
+    #[wasm_bindgen(js_name = isRevealed)]
+    pub fn is_revealed(&self) -> bool {
+        self.0.is_revealed()
+    }
+
     pub fn state(&self, game: &Game) -> String {
         let fp = game.player_fingerprint().0;
         if !self.0.is_generated() {
@@ -144,7 +159,7 @@ impl Rng {
                 "reveal"
             }
         } else {
-            "generated"
+            "revealed"
         }
         .into()
     }

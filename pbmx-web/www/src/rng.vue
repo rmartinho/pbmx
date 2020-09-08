@@ -7,7 +7,7 @@
             <div v-if="state == 'waitEntropy'">Waiting for entropy...</div>
             <button v-on:click="reveal" v-if="state == 'reveal'">Reveal</button>
             <div v-if="state == 'waitReveal'">Waiting for reveal...</div>
-            <div v-if="state == 'generated'">{{ value }}</div>
+            <div v-if="state == 'revealed'">{{ value }}</div>
         </div>
     </div>
 </template>
@@ -34,8 +34,15 @@ export default {
     },
     methods: {
         async provide() {
+            const mask = getGame().maskRandom();
+            this.rng.addEntropy(getGame().playerFingerprint(), mask);
+
             const builder = getGame().buildBlock();
-            builder.addPayload(Payload.randomEntropy(this.name, getGame().maskRandom()));
+            builder.addPayload(Payload.randomEntropy(this.name, mask));
+            if(this.rng.isGenerated()) {
+                const [share, proof] = getGame().unmaskShare(this.rng.mask());
+                builder.addPayload(Payload.randomReveal(this.name, share, proof));
+            }
             const block = mutGame(g => g.finishBlock(builder));
             await saveBlock(block, getGame().id);
             this.$parent.$parent.lastBlock = block;

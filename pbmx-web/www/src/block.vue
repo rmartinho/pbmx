@@ -9,13 +9,14 @@
             :key="payload.id().export()"
             :payload="payload"
             />
+        <button v-on:click="getRaw">Raw</button>
     </div>
 </template>
 
 <script>
 import payload from "./payload.vue";
 import { getGame } from "./state.js";
-import { shortFingerprint } from "./display.vue";
+import { formatBase64, shortFingerprint } from "./display.vue";
 
 export default {
     components: { payload },
@@ -27,6 +28,11 @@ export default {
         signer() {
             const signer = this.block.signer().export();
             return getGame().players().get(signer);
+        },
+    },
+    methods: {
+        getRaw() {
+            this.$parent.$parent.exportedBlock = formatBase64(this.block.export());
         },
     },
 };
