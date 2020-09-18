@@ -19,6 +19,7 @@ pub mod serde;
 pub mod chain;
 pub mod crypto;
 pub mod proto;
+pub mod random;
 pub mod state;
 
 mod error;
