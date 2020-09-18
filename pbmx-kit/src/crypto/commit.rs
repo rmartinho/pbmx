@@ -24,8 +24,9 @@ impl Pedersen {
     }
 
     /// Creates a new commitment scheme with random generators
-    pub fn random<R: Rng + CryptoRng>(h: RistrettoPoint, n: usize, rng: &mut R) -> Self {
+    pub fn random<R: Rng + CryptoRng>(n: usize, rng: &mut R) -> Self {
         loop {
+            let h = RistrettoPoint::random(rng);
             let g = iter::repeat_with(|| RistrettoPoint::random(rng))
                 .take(n)
                 .collect();
@@ -125,14 +126,13 @@ derive_base64_conversions!(Pedersen);
 mod tests {
     use super::Pedersen;
     use crate::serde::{FromBase64, ToBase64};
-    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use curve25519_dalek::scalar::Scalar;
     use rand::thread_rng;
 
     #[test]
     fn pedersen_scheme_commitments_agree_with_validation() {
         let mut rng = thread_rng();
-        let h = RistrettoPoint::random(&mut rng);
-        let com = Pedersen::random(h, 3, &mut rng);
+        let com = Pedersen::random(3, &mut rng);
         let m = [
             Scalar::random(&mut rng),
             Scalar::random(&mut rng),
@@ -150,8 +150,7 @@ mod tests {
     #[test]
     fn pedersen_scheme_roundtrips_via_base64() {
         let mut rng = thread_rng();
-        let h = RistrettoPoint::random(&mut rng);
-        let original = Pedersen::random(h, 3, &mut rng);
+        let original = Pedersen::random(3, &mut rng);
 
         let exported = original.to_base64().unwrap();
 

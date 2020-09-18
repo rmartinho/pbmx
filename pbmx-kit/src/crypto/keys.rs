@@ -71,7 +71,9 @@ impl PrivateKey {
 
     /// Gets a public key that corresponds with this key
     pub fn public_key(&self) -> PublicKey {
-        PublicKey { h: self.0.to_public().into_point() }
+        PublicKey {
+            h: self.0.to_public().into_point(),
+        }
     }
 
     /// Gets the public key fingerprint

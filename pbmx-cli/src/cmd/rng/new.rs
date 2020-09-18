@@ -1,8 +1,7 @@
 use crate::{state::State, Config, Error, Result};
-use pbmx_kit::state::Rng;
 use clap::ArgMatches;
 use colored::Colorize;
-use pbmx_kit::chain::Payload;
+use pbmx_kit::{chain::Payload, state::Rng};
 use rand::thread_rng;
 
 pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {

@@ -62,7 +62,7 @@ impl Proof {
         transcript.commit_masks(b"e1", publics.e1);
 
         let n = publics.e0.len();
-        let com = transcript.challenge_pedersen(b"com", *publics.h, n);
+        let com = transcript.challenge_pedersen(b"com", n);
 
         let rekey_rng = |t: &Transcript| {
             t.build_rng()
@@ -157,7 +157,7 @@ impl Proof {
         transcript.commit_masks(b"e1", publics.e1);
 
         let n = publics.e0.len();
-        let com = transcript.challenge_pedersen(b"com", *publics.h, n);
+        let com = transcript.challenge_pedersen(b"com", n);
 
         let gh = Mask(G.basepoint(), *publics.h);
 

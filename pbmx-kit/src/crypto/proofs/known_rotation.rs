@@ -164,7 +164,7 @@ impl Proof {
 mod tests {
     use super::{super::random_scalars, Proof, Publics, Secrets};
     use crate::crypto::{commit::Pedersen, perm::Permutation};
-    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use curve25519_dalek::scalar::Scalar;
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
 
@@ -172,15 +172,13 @@ mod tests {
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
 
-        let h = &RistrettoPoint::random(&mut rng);
-
         let m = &random_scalars(8, &mut rng);
         let mut mp = m.clone();
         let k = rng.gen_range(0, 8);
         let pi = Permutation::shift(8, k);
         pi.apply_to(&mut mp);
 
-        let com = &Pedersen::random(*h, 1, &mut rng);
+        let com = &Pedersen::random(1, &mut rng);
         let (c, r): (Vec<_>, Vec<_>) = mp.iter().map(|m| com.commit_to(&[*m], &mut rng)).unzip();
         let publics = Publics { com, m, c: &c };
         let secrets = Secrets { k, r: &r };

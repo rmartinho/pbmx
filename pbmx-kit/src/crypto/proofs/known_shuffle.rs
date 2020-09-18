@@ -4,10 +4,12 @@
 //          Cryptology ePrint Archive, Report 2005/246, 2005.
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
-use crate::crypto::{commit::Pedersen, perm::Permutation};
+use crate::{
+    crypto::{commit::Pedersen, perm::Permutation},
+    random::thread_rng,
+};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
-use rand::thread_rng;
 use std::iter;
 
 /// Non-interactive proof
@@ -173,7 +175,7 @@ impl Proof {
 mod tests {
     use super::{Proof, Publics, Secrets};
     use crate::crypto::{commit::Pedersen, perm::Shuffles};
-    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use curve25519_dalek::scalar::Scalar;
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
     use std::iter;
@@ -182,8 +184,6 @@ mod tests {
     fn prove_and_verify_agree() {
         let mut rng = thread_rng();
 
-        let h = &RistrettoPoint::random(&mut rng);
-
         let m = &iter::repeat_with(|| Scalar::random(&mut rng))
             .take(8)
             .collect::<Vec<_>>();
@@ -191,7 +191,7 @@ mod tests {
         let pi = &rng.sample(&Shuffles(8));
         pi.apply_to(&mut mp);
 
-        let com = &Pedersen::random(*h, 8, &mut rng);
+        let com = &Pedersen::random(8, &mut rng);
         let (c, r) = com.commit_to(&mp, &mut rng);
         let publics = Publics { com, c: &c, m };
         let secrets = Secrets { pi, r: &r };

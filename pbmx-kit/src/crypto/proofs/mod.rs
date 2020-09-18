@@ -29,8 +29,7 @@ trait TranscriptProtocol {
     fn challenge_scalar(&mut self, label: &'static [u8]) -> Scalar;
     fn challenge_scalars(&mut self, label: &'static [u8], n: usize) -> Vec<Scalar>;
     fn challenge_point(&mut self, label: &'static [u8]) -> RistrettoPoint;
-    fn challenge_pedersen(&mut self, label: &'static [u8], h: RistrettoPoint, n: usize)
-        -> Pedersen;
+    fn challenge_pedersen(&mut self, label: &'static [u8], n: usize) -> Pedersen;
 }
 
 impl TranscriptProtocol for Transcript {
@@ -96,15 +95,10 @@ impl TranscriptProtocol for Transcript {
         &RISTRETTO_BASEPOINT_TABLE * &s
     }
 
-    fn challenge_pedersen(
-        &mut self,
-        label: &'static [u8],
-        h: RistrettoPoint,
-        n: usize,
-    ) -> Pedersen {
+    fn challenge_pedersen(&mut self, label: &'static [u8], n: usize) -> Pedersen {
         loop {
             let com = Pedersen::new(
-                h,
+                self.challenge_point(label),
                 iter::repeat_with(|| self.challenge_point(label))
                     .take(n)
                     .collect(),

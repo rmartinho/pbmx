@@ -1,8 +1,10 @@
-use crate::crypto::{
-    keys::Fingerprint,
-    vtmf::{Mask, SecretShare, Vtmf},
+use crate::{
+    crypto::{
+        keys::Fingerprint,
+        vtmf::{Mask, SecretShare, Vtmf},
+    },
+    Error,
 };
-use crate::Error;
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
 use digest::XofReader;
 use std::fmt::{self, Debug, Display, Formatter};
