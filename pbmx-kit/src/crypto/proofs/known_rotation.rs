@@ -6,18 +6,43 @@
 // 2009.
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
-use crate::crypto::{commit::Pedersen, perm::Permutation};
+use crate::{
+    crypto::{commit::Pedersen, perm::Permutation},
+    proto,
+    random::thread_rng,
+    serde::{points_from_proto, points_to_proto, scalars_from_proto, scalars_to_proto, Proto},
+    Error, Result,
+};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
-use crate::random::thread_rng;
 use subtle::{ConditionallySelectable, ConstantTimeEq};
 
 /// Non-interactive proof
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
     f: Vec<RistrettoPoint>,
     l: Vec<Scalar>,
     t: Vec<Scalar>,
+}
+
+impl Proto for Proof {
+    type Message = proto::KnownRotationProof;
+
+    fn to_proto(&self) -> Result<proto::KnownRotationProof> {
+        Ok(proto::KnownRotationProof {
+            f: points_to_proto(&self.f)?,
+            l: scalars_to_proto(&self.l)?,
+            t: scalars_to_proto(&self.t)?,
+        })
+    }
+
+    fn from_proto(m: &proto::KnownRotationProof) -> Result<Self> {
+        Ok(Proof {
+            f: points_from_proto(&m.f)?,
+            l: scalars_from_proto(&m.l)?,
+            t: scalars_from_proto(&m.t)?,
+        })
+    }
 }
 
 /// Public parameters
@@ -107,7 +132,7 @@ impl Proof {
     }
 
     /// Verifies a non-interactive rotation of known content argument
-    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
+    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"known_rotation");
 
         transcript.commit_pedersen(b"com", publics.com);
@@ -155,7 +180,7 @@ impl Proof {
         if lambda == l_sum && ht == fgl {
             Ok(())
         } else {
-            Err(())
+            Err(Error::BadProof)
         }
     }
 }
@@ -163,7 +188,10 @@ impl Proof {
 #[cfg(test)]
 mod tests {
     use super::{super::random_scalars, Proof, Publics, Secrets};
-    use crate::crypto::{commit::Pedersen, perm::Permutation};
+    use crate::{
+        crypto::{commit::Pedersen, perm::Permutation},
+        Error,
+    };
     use curve25519_dalek::scalar::Scalar;
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
@@ -191,6 +219,6 @@ mod tests {
         // break the proof
         proof.t[0] += Scalar::one();
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
-        assert_eq!(verified, Err(()));
+        assert_eq!(verified, Err(Error::BadProof));
     }
 }

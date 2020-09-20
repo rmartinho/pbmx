@@ -1,4 +1,8 @@
-use crate::proto;
+use crate::{
+    proto,
+    serde::{point_from_proto, point_to_proto, Proto},
+    Result,
+};
 use curve25519_dalek::{
     ristretto::RistrettoPoint,
     scalar::Scalar,
@@ -12,10 +16,23 @@ use std::{
 };
 
 /// A masked value
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Mask(pub RistrettoPoint, pub RistrettoPoint);
 
-derive_opaque_proto_conversions!(Mask: proto::Mask);
+impl Proto for Mask {
+    type Message = proto::Mask;
+
+    fn to_proto(&self) -> Result<proto::Mask> {
+        Ok(proto::Mask {
+            c1: point_to_proto(&self.0)?,
+            c2: point_to_proto(&self.1)?,
+        })
+    }
+
+    fn from_proto(m: &proto::Mask) -> Result<Self> {
+        Ok(Self(point_from_proto(&m.c1)?, point_from_proto(&m.c2)?))
+    }
+}
 
 impl Mask {
     /// Creates a new open masking

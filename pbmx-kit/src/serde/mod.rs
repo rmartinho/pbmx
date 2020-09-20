@@ -1,27 +1,41 @@
 //! PBMX toolbox utilities
 
 #[macro_use]
-mod macros;
 mod bytes;
 mod protobuf;
 pub use self::{
-    bytes::{FromBase64, FromBytes, ToBase64, ToBytes},
+    bytes::{FromBase64, ToBase64},
     protobuf::Proto,
 };
 
 use crate::Error;
-use serde::ser::{Serialize, Serializer};
-use std::{
-    collections::{BTreeSet, HashMap},
-    hash::{BuildHasher, Hash},
+use curve25519_dalek::{
+    ristretto::{CompressedRistretto, RistrettoPoint},
+    scalar::Scalar,
 };
 
 /// A PBMX protocol message
 pub trait Message: Sized {
     /// Encodes a value as a PBMX message
     fn encode(&self) -> Result<Vec<u8>, Error>;
+
+    /// Encodes a value as a PBMX message in base64
+    fn encode_base64(&self) -> Result<String, Error> {
+        Ok(base64::encode_config(
+            &self.encode()?,
+            base64::URL_SAFE_NO_PAD,
+        ))
+    }
+
     /// Decodes a PBMX message into a value
     fn decode(buf: &[u8]) -> Result<Self, Error>;
+
+    /// Decodes a base64 PBMX message into a value
+    fn decode_base64(string: &str) -> Result<Self, Error> {
+        let bytes =
+            base64::decode_config(string, base64::URL_SAFE_NO_PAD).map_err(|_| Error::Decoding)?;
+        Self::decode(&bytes)
+    }
 }
 
 impl<T> Message for T
@@ -56,26 +70,6 @@ where
 
 const FORMAT_NUMBER: usize = 1;
 
-/// Serializes a map as a flat vector
-///
-/// This implies that the keys can be reconstructed from the values alone.
-/// The flat vector is ordered by the keys, so that the serialized form is
-/// deterministic.
-pub(crate) fn serialize_flat_map<K, V, H, S>(
-    map: &HashMap<K, V, H>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    K: Eq + Ord + Hash,
-    V: Serialize,
-    H: BuildHasher,
-    S: Serializer,
-{
-    let keys: BTreeSet<_> = map.keys().collect();
-    let v: Vec<_> = keys.iter().map(|k| map.get(k).unwrap()).collect();
-    v.serialize(serializer)
-}
-
 /// Deserializes a series of Protocol Buffers messages
 pub(crate) fn vec_from_proto<T: Proto>(v: &[T::Message]) -> Result<Vec<T>, Error> {
     v.iter().map(Proto::from_proto).collect()
@@ -84,4 +78,54 @@ pub(crate) fn vec_from_proto<T: Proto>(v: &[T::Message]) -> Result<Vec<T>, Error
 /// Serializes a series of Protocol Buffers messages
 pub(crate) fn vec_to_proto<T: Proto>(v: &[T]) -> Result<Vec<T::Message>, Error> {
     v.iter().map(Proto::to_proto).collect()
+}
+
+/// Deserializes a scalar
+pub(crate) fn scalar_from_proto(v: &[u8]) -> Result<Scalar, Error> {
+    if v.len() != 32 {
+        return Err(Error::Decoding);
+    }
+    let mut buf = [0; 32];
+    buf.copy_from_slice(v);
+    Scalar::from_canonical_bytes(buf).ok_or(Error::Decoding)
+}
+
+/// Serializes a scalar
+pub(crate) fn scalar_to_proto(s: &Scalar) -> Result<Vec<u8>, Error> {
+    Ok(s.as_bytes().to_vec())
+}
+
+/// Deserializes a point
+pub(crate) fn point_from_proto(v: &[u8]) -> Result<RistrettoPoint, Error> {
+    if v.len() != 32 {
+        return Err(Error::Decoding);
+    }
+    CompressedRistretto::from_slice(v)
+        .decompress()
+        .ok_or(Error::Decoding)
+}
+
+/// Serializes a point
+pub(crate) fn point_to_proto(p: &RistrettoPoint) -> Result<Vec<u8>, Error> {
+    Ok(p.compress().as_bytes().to_vec())
+}
+
+/// Deserializes a series of scalars
+pub(crate) fn scalars_from_proto(v: &[Vec<u8>]) -> Result<Vec<Scalar>, Error> {
+    v.iter().map(|v| scalar_from_proto(v)).collect()
+}
+
+/// Serializes a series of scalars
+pub(crate) fn scalars_to_proto(s: &[Scalar]) -> Result<Vec<Vec<u8>>, Error> {
+    s.iter().map(scalar_to_proto).collect()
+}
+
+/// Deserializes a series of points
+pub(crate) fn points_from_proto(v: &[Vec<u8>]) -> Result<Vec<RistrettoPoint>, Error> {
+    v.iter().map(|v| point_from_proto(v)).collect()
+}
+
+/// Serializes a series of points
+pub(crate) fn points_to_proto(p: &[RistrettoPoint]) -> Result<Vec<Vec<u8>>, Error> {
+    p.iter().map(point_to_proto).collect()
 }

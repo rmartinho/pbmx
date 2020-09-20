@@ -7,21 +7,14 @@ pub use self::payload::{Payload, PayloadVisitor};
 
 pub use crate::crypto::keys::Fingerprint as Id;
 
-use crate::serde::serialize_flat_map;
-use serde::de::{Deserialize, Deserializer};
 use std::collections::HashMap;
 
 /// A blockchain
-#[derive(Default, Debug, Serialize)]
+#[derive(Default, Debug)]
 pub struct Chain {
-    #[serde(serialize_with = "serialize_flat_map")]
     blocks: HashMap<Id, Block>,
-
-    #[serde(skip)]
     heads: Vec<Id>,
-    #[serde(skip)]
     roots: Vec<Id>,
-    #[serde(skip)]
     links: HashMap<Id, Vec<Id>>,
 }
 
@@ -29,14 +22,6 @@ impl Chain {
     /// Creates a new empty chain
     pub fn new() -> Chain {
         Chain::default()
-    }
-
-    fn from_blocks(blocks: Vec<Block>) -> Chain {
-        let mut chain = Chain::default();
-        for b in blocks {
-            chain.add_block(b);
-        }
-        chain
     }
 
     /// Gets the number of blocks in the chain
@@ -108,28 +93,6 @@ impl Chain {
     }
 }
 
-impl<'de> Deserialize<'de> for Chain {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Ok(ChainRaw::deserialize(deserializer)?.into())
-    }
-}
-
-#[derive(Deserialize)]
-struct ChainRaw {
-    blocks: Vec<Block>,
-}
-
-impl ChainRaw {
-    fn into(self) -> Chain {
-        Chain::from_blocks(self.blocks)
-    }
-}
-
-derive_base64_conversions!(Chain);
-
 struct Blocks<'a> {
     roots: Vec<Id>,
     chain: &'a Chain,
@@ -197,13 +160,8 @@ pub trait ChainVisitor: BlockVisitor {
 #[cfg(test)]
 mod test {
     use super::Chain;
-    use crate::{
-        chain::{block::Block, payload::Payload},
-        crypto::keys::PrivateKey,
-        serde::{FromBase64, ToBase64},
-    };
+    use crate::{chain::payload::Payload, crypto::keys::PrivateKey};
     use rand::thread_rng;
-    use std::collections::{BTreeMap, BTreeSet};
 
     #[test]
     fn chain_block_iteration_works() {
@@ -234,54 +192,5 @@ mod test {
 
         let blocks: Vec<_> = chain.blocks().map(|b| b.id()).collect();
         assert_eq!(blocks, vec![gid, b1.id(), b0.id(), b2.id()])
-    }
-
-    #[test]
-    fn chain_roundtrips_via_base64() {
-        let mut rng = thread_rng();
-        let sk = PrivateKey::random(&mut rng);
-        let pk = sk.public_key();
-        let mut chain = Chain::new();
-        let mut gen = chain.build_block();
-        gen.add_payload(Payload::PublishKey("foo".into(), pk));
-        chain.add_block(gen.build(&sk));
-        let mut b0 = chain.build_block();
-        b0.add_payload(Payload::Bytes(vec![0, 1, 2, 3, 4]));
-        b0.add_payload(Payload::Bytes(vec![5, 6, 7, 8, 9]));
-        let b0 = b0.build(&sk);
-
-        let mut b1 = chain.build_block();
-        b1.add_payload(Payload::Bytes(vec![9, 8, 7, 6, 5]));
-        let b1 = b1.build(&sk);
-
-        chain.add_block(b0.clone());
-        chain.add_block(b1.clone());
-
-        let mut b2 = chain.build_block();
-        b2.add_payload(Payload::Bytes(vec![4, 3, 2, 1, 0]));
-        let b2 = b2.build(&sk);
-        chain.add_block(b2.clone());
-        let original = chain;
-
-        let exported = original.to_base64().unwrap();
-
-        let recovered = Chain::from_base64(&exported).unwrap();
-
-        assert_eq!(original.heads, recovered.heads);
-        assert_eq!(original.roots, recovered.roots);
-        let original_ids: BTreeSet<_> = original.blocks.values().map(Block::id).collect();
-        let recovered_ids: BTreeSet<_> = recovered.blocks.values().map(Block::id).collect();
-        assert_eq!(original_ids, recovered_ids);
-        let original_links: BTreeMap<_, BTreeSet<_>> = original
-            .links
-            .into_iter()
-            .map(|(k, v)| (k, v.into_iter().collect()))
-            .collect();
-        let recovered_links: BTreeMap<_, BTreeSet<_>> = recovered
-            .links
-            .into_iter()
-            .map(|(k, v)| (k, v.into_iter().collect()))
-            .collect();
-        assert_eq!(original_links, recovered_links);
     }
 }

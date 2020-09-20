@@ -28,15 +28,15 @@ impl PrivateKey {
     }
 
     pub fn export(&self) -> String {
-        use pbmx_kit::serde::ToBytes;
-        base64::encode_config(self.0.to_bytes().unwrap(), base64::URL_SAFE_NO_PAD)
+        use pbmx_kit::serde::Message;
+        base64::encode_config(self.0.encode().unwrap(), base64::URL_SAFE_NO_PAD)
     }
 
     pub fn import(s: &str) -> Result<PrivateKey, JsValue> {
-        use pbmx_kit::serde::FromBytes;
+        use pbmx_kit::serde::Message;
         let e = "invalid private key";
         Ok(Self(
-            kit::PrivateKey::from_bytes(
+            kit::PrivateKey::decode(
                 &base64::decode_config(s, base64::URL_SAFE_NO_PAD).map_err(|_| e)?,
             )
             .map_err(|_| e)?,
@@ -51,14 +51,14 @@ impl PublicKey {
     }
 
     pub fn export(&self) -> String {
-        use pbmx_kit::serde::ToBytes;
-        base64::encode_config(self.0.to_bytes().unwrap(), base64::URL_SAFE_NO_PAD)
+        use pbmx_kit::serde::Message;
+        base64::encode_config(self.0.encode().unwrap(), base64::URL_SAFE_NO_PAD)
     }
 
     pub fn import(s: &str) -> Result<PublicKey, JsValue> {
-        use pbmx_kit::serde::FromBytes;
+        use pbmx_kit::serde::Message;
         Ok(Self(
-            kit::PublicKey::from_bytes(
+            kit::PublicKey::decode(
                 &base64::decode_config(s, base64::URL_SAFE_NO_PAD).map_err(|_| "invalid base64")?,
             )
             .map_err(|_| "invalid public key")?,

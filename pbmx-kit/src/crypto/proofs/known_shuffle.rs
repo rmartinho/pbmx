@@ -6,14 +6,20 @@
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
     crypto::{commit::Pedersen, perm::Permutation},
+    proto,
     random::thread_rng,
+    serde::{
+        point_from_proto, point_to_proto, scalar_from_proto, scalar_to_proto, scalars_from_proto,
+        scalars_to_proto, Proto,
+    },
+    Error, Result,
 };
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use std::iter;
 
 /// Non-interactive proof
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
     cd: RistrettoPoint,
     cdd: RistrettoPoint,
@@ -22,6 +28,34 @@ pub struct Proof {
     z: Scalar,
     fd: Vec<Scalar>,
     zd: Scalar,
+}
+
+impl Proto for Proof {
+    type Message = proto::KnownShuffleProof;
+
+    fn to_proto(&self) -> Result<proto::KnownShuffleProof> {
+        Ok(proto::KnownShuffleProof {
+            cd: point_to_proto(&self.cd)?,
+            cdd: point_to_proto(&self.cdd)?,
+            cda: point_to_proto(&self.cda)?,
+            f: scalars_to_proto(&self.f)?,
+            z: scalar_to_proto(&self.z)?,
+            fd: scalars_to_proto(&self.fd)?,
+            zd: scalar_to_proto(&self.zd)?,
+        })
+    }
+
+    fn from_proto(m: &proto::KnownShuffleProof) -> Result<Self> {
+        Ok(Proof {
+            cd: point_from_proto(&m.cd)?,
+            cdd: point_from_proto(&m.cdd)?,
+            cda: point_from_proto(&m.cda)?,
+            f: scalars_from_proto(&m.f)?,
+            z: scalar_from_proto(&m.z)?,
+            fd: scalars_from_proto(&m.fd)?,
+            zd: scalar_from_proto(&m.zd)?,
+        })
+    }
 }
 
 /// Public parameters
@@ -135,7 +169,7 @@ impl Proof {
     }
 
     /// Verifies a non-interactive shuffle of known content argument
-    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
+    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"known_shuffle");
 
         transcript.commit_pedersen(b"com", publics.com);
@@ -166,7 +200,7 @@ impl Proof {
         if ff == e * prod {
             Ok(())
         } else {
-            Err(())
+            Err(Error::BadProof)
         }
     }
 }
@@ -174,7 +208,10 @@ impl Proof {
 #[cfg(test)]
 mod tests {
     use super::{Proof, Publics, Secrets};
-    use crate::crypto::{commit::Pedersen, perm::Shuffles};
+    use crate::{
+        crypto::{commit::Pedersen, perm::Shuffles},
+        Error,
+    };
     use curve25519_dalek::scalar::Scalar;
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
@@ -204,6 +241,6 @@ mod tests {
         // break the proof
         proof.z += Scalar::one();
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
-        assert_eq!(verified, Err(()));
+        assert_eq!(verified, Err(Error::BadProof));
     }
 }

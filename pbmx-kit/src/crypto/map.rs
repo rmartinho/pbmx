@@ -1,8 +1,8 @@
 //! Mapping integers to/from the elliptic curve
 
+use crate::random::thread_rng;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use crate::random::{thread_rng};
-use rand::{Rng};
+use rand::Rng;
 
 const START_BIT: usize = 12;
 const END_BIT: usize = START_BIT + 8;

@@ -7,6 +7,12 @@ use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
     crypto::{perm::Permutation, proofs::known_shuffle, vtmf::Mask},
     proto,
+    random::thread_rng,
+    serde::{
+        point_from_proto, point_to_proto, scalar_from_proto, scalar_to_proto, scalars_from_proto,
+        scalars_to_proto, Proto,
+    },
+    Error, Result,
 };
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -14,13 +20,12 @@ use curve25519_dalek::{
     scalar::Scalar,
 };
 use merlin::Transcript;
-use crate::random::thread_rng;
 use std::iter;
 
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 /// Non-interactive proof
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
     skc: known_shuffle::Proof,
     c: RistrettoPoint,
@@ -30,7 +35,31 @@ pub struct Proof {
     z: Scalar,
 }
 
-derive_opaque_proto_conversions!(Proof: proto::ShuffleProof);
+impl Proto for Proof {
+    type Message = proto::ShuffleProof;
+
+    fn to_proto(&self) -> Result<proto::ShuffleProof> {
+        Ok(proto::ShuffleProof {
+            skc: Some(self.skc.to_proto()?),
+            c: point_to_proto(&self.c)?,
+            cd: point_to_proto(&self.cd)?,
+            ed: Some(self.ed.to_proto()?),
+            f: scalars_to_proto(&self.f)?,
+            z: scalar_to_proto(&self.z)?,
+        })
+    }
+
+    fn from_proto(m: &proto::ShuffleProof) -> Result<Self> {
+        Ok(Proof {
+            skc: known_shuffle::Proof::from_proto(m.skc.as_ref().ok_or(Error::Decoding)?)?,
+            c: point_from_proto(&m.c)?,
+            cd: point_from_proto(&m.cd)?,
+            ed: Mask::from_proto(m.ed.as_ref().ok_or(Error::Decoding)?)?,
+            f: scalars_from_proto(&m.f)?,
+            z: scalar_from_proto(&m.z)?,
+        })
+    }
+}
 
 /// Public parameters
 #[derive(Copy, Clone)]
@@ -149,7 +178,7 @@ impl Proof {
     }
 
     /// Verifies a non-interactive zero-knowledge proof of a secret shuffle
-    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
+    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"secret_shuffle");
 
         transcript.commit_point(b"h", publics.h);
@@ -203,7 +232,7 @@ impl Proof {
         if etfd == ez {
             Ok(())
         } else {
-            Err(())
+            Err(Error::BadProof)
         }
     }
 }
@@ -211,7 +240,10 @@ impl Proof {
 #[cfg(test)]
 mod tests {
     use super::{super::random_scalars, Proof, Publics, Secrets, G};
-    use crate::crypto::{perm::Shuffles, vtmf::Mask};
+    use crate::{
+        crypto::{perm::Shuffles, vtmf::Mask},
+        Error,
+    };
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
@@ -257,6 +289,6 @@ mod tests {
         // break the proof
         proof.z += Scalar::one();
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
-        assert_eq!(verified, Err(()));
+        assert_eq!(verified, Err(Error::BadProof));
     }
 }

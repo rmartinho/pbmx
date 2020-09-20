@@ -4,12 +4,16 @@ use std::fmt::{self, Display, Formatter};
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Error type
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     /// An encoding error
     Encoding,
     /// A decoding error
     Decoding,
+    /// A signature verification failure
+    BadSignature,
+    /// A proof verification failure
+    BadProof,
 }
 
 impl Display for Error {
@@ -17,6 +21,8 @@ impl Display for Error {
         match self {
             Error::Encoding => write!(f, "encoding failure"),
             Error::Decoding => write!(f, "decoding failure"),
+            Error::BadSignature => write!(f, "invalid signature"),
+            Error::BadProof => write!(f, "invalid proof"),
         }
     }
 }

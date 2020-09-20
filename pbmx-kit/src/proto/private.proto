@@ -2,11 +2,13 @@ syntax = "proto3";
 
 package pbmx.private;
 
+import "core.proto";
+
 message PrivateSecretMap {
     repeated PrivateSecretEntry map = 1;
 }
 
 message PrivateSecretEntry {
-    bytes key = 1;
-    bytes value = 2;
+    pbmx.core.Mask key = 1;
+    pbmx.core.Mask value = 2;
 }

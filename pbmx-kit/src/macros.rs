@@ -8,7 +8,7 @@ macro_rules! create_hash {
     ( $(#[ $attr:meta ])* struct $id:ident (Hash< $n:ty >) = $domain:expr ; ) => {
         $(#[ $attr ])*
         #[derive(Clone)]
-        struct $id($crate::crypto::Hash<$n>);
+        pub(crate) struct $id($crate::crypto::Hash<$n>);
         create_hash!(__hash $id($n) = $domain);
     };
     ( $(#[ $attr:meta ])* pub struct $id:ident ( Xof ) = $domain:expr ; ) => {
@@ -20,7 +20,7 @@ macro_rules! create_hash {
     ( $(#[ $attr:meta ])* struct $id:ident ( Xof ) = $domain:expr ; ) => {
         $(#[ $attr ])*
         #[derive(Clone)]
-        struct $id($crate::crypto::Xof);
+        pub(crate) struct $id($crate::crypto::Xof);
         create_hash!(__xof $id = $domain);
     };
     ( __hash $id:ident ( $n:ty ) = $domain:expr ) => {

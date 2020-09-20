@@ -1,6 +1,11 @@
 //! ElGamal encryption scheme for elliptic curves
 
-use crate::{proto, random::thread_rng, serde::ToBytes, Error};
+use crate::{
+    proto,
+    random::thread_rng,
+    serde::{point_from_proto, point_to_proto, Message, Proto},
+    Error, Result,
+};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -20,18 +25,16 @@ use std::{
 };
 
 /// A private key
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PrivateKey(schnorrkel::SecretKey);
 
 /// A public key
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PublicKey {
-    h: RistrettoPoint,
-}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PublicKey(RistrettoPoint);
 
 /// A public key fingerprint
 #[repr(C)]
-#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
 
 create_hash! {
@@ -71,9 +74,7 @@ impl PrivateKey {
 
     /// Gets a public key that corresponds with this key
     pub fn public_key(&self) -> PublicKey {
-        PublicKey {
-            h: self.0.to_public().into_point(),
-        }
+        PublicKey(self.0.to_public().into_point())
     }
 
     /// Gets the public key fingerprint
@@ -93,16 +94,32 @@ impl PrivateKey {
     }
 }
 
+impl Proto for PrivateKey {
+    type Message = proto::PrivateKey;
+
+    fn to_proto(&self) -> Result<proto::PrivateKey> {
+        Ok(proto::PrivateKey {
+            raw: self.0.to_bytes().to_vec(),
+        })
+    }
+
+    fn from_proto(m: &proto::PrivateKey) -> Result<Self> {
+        Ok(PrivateKey(
+            schnorrkel::SecretKey::from_bytes(&m.raw).map_err(|_| Error::Decoding)?,
+        ))
+    }
+}
+
 impl PublicKey {
     /// Gets this key's public value
     pub fn point(&self) -> RistrettoPoint {
-        self.h
+        self.0
     }
 
     /// Gets this key's fingerprint
     pub fn fingerprint(&self) -> Fingerprint {
-        let bytes = self.h.to_bytes().unwrap();
-        let hashed = FingerprintHash::new().chain(bytes).result();
+        let bytes = self.0.compress().to_bytes();
+        let hashed = FingerprintHash::new().chain(&bytes).result();
         let mut array = [0u8; FINGERPRINT_SIZE];
         array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
         Fingerprint(array)
@@ -110,7 +127,7 @@ impl PublicKey {
 
     /// Combines this public key with another one to form a shared key
     pub fn combine(&mut self, pk: &PublicKey) {
-        self.h += pk.h
+        self.0 += pk.0
     }
 
     /// Encrypts a given plaintext
@@ -131,26 +148,27 @@ impl PublicKey {
     }
 
     /// Verifies a given transcript signature
-    pub fn verify(&self, t: &mut Transcript, s: &Signature) -> Result<(), ()> {
-        let pk = schnorrkel::PublicKey::from_point(self.h.clone());
-        pk.verify(t, s).map_err(|_| ())
+    pub fn verify(&self, t: &mut Transcript, s: &Signature) -> Result<()> {
+        let pk = schnorrkel::PublicKey::from_point(self.0.clone());
+        pk.verify(t, s).map_err(|_| Error::BadSignature)
+    }
+}
+
+impl Proto for PublicKey {
+    type Message = proto::PublicKey;
+
+    fn to_proto(&self) -> Result<proto::PublicKey> {
+        Ok(proto::PublicKey {
+            raw: point_to_proto(&self.0)?,
+        })
+    }
+
+    fn from_proto(m: &proto::PublicKey) -> Result<Self> {
+        Ok(PublicKey(point_from_proto(&m.raw)?))
     }
 }
 
 impl Fingerprint {
-    /// Gets the fingerprint of some object
-    pub fn of<D>(x: &(dyn ToBytes)) -> Result<Fingerprint, Error>
-    where
-        D: Digest + Default,
-    {
-        debug_assert!(D::output_size() == FINGERPRINT_SIZE);
-        let bytes = x.to_bytes()?;
-        let hashed = D::default().chain(bytes).result();
-        let mut array = [0u8; FINGERPRINT_SIZE];
-        array.copy_from_slice(&hashed[..]);
-        Ok(Fingerprint(array))
-    }
-
     /// Generates a random fingerprint
     pub fn random<R: Rng>(r: &mut R) -> Fingerprint {
         let mut array = [0u8; FINGERPRINT_SIZE];
@@ -159,14 +177,24 @@ impl Fingerprint {
     }
 }
 
+pub(crate) trait HasFingerprint: Message {
+    type Digest: Digest + Default;
+
+    fn fingerprint(&self) -> Result<Fingerprint> {
+        debug_assert!(Self::Digest::output_size() == FINGERPRINT_SIZE);
+        let bytes = self.encode()?;
+        let hashed = Self::Digest::default().chain(bytes).result();
+        let mut array = [0u8; FINGERPRINT_SIZE];
+        array.copy_from_slice(&hashed[..]);
+        Ok(Fingerprint(array))
+    }
+}
+
 impl AsRef<[u8]> for Fingerprint {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
-
-derive_opaque_proto_conversions!(PrivateKey: proto::PrivateKey);
-derive_opaque_proto_conversions!(PublicKey: proto::PublicKey);
 
 impl Display for Fingerprint {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -190,19 +218,20 @@ impl Display for Fingerprint {
 }
 impl Debug for Fingerprint {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        (self as &dyn Display).fmt(f)
+        write!(f, "{}", self)
     }
 }
 impl FromStr for Fingerprint {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         let bytes: Vec<_> = s
             .as_bytes()
             .chunks(2)
-            .map(|c| u8::from_str_radix(str::from_utf8(c).unwrap(), 16))
-            .collect::<Result<_, _>>()
-            .map_err(|_| Error::Decoding)?;
+            .map(|c| {
+                u8::from_str_radix(str::from_utf8(c).unwrap(), 16).map_err(|_| Error::Decoding)
+            })
+            .collect::<Result<_>>()?;
 
         if bytes.len() != FINGERPRINT_SIZE {
             return Err(Error::Decoding);
@@ -217,7 +246,7 @@ impl FromStr for Fingerprint {
 impl<'a> TryFrom<&'a Vec<u8>> for Fingerprint {
     type Error = Error;
 
-    fn try_from(v: &'a Vec<u8>) -> Result<Fingerprint, Error> {
+    fn try_from(v: &'a Vec<u8>) -> Result<Fingerprint> {
         if v.len() != FINGERPRINT_SIZE {
             return Err(Error::Decoding);
         }
@@ -232,7 +261,10 @@ const FINGERPRINT_SIZE: usize = 32;
 #[cfg(test)]
 mod tests {
     use super::{Fingerprint, PrivateKey, PublicKey, G};
-    use crate::serde::{FromBase64, ToBase64};
+    use crate::{
+        serde::{FromBase64, ToBase64},
+        Error,
+    };
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use rand::thread_rng;
     use schnorrkel::signing_context;
@@ -269,7 +301,7 @@ mod tests {
 
         let recovered = PublicKey::from_base64(&exported).unwrap();
 
-        assert_eq!(original.h, recovered.h);
+        assert_eq!(original.0, recovered.0);
     }
 
     #[test]
@@ -306,7 +338,7 @@ mod tests {
         let mut t = signing_context(b"test").bytes(&m.to_bytes());
         let r = pk.verify(&mut t, &s);
 
-        assert_eq!(r, Err(()));
+        assert_eq!(r, Err(Error::BadSignature));
     }
 
     #[test]

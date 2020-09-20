@@ -4,18 +4,34 @@ use super::TranscriptProtocol;
 use crate::{
     crypto::{perm::Permutation, proofs::secret_shuffle, vtmf::Mask},
     proto,
+    serde::{vec_from_proto, vec_to_proto, Proto},
+    Result,
 };
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use std::ops::{Add, Mul};
 
 /// Non-interactive proof
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
     tangles: Vec<secret_shuffle::Proof>,
 }
 
-derive_opaque_proto_conversions!(Proof: proto::EntanglementProof);
+impl Proto for Proof {
+    type Message = proto::EntanglementProof;
+
+    fn to_proto(&self) -> Result<proto::EntanglementProof> {
+        Ok(proto::EntanglementProof {
+            tangles: vec_to_proto(&self.tangles)?,
+        })
+    }
+
+    fn from_proto(m: &proto::EntanglementProof) -> Result<Self> {
+        Ok(Proof {
+            tangles: vec_from_proto(&m.tangles)?,
+        })
+    }
+}
 
 /// Public parameters
 #[derive(Copy, Clone)]
@@ -70,7 +86,7 @@ impl Proof {
     }
 
     /// Verifies a non-interactive zero-knowledge proof of an entangled shuffle
-    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
+    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"entanglement");
 
         let entangled_e0 = publics
@@ -113,7 +129,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::{super::random_scalars, Proof, Publics, Secrets};
-    use crate::crypto::{perm::Shuffles, vtmf::Mask};
+    use crate::{
+        crypto::{perm::Shuffles, vtmf::Mask},
+        Error,
+    };
     use curve25519_dalek::{
         constants::RISTRETTO_BASEPOINT_TABLE,
         ristretto::{RistrettoBasepointTable, RistrettoPoint},
@@ -182,6 +201,6 @@ mod tests {
         // break the proof
         proof.tangles[0] = proof.tangles[1].clone();
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
-        assert_eq!(verified, Err(()));
+        assert_eq!(verified, Err(Error::BadProof));
     }
 }

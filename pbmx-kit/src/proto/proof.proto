@@ -2,18 +2,50 @@ syntax = "proto3";
 
 package pbmx.proof;
 
+import "core.proto";
+
 message DlogEqProof {
-    bytes raw = 1;
+    bytes c = 1;
+    bytes r = 2;
+}
+
+message KnownShuffleProof {
+    bytes cd = 1;
+    bytes cdd = 2;
+    bytes cda = 3;
+    repeated bytes f = 4;
+    bytes z = 5;
+    repeated bytes fd = 6;
+    bytes zd = 7;
 }
 
 message ShuffleProof {
-    bytes raw = 1;
+    KnownShuffleProof skc = 1;
+    bytes c = 2;
+    bytes cd = 3;
+    pbmx.core.Mask ed = 4;
+    repeated bytes f = 5;
+    bytes z = 6;
+}
+
+message KnownRotationProof {
+    repeated bytes f = 1;
+    repeated bytes l = 2;
+    repeated bytes t = 3;
 }
 
 message RotationProof {
-    bytes raw = 1;
+    KnownRotationProof rkc = 1;
+    repeated bytes h = 2;
+    repeated pbmx.core.Mask z = 3;
+    bytes v = 4;
+    repeated bytes f = 5;
+    repeated pbmx.core.Mask ff = 6;
+    repeated bytes tau = 7;
+    repeated bytes rho = 8;
+    repeated bytes mu = 9;
 }
 
 message EntanglementProof {
-    bytes raw = 1;
+    repeated ShuffleProof tangles = 1;
 }
