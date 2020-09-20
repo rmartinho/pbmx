@@ -7,15 +7,11 @@ edition = "2018"
 [dependencies.base64]
 version = "0.12"
 
-[dependencies.bincode]
-version = "1.0"
-
 [dependencies.bytes]
 version = "0.5"
 
 [dependencies.curve25519-dalek]
 version = "2.0"
-features = ["serde"]
 
 [dependencies.digest]
 version = "0.8"
@@ -37,13 +33,6 @@ version = "0.7"
 
 [dependencies.schnorrkel]
 version = "0.9.1"
-features = ["serde"]
-
-[dependencies.serde]
-version = "1.0"
-
-[dependencies.serde_derive]
-version = "1.0"
 
 [dependencies.subtle]
 version = "2.0"

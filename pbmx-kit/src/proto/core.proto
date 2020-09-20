@@ -7,10 +7,11 @@ message Stack {
 }
 
 message Mask {
-    bytes raw = 1;
+    bytes c1 = 1;
+    bytes c2 = 2;
 }
 
 message SecretShare {
-    bytes raw = 1;
+    bytes point = 1;
 }
 

@@ -10,7 +10,8 @@ use crate::{
         proofs::{dlog_eq, entanglement, secret_rotation, secret_shuffle},
     },
     proto,
-    serde::serialize_flat_map,
+    serde::{point_from_proto, point_to_proto, Proto},
+    Error, Result,
 };
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -20,7 +21,6 @@ use curve25519_dalek::{
 use digest::{ExtendableOutput, Input, XofReader};
 use merlin::Transcript;
 use rand::{thread_rng, CryptoRng, Rng};
-use serde::{de, Deserialize, Deserializer};
 use std::{collections::HashMap, iter};
 
 pub use crate::crypto::proofs::{
@@ -36,18 +36,30 @@ pub use stack::*;
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 /// A verifiable *k*-out-of-*k* threshold masking function
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct Vtmf {
     sk: PrivateKey,
     pk: PublicKey,
-    #[serde(serialize_with = "serialize_flat_map")]
     pki: HashMap<Fingerprint, PublicKey>,
 }
 
 /// One party's share of a secret
-pub type SecretShare = RistrettoPoint;
+#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
+pub struct SecretShare(pub(crate) RistrettoPoint);
 
-derive_opaque_proto_conversions!(SecretShare: proto::SecretShare);
+impl Proto for SecretShare {
+    type Message = proto::SecretShare;
+
+    fn to_proto(&self) -> Result<proto::SecretShare> {
+        Ok(proto::SecretShare {
+            point: point_to_proto(&self.0)?,
+        })
+    }
+
+    fn from_proto(m: &proto::SecretShare) -> Result<Self> {
+        Ok(Self(point_from_proto(&m.point)?))
+    }
+}
 
 /// Zero-knowledge proof of a secret share
 pub type SecretShareProof = MaskProof;
@@ -56,8 +68,11 @@ impl Vtmf {
     /// Creates a new VTMF with the given private key
     pub fn new(sk: PrivateKey) -> Self {
         let pk = sk.public_key();
-        // SAFE: we know all the values are consistent
-        unsafe { Self::new_unchecked(sk, pk.clone(), vec![pk]) }
+        Self {
+            sk,
+            pk: pk.clone(),
+            pki: vec![(pk.fingerprint(), pk)].into_iter().collect(),
+        }
     }
 
     /// Gets the private key
@@ -83,31 +98,6 @@ impl Vtmf {
         }
         self.pk.combine(&pk);
         self.pki.insert(fp, pk);
-    }
-
-    unsafe fn new_unchecked(sk: PrivateKey, pk: PublicKey, pki: Vec<PublicKey>) -> Self {
-        Self {
-            sk,
-            pk,
-            pki: pki.into_iter().map(|k| (k.fingerprint(), k)).collect(),
-        }
-    }
-
-    fn validate(self) -> Option<Self> {
-        let fp = self.sk.public_key().fingerprint();
-        if !self.pki.contains_key(&fp) {
-            return None;
-        }
-        let h = self
-            .pki
-            .values()
-            .map(PublicKey::point)
-            .sum::<RistrettoPoint>();
-        if h == self.pk.point() {
-            Some(self)
-        } else {
-            None
-        }
     }
 }
 
@@ -150,7 +140,7 @@ impl Vtmf {
     }
 
     /// Verifies the application of the masking protocol
-    pub fn verify_mask(&self, p: &RistrettoPoint, c: &Mask, proof: &MaskProof) -> Result<(), ()> {
+    pub fn verify_mask(&self, p: &RistrettoPoint, c: &Mask, proof: &MaskProof) -> Result<()> {
         proof.verify(&mut Transcript::new(b"mask"), dlog_eq::Publics {
             a: &c.0,
             b: &(c.1 - p),
@@ -182,7 +172,7 @@ impl Vtmf {
     }
 
     /// Verifies the application of the re-masking protocol
-    pub fn verify_remask(&self, m: &Mask, c: &Mask, proof: &MaskProof) -> Result<(), ()> {
+    pub fn verify_remask(&self, m: &Mask, c: &Mask, proof: &MaskProof) -> Result<()> {
         let h = self.pk.point();
         let gr = c.0 - m.0;
         let hr = c.1 - m.1;
@@ -212,7 +202,7 @@ impl Vtmf {
             dlog_eq::Secrets { x },
         );
 
-        (d, proof)
+        (SecretShare(d), proof)
     }
 
     /// Verifies a secret share of a masking operation
@@ -222,16 +212,16 @@ impl Vtmf {
         pk_fp: &Fingerprint,
         d: &SecretShare,
         proof: &SecretShareProof,
-    ) -> Result<(), ()> {
+    ) -> Result<()> {
         let pk = self.pki.get(pk_fp);
         let pk = match pk {
             None => {
-                return Err(());
+                return Err(Error::BadProof);
             }
             Some(pk) => pk,
         };
         proof.verify(&mut Transcript::new(b"mask_share"), dlog_eq::Publics {
-            a: &d,
+            a: &d.0,
             b: &pk.point(),
             g: &c.0,
             h: &G.basepoint(),
@@ -240,7 +230,7 @@ impl Vtmf {
 
     /// Undoes part of a masking operation
     pub fn unmask(&self, c: &Mask, d: &SecretShare) -> Mask {
-        Mask(c.0, c.1 - d)
+        Mask(c.0, c.1 - d.0)
     }
 
     /// Privately undoes a masking operation
@@ -291,12 +281,7 @@ impl Vtmf {
     }
 
     /// Verifies the application of the mask-shuffling protocol
-    pub fn verify_mask_shuffle(
-        &self,
-        m: &Stack,
-        c: &Stack,
-        proof: &ShuffleProof,
-    ) -> Result<(), ()> {
+    pub fn verify_mask_shuffle(&self, m: &Stack, c: &Stack, proof: &ShuffleProof) -> Result<()> {
         proof.verify(
             &mut Transcript::new(b"mask_shuffle"),
             secret_shuffle::Publics {
@@ -330,7 +315,7 @@ impl Vtmf {
     }
 
     /// Verifies the application of the mask-shifting protocol
-    pub fn verify_mask_shift(&self, m: &Stack, c: &Stack, proof: &ShiftProof) -> Result<(), ()> {
+    pub fn verify_mask_shift(&self, m: &Stack, c: &Stack, proof: &ShiftProof) -> Result<()> {
         proof.verify(
             &mut Transcript::new(b"mask_shift"),
             secret_rotation::Publics {
@@ -424,7 +409,7 @@ impl Vtmf {
         m: It1,
         c: It2,
         proof: &EntanglementProof,
-    ) -> Result<(), ()>
+    ) -> Result<()>
     where
         It1: Iterator<Item = &'a Stack>,
         It2: Iterator<Item = &'a Stack>,
@@ -444,38 +429,16 @@ impl Vtmf {
     }
 }
 
-impl<'de> Deserialize<'de> for Vtmf {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        // SAFE: we explicitly validate the values before returning
-        unsafe { VtmfRaw::deserialize(deserializer)?.into() }
-            .validate()
-            .ok_or_else(|| de::Error::custom("invalid VTMF values"))
-    }
-}
-
-#[derive(Deserialize)]
-struct VtmfRaw {
-    sk: PrivateKey,
-    pk: PublicKey,
-    pki: Vec<PublicKey>,
-}
-
-impl VtmfRaw {
-    unsafe fn into(self) -> Vtmf {
-        Vtmf::new_unchecked(self.sk, self.pk, self.pki)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{Mask, Stack, Vtmf};
-    use crate::crypto::{
-        keys::PrivateKey,
-        map,
-        perm::{Permutation, Shuffles},
+    use crate::{
+        crypto::{
+            keys::PrivateKey,
+            map,
+            perm::{Permutation, Shuffles},
+        },
+        Error,
     };
     use digest::XofReader;
     use rand::{thread_rng, Rng};
@@ -502,14 +465,14 @@ mod tests {
         assert_eq!(verified, Ok(()));
         let p = map::to_curve(x + 1);
         let invalid = vtmf1.verify_mask(&p, &mask, &proof);
-        assert_eq!(invalid, Err(()));
+        assert_eq!(invalid, Err(Error::BadProof));
 
         let (remask, _, proof) = vtmf0.remask(&mask);
         let verified = vtmf1.verify_remask(&mask, &remask, &proof);
         assert_eq!(verified, Ok(()));
         let (remask, ..) = vtmf0.remask(&remask);
         let invalid = vtmf1.verify_remask(&mask, &remask, &proof);
-        assert_eq!(invalid, Err(()));
+        assert_eq!(invalid, Err(Error::BadProof));
 
         let (d0, proof0) = vtmf0.unmask_share(&mask);
         let (d1, proof1) = vtmf1.unmask_share(&mask);
@@ -517,7 +480,7 @@ mod tests {
         let verified = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof1);
         assert_eq!(verified, Ok(()));
         let invalid = vtmf0.verify_unmask(&mask, &fp1, &d1, &proof0);
-        assert_eq!(invalid, Err(()));
+        assert_eq!(invalid, Err(Error::BadProof));
         let mask0 = vtmf0.unmask(&mask, &d1);
         let mask0 = vtmf0.unmask_private(&mask0);
         let r = vtmf0.unmask_open(&mask0);
@@ -527,7 +490,7 @@ mod tests {
         let verified = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof0);
         assert_eq!(verified, Ok(()));
         let invalid = vtmf1.verify_unmask(&mask, &fp0, &d0, &proof1);
-        assert_eq!(invalid, Err(()));
+        assert_eq!(invalid, Err(Error::BadProof));
         let mask1 = vtmf1.unmask(&mask, &d0);
         let mask1 = vtmf1.unmask_private(&mask1);
         let r = vtmf1.unmask_open(&mask1);
@@ -603,7 +566,7 @@ mod tests {
         let mut m2 = m.clone();
         m2[0] = vtmf0.mask(&map::to_curve(8)).0;
         let invalid = vtmf1.verify_mask_shuffle(&m2, &shuffle, &proof);
-        assert_eq!(invalid, Err(()));
+        assert_eq!(invalid, Err(Error::BadProof));
 
         let open: Vec<_> = shuffle
             .iter()
@@ -647,7 +610,7 @@ mod tests {
         let mut m2 = m.clone();
         m2.swap(0, 1);
         let invalid = vtmf1.verify_mask_shift(&m2, &shift, &proof);
-        assert_eq!(invalid, Err(()));
+        assert_eq!(invalid, Err(Error::BadProof));
 
         let open: Vec<_> = shift
             .iter()
@@ -758,6 +721,6 @@ mod tests {
         let pi2 = rng.sample(&Shuffles(m[1].len()));
         bad_shuffles[1] = vtmf0.mask_shuffle(&m[1], &pi2).0;
         let invalid = vtmf1.verify_entanglement(m.iter(), bad_shuffles.iter(), &proof);
-        assert_eq!(invalid, Err(()));
+        assert_eq!(invalid, Err(Error::BadProof));
     }
 }

@@ -5,7 +5,7 @@ use crate::{
         vtmf::{Mask, SecretShare, Stack},
     },
     proto,
-    serde::{FromBytes, Proto, ToBytes},
+    serde::Proto,
     Error,
 };
 use qp_trie::Trie;
@@ -26,8 +26,8 @@ impl Proto for PrivateSecretMap {
                 .iter()
                 .map(|(k, v)| {
                     Ok(proto::PrivateSecretEntry {
-                        key: k.to_bytes()?,
-                        value: v.to_bytes()?,
+                        key: Some(k.to_proto()?),
+                        value: Some(v.to_proto()?),
                     })
                 })
                 .collect::<Result<_, Error>>()?,
@@ -37,7 +37,12 @@ impl Proto for PrivateSecretMap {
     fn from_proto(m: &Self::Message) -> Result<Self, Error> {
         m.map
             .iter()
-            .map(|e| Ok((Mask::from_bytes(&e.key)?, Mask::from_bytes(&e.value)?)))
+            .map(|e| {
+                Ok((
+                    Mask::from_proto(e.key.as_ref().ok_or(Error::Decoding)?)?,
+                    Mask::from_proto(e.value.as_ref().ok_or(Error::Decoding)?)?,
+                ))
+            })
             .collect()
     }
 }
@@ -97,7 +102,7 @@ impl StackMap {
                 .entry(*m)
                 .and_modify(|(d, fp)| {
                     if !fp.contains(&owner) {
-                        *d += di;
+                        d.0 += di.0;
                         fp.push(owner);
                     }
                 })

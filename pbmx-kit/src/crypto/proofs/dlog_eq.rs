@@ -4,19 +4,39 @@
 //          'Proof Systems for General Statements about Discrete Logarithms',
 //          Technical Report, 1997.
 use super::{TranscriptProtocol, TranscriptRngProtocol};
-use crate::proto;
+use crate::{
+    proto,
+    serde::{scalar_from_proto, scalar_to_proto, Proto},
+    Error, Result,
+};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 use rand::thread_rng;
 
 /// Non-interactive proof
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
     c: Scalar,
     r: Scalar,
 }
 
-derive_opaque_proto_conversions!(Proof: proto::DlogEqProof);
+impl Proto for Proof {
+    type Message = proto::DlogEqProof;
+
+    fn to_proto(&self) -> Result<proto::DlogEqProof> {
+        Ok(proto::DlogEqProof {
+            c: scalar_to_proto(&self.c)?,
+            r: scalar_to_proto(&self.r)?,
+        })
+    }
+
+    fn from_proto(m: &proto::DlogEqProof) -> Result<Self> {
+        Ok(Proof {
+            c: scalar_from_proto(&m.c)?,
+            r: scalar_from_proto(&m.r)?,
+        })
+    }
+}
 
 /// Public parameters
 #[derive(Copy, Clone)]
@@ -70,7 +90,7 @@ impl Proof {
 
     /// Verifies a 1-of-2 non-interactive zero-knowledge proof of equality of
     /// discrete logarithms
-    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
+    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"dlog_eq");
 
         transcript.commit_point(b"a", publics.a);
@@ -89,7 +109,7 @@ impl Proof {
         if c == self.c {
             Ok(())
         } else {
-            Err(())
+            Err(Error::BadProof)
         }
     }
 }
@@ -97,6 +117,7 @@ impl Proof {
 #[cfg(test)]
 mod tests {
     use super::{Proof, Publics, Secrets};
+    use crate::Error;
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::thread_rng;
@@ -124,6 +145,6 @@ mod tests {
             x: &Scalar::one(),
         });
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
-        assert_eq!(verified, Err(()));
+        assert_eq!(verified, Err(Error::BadProof));
     }
 }

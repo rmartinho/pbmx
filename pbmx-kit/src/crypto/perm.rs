@@ -5,7 +5,7 @@ use rand::{distributions::Distribution, seq::SliceRandom, Rng};
 use std::{convert::TryFrom, ops::Deref};
 
 /// A permutation
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Permutation(Vec<usize>);
 
 impl Permutation {

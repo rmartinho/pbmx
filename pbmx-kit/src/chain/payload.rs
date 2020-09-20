@@ -3,7 +3,7 @@
 use crate::{
     chain::{block::Block, Id},
     crypto::{
-        keys::PublicKey,
+        keys::{HasFingerprint, PublicKey},
         vtmf::{
             EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
             ShuffleProof, Stack,
@@ -21,7 +21,7 @@ use std::{
 
 /// A PBMX message payload
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Payload {
     /// A public key payload
     PublishKey(String, PublicKey),
@@ -60,10 +60,14 @@ create_hash! {
     struct PayloadHash(Hash<U32>) = b"pbmx-payload-id";
 }
 
+impl HasFingerprint for Payload {
+    type Digest = PayloadHash;
+}
+
 impl Payload {
     /// Gets the id of this payload
     pub fn id(&self) -> Id {
-        Id::of::<PayloadHash>(self).unwrap()
+        self.fingerprint().unwrap()
     }
 
     /// Gets a short string description of this payload
@@ -100,8 +104,6 @@ impl<'a> Display for DisplayShort<'a> {
         }
     }
 }
-
-derive_base64_conversions!(Payload);
 
 /// A visitor for payloads
 pub trait PayloadVisitor {
@@ -271,7 +273,7 @@ impl Proto for Payload {
             Payload::PublishShares(id, shares, proof) => {
                 PayloadKind::PublishShares(proto::PublishShares {
                     id: id.to_vec(),
-                    shares: vec_to_proto(&shares)?,
+                    shares: vec_to_proto(shares)?,
                     proofs: vec_to_proto(&proof)?,
                 })
             }

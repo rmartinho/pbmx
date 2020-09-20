@@ -1,12 +1,12 @@
 //! Pedersen commitment scheme
 
+use crate::{Error, Result};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar, traits::MultiscalarMul};
 use rand::{CryptoRng, Rng};
-use serde::{de, Deserialize, Deserializer};
 use std::iter;
 
 /// The Pedersen commitment scheme
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pedersen {
     h: RistrettoPoint,
     g: Vec<RistrettoPoint>,
@@ -72,14 +72,14 @@ impl Pedersen {
     }
 
     /// Verifies a commitment to a given sequence of scalars
-    pub fn open(&self, c: &RistrettoPoint, m: &[Scalar], r: &Scalar) -> Result<(), ()> {
+    pub fn open(&self, c: &RistrettoPoint, m: &[Scalar], r: &Scalar) -> Result<()> {
         assert!(m.len() == self.g.len());
 
         let c1 = self.commit_by(m, r);
         if *c == c1 {
             Ok(())
         } else {
-            Err(())
+            Err(Error::BadProof)
         }
     }
 
@@ -96,36 +96,10 @@ impl Pedersen {
     }
 }
 
-impl<'de> Deserialize<'de> for Pedersen {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        // SAFE: we explicit validate the values before returning
-        unsafe { PedersenRaw::deserialize(deserializer)?.into() }
-            .validate()
-            .ok_or_else(|| de::Error::custom("invalid Pedersen commitment scheme parameters"))
-    }
-}
-
-#[derive(Deserialize)]
-struct PedersenRaw {
-    h: RistrettoPoint,
-    g: Vec<RistrettoPoint>,
-}
-
-impl PedersenRaw {
-    unsafe fn into(self) -> Pedersen {
-        Pedersen::new_unchecked(self.h, self.g)
-    }
-}
-
-derive_base64_conversions!(Pedersen);
-
 #[cfg(test)]
 mod tests {
     use super::Pedersen;
-    use crate::serde::{FromBase64, ToBase64};
+    use crate::Error;
     use curve25519_dalek::scalar::Scalar;
     use rand::thread_rng;
 
@@ -144,19 +118,6 @@ mod tests {
         let fake = [m[1], m[2], Scalar::random(&mut rng)];
         let (c1, r1) = com.commit_to(&fake, &mut rng);
         let open = com.open(&c1, &m, &r1);
-        assert_eq!(open, Err(()));
-    }
-
-    #[test]
-    fn pedersen_scheme_roundtrips_via_base64() {
-        let mut rng = thread_rng();
-        let original = Pedersen::random(3, &mut rng);
-
-        let exported = original.to_base64().unwrap();
-
-        let recovered = Pedersen::from_base64(&exported).unwrap();
-
-        assert_eq!(original.h, recovered.h);
-        assert_eq!(original.g, recovered.g);
+        assert_eq!(open, Err(Error::BadProof));
     }
 }

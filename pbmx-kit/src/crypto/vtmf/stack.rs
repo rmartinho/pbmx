@@ -1,6 +1,6 @@
 use crate::{
     chain::Id,
-    crypto::vtmf::Mask,
+    crypto::{keys::HasFingerprint, vtmf::Mask},
     proto,
     serde::{vec_from_proto, vec_to_proto, Proto},
     Result,
@@ -13,10 +13,8 @@ use std::{
 };
 
 /// A masked stack
-#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Stack(pub(crate) Vec<Mask>);
-
-derive_base64_conversions!(Stack);
 
 impl Proto for Stack {
     type Message = proto::Stack;
@@ -37,10 +35,14 @@ create_hash! {
     struct StackHash(Hash<U32>) = b"pbmx-stack-id";
 }
 
+impl HasFingerprint for Stack {
+    type Digest = StackHash;
+}
+
 impl Stack {
     /// Gets an ID for this stack
     pub fn id(&self) -> Id {
-        Id::of::<StackHash>(self).unwrap()
+        self.fingerprint().unwrap()
     }
 }
 

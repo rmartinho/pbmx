@@ -5,7 +5,7 @@ use crate::{
         payload::{Payload, PayloadVisitor},
         Id,
     },
-    crypto::keys::{Fingerprint, PrivateKey, PublicKey},
+    crypto::keys::{Fingerprint, HasFingerprint, PrivateKey, PublicKey},
     proto,
     serde::{vec_from_proto, vec_to_proto, Proto},
     Error,
@@ -13,11 +13,7 @@ use crate::{
 use digest::generic_array::typenum::U32;
 use merlin::Transcript;
 use schnorrkel::Signature;
-use serde::{
-    de::{Deserialize, Deserializer},
-    ser::{Serialize, Serializer},
-};
-use std::{collections::HashMap, convert::TryFrom, slice, str};
+use std::{collections::HashMap, convert::TryFrom, slice};
 use tribool::Tribool;
 
 /// A block in a PBMX chain
@@ -52,6 +48,10 @@ create_hash! {
     struct BlockHash(Hash<U32>) = b"pbmx-block-id";
 }
 
+impl HasFingerprint for Block {
+    type Digest = BlockHash;
+}
+
 impl Block {
     fn new_unchecked(
         acks: Vec<Id>,
@@ -71,7 +71,7 @@ impl Block {
 
     /// Gets this block's ID
     pub fn id(&self) -> Id {
-        Id::of::<BlockHash>(self).unwrap()
+        self.fingerprint().unwrap()
     }
 
     /// Gets the fingerprint of the block's signing key
@@ -185,25 +185,6 @@ where
     t
 }
 
-impl Serialize for Block {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        BlockRaw::from(self).serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Block {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Ok(BlockRaw::deserialize(deserializer)?.into())
-    }
-}
-
-#[derive(Serialize, Deserialize)]
 struct BlockRaw {
     acks: Vec<Id>,
     payloads: Vec<Payload>,
@@ -267,8 +248,6 @@ impl Proto for Block {
         Ok(BlockRaw::from_proto(m)?.into())
     }
 }
-
-derive_base64_conversions!(Block);
 
 /// A visitor for blocks
 pub trait BlockVisitor: PayloadVisitor {

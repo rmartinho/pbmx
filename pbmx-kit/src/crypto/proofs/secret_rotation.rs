@@ -9,6 +9,11 @@ use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
     crypto::{perm::Permutation, proofs::known_rotation, vtmf::Mask},
     proto,
+    serde::{
+        points_from_proto, points_to_proto, scalar_from_proto, scalar_to_proto, scalars_from_proto,
+        scalars_to_proto, vec_from_proto, vec_to_proto, Proto,
+    },
+    Error, Result,
 };
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_TABLE,
@@ -21,7 +26,7 @@ use rand::thread_rng;
 const G: &RistrettoBasepointTable = &RISTRETTO_BASEPOINT_TABLE;
 
 /// Non-interactive proof
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
     rkc: known_rotation::Proof,
     h: Vec<RistrettoPoint>,
@@ -34,7 +39,37 @@ pub struct Proof {
     mu: Vec<Scalar>,
 }
 
-derive_opaque_proto_conversions!(Proof: proto::RotationProof);
+impl Proto for Proof {
+    type Message = proto::RotationProof;
+
+    fn to_proto(&self) -> Result<proto::RotationProof> {
+        Ok(proto::RotationProof {
+            rkc: Some(self.rkc.to_proto()?),
+            h: points_to_proto(&self.h)?,
+            z: vec_to_proto(&self.z)?,
+            v: scalar_to_proto(&self.v)?,
+            f: points_to_proto(&self.f)?,
+            ff: vec_to_proto(&self.ff)?,
+            tau: scalars_to_proto(&self.tau)?,
+            rho: scalars_to_proto(&self.rho)?,
+            mu: scalars_to_proto(&self.mu)?,
+        })
+    }
+
+    fn from_proto(m: &proto::RotationProof) -> Result<Self> {
+        Ok(Proof {
+            rkc: known_rotation::Proof::from_proto(m.rkc.as_ref().ok_or(Error::Decoding)?)?,
+            h: points_from_proto(&m.h)?,
+            z: vec_from_proto(&m.z)?,
+            v: scalar_from_proto(&m.v)?,
+            f: points_from_proto(&m.f)?,
+            ff: vec_from_proto(&m.ff)?,
+            tau: scalars_from_proto(&m.tau)?,
+            rho: scalars_from_proto(&m.rho)?,
+            mu: scalars_from_proto(&m.mu)?,
+        })
+    }
+}
 
 /// Public parameters
 #[derive(Copy, Clone)]
@@ -166,7 +201,7 @@ impl Proof {
 
     /// Verifies a non-interactive zero-knowledge proof of a shuffle of known
     /// content
-    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<(), ()> {
+    pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"secret_rotation");
 
         transcript.commit_point(b"h", publics.h);
@@ -236,7 +271,7 @@ impl Proof {
         if tr == fhl && dtm == fzl && pzea == ghv {
             Ok(())
         } else {
-            Err(())
+            Err(Error::BadProof)
         }
     }
 }
@@ -244,7 +279,10 @@ impl Proof {
 #[cfg(test)]
 mod tests {
     use super::{super::random_scalars, Proof, Publics, Secrets, G};
-    use crate::crypto::{perm::Permutation, vtmf::Mask};
+    use crate::{
+        crypto::{perm::Permutation, vtmf::Mask},
+        Error,
+    };
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use merlin::Transcript;
     use rand::{thread_rng, Rng};
@@ -291,6 +329,6 @@ mod tests {
         // break the proof
         proof.v += Scalar::one();
         let verified = proof.verify(&mut Transcript::new(b"test"), publics);
-        assert_eq!(verified, Err(()));
+        assert_eq!(verified, Err(Error::BadProof));
     }
 }
