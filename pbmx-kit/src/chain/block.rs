@@ -5,12 +5,14 @@ use crate::{
         payload::{Payload, PayloadVisitor},
         Id,
     },
-    crypto::keys::{Fingerprint, HasFingerprint, PrivateKey, PublicKey},
+    crypto::{
+        hash::TranscriptHashable,
+        keys::{Fingerprint, PrivateKey, PublicKey},
+    },
     proto,
     serde::{vec_from_proto, vec_to_proto, Proto},
-    Error,
+    Error, Result,
 };
-use digest::generic_array::typenum::U32;
 use merlin::Transcript;
 use schnorrkel::Signature;
 use std::{collections::HashMap, convert::TryFrom, slice};
@@ -26,30 +28,12 @@ pub struct Block {
     sig: Signature,
 }
 
-impl Proto for Vec<Payload> {
-    type Message = proto::PayloadList;
-
-    fn to_proto(&self) -> Result<Self::Message, Error> {
-        Ok(proto::PayloadList {
-            payloads: self
-                .iter()
-                .map(|p| p.to_proto())
-                .collect::<Result<_, _>>()?,
-        })
+impl TranscriptHashable for Block {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"block".append_to_transcript(t, label);
+        transcribe_unsigned_block(t, self.acks.iter(), self.payloads(), &self.fp);
+        self.sig.to_bytes().append_to_transcript(t, b"signature");
     }
-
-    fn from_proto(m: &Self::Message) -> Result<Self, Error> {
-        m.payloads.iter().map(|p| Payload::from_proto(&p)).collect()
-    }
-}
-
-create_hash! {
-    /// The hash used for block IDs
-    struct BlockHash(Hash<U32>) = b"pbmx-block-id";
-}
-
-impl HasFingerprint for Block {
-    type Digest = BlockHash;
 }
 
 impl Block {
@@ -71,7 +55,7 @@ impl Block {
 
     /// Gets this block's ID
     pub fn id(&self) -> Id {
-        self.fingerprint().unwrap()
+        Id::of(self, b"pbmx-block-id")
     }
 
     /// Gets the fingerprint of the block's signing key
@@ -82,7 +66,8 @@ impl Block {
     /// Checks whether this block's signature is valid
     pub fn is_valid(&self, pk: &HashMap<Fingerprint, PublicKey>) -> Tribool {
         pk.get(&self.fp).map_or(Tribool::Indeterminate, |pk| {
-            let mut t = block_signing_context(self.acks.iter(), self.payloads(), &self.fp);
+            let mut t = Transcript::new(BLOCK_SIGNATURE_DOMAIN);
+            transcribe_unsigned_block(&mut t, self.acks.iter(), self.payloads(), &self.fp);
             pk.verify(&mut t, &self.sig).is_ok().into()
         })
     }
@@ -153,7 +138,8 @@ impl BlockBuilder {
     /// Builds the block, consuming the builder
     pub fn build(self, sk: &PrivateKey) -> Block {
         let fp = sk.fingerprint();
-        let mut t = block_signing_context(self.acks.iter(), self.payloads.iter(), &fp);
+        let mut t = Transcript::new(BLOCK_SIGNATURE_DOMAIN);
+        transcribe_unsigned_block(&mut t, self.acks.iter(), self.payloads.iter(), &fp);
         let sig = sk.sign(&mut t);
         Block {
             acks: self.acks,
@@ -165,25 +151,21 @@ impl BlockBuilder {
     }
 }
 
-fn block_signing_context<'a, AckIt, PayloadIt>(
+fn transcribe_unsigned_block<'a, AckIt, PayloadIt>(
+    t: &mut Transcript,
     acks: AckIt,
     payloads: PayloadIt,
     fp: &Fingerprint,
-) -> Transcript
-where
+) where
     AckIt: Iterator<Item = &'a Id> + 'a,
     PayloadIt: Iterator<Item = &'a Payload> + 'a,
 {
-    let mut t = Transcript::new(b"pbmx-block");
-    for ack in acks {
-        t.append_message(b"ack", &ack);
-    }
-    for payload in payloads {
-        t.append_message(b"payload", &payload.id());
-    }
-    t.append_message(b"signer", &fp);
-    t
+    acks.collect::<Vec<_>>().append_to_transcript(t, b"acks");
+    payloads.collect::<Vec<_>>().append_to_transcript(t, b"payloads");
+    fp.append_to_transcript(t, b"signer");
 }
+
+const BLOCK_SIGNATURE_DOMAIN: &'static [u8] = b"pbmx-block-sig";
 
 struct BlockRaw {
     acks: Vec<Id>,
@@ -211,10 +193,24 @@ impl BlockRaw {
     }
 }
 
+impl Proto for Vec<Payload> {
+    type Message = proto::PayloadList;
+
+    fn to_proto(&self) -> Result<Self::Message> {
+        Ok(proto::PayloadList {
+            payloads: self.iter().map(|p| p.to_proto()).collect::<Result<_>>()?,
+        })
+    }
+
+    fn from_proto(m: &Self::Message) -> Result<Self> {
+        m.payloads.iter().map(|p| Payload::from_proto(&p)).collect()
+    }
+}
+
 impl Proto for BlockRaw {
     type Message = proto::Block;
 
-    fn to_proto(&self) -> Result<proto::Block, Error> {
+    fn to_proto(&self) -> Result<proto::Block> {
         Ok(proto::Block {
             acks: self.acks.iter().map(|id| id.to_vec()).collect(),
             payloads: vec_to_proto(&self.payloads)?,
@@ -223,13 +219,13 @@ impl Proto for BlockRaw {
         })
     }
 
-    fn from_proto(m: &proto::Block) -> Result<Self, Error> {
+    fn from_proto(m: &proto::Block) -> Result<Self> {
         Ok(Self {
             acks: m
                 .acks
                 .iter()
                 .map(|b| Id::try_from(b))
-                .collect::<Result<_, _>>()?,
+                .collect::<Result<_>>()?,
             payloads: vec_from_proto(&m.payloads)?,
             fp: Fingerprint::try_from(&m.fingerprint)?,
             sig: Signature::from_bytes(&m.signature).map_err(|_| Error::Decoding)?,
@@ -240,11 +236,11 @@ impl Proto for BlockRaw {
 impl Proto for Block {
     type Message = proto::Block;
 
-    fn to_proto(&self) -> Result<proto::Block, Error> {
+    fn to_proto(&self) -> Result<proto::Block> {
         BlockRaw::from(self).to_proto()
     }
 
-    fn from_proto(m: &proto::Block) -> Result<Self, Error> {
+    fn from_proto(m: &proto::Block) -> Result<Self> {
         Ok(BlockRaw::from_proto(m)?.into())
     }
 }

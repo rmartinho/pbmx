@@ -1,11 +1,11 @@
 use crate::{
     chain::Id,
-    crypto::{keys::HasFingerprint, vtmf::Mask},
+    crypto::{hash::TranscriptHashable, vtmf::Mask},
     proto,
     serde::{vec_from_proto, vec_to_proto, Proto},
     Result,
 };
-use digest::generic_array::typenum::U32;
+use merlin::Transcript;
 use std::{
     borrow::{Borrow, BorrowMut},
     iter::FromIterator,
@@ -30,19 +30,17 @@ impl Proto for Stack {
     }
 }
 
-create_hash! {
-    /// The hash used for stack IDs
-    struct StackHash(Hash<U32>) = b"pbmx-stack-id";
-}
-
-impl HasFingerprint for Stack {
-    type Digest = StackHash;
-}
-
 impl Stack {
     /// Gets an ID for this stack
     pub fn id(&self) -> Id {
-        self.fingerprint().unwrap()
+        Id::of(self, b"pbmx-stack-id")
+    }
+}
+
+impl TranscriptHashable for Stack {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"stack".append_to_transcript(t, label);
+        self.0.append_to_transcript(t, b"$");
     }
 }
 

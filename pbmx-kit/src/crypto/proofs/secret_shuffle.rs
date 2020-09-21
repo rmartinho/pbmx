@@ -5,7 +5,7 @@
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{perm::Permutation, proofs::known_shuffle, vtmf::Mask},
+    crypto::{hash::TranscriptHashable, perm::Permutation, proofs::known_shuffle, vtmf::Mask},
     proto,
     random::thread_rng,
     serde::{
@@ -58,6 +58,18 @@ impl Proto for Proof {
             f: scalars_from_proto(&m.f)?,
             z: scalar_from_proto(&m.z)?,
         })
+    }
+}
+
+impl TranscriptHashable for Proof {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"secret-shuffle-proof".append_to_transcript(t, label);
+        self.skc.append_to_transcript(t, b"skc");
+        self.c.append_to_transcript(t, b"c");
+        self.cd.append_to_transcript(t, b"cd");
+        self.ed.append_to_transcript(t, b"ed");
+        self.f.append_to_transcript(t, b"f");
+        self.z.append_to_transcript(t, b"z");
     }
 }
 

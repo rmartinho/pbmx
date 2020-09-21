@@ -5,6 +5,7 @@
 //          Cryptography and Coding 2003, LNCS 2898, pp. 370--383, 2003
 use crate::{
     crypto::{
+        hash::{TranscriptHash, TranscriptHashable},
         keys::{Fingerprint, PrivateKey, PublicKey},
         perm::Permutation,
         proofs::{dlog_eq, entanglement, secret_rotation, secret_shuffle},
@@ -19,7 +20,7 @@ use curve25519_dalek::{
     ristretto::{RistrettoBasepointTable, RistrettoPoint},
     scalar::Scalar,
 };
-use digest::{ExtendableOutput, Input, XofReader};
+use digest::XofReader;
 use merlin::Transcript;
 use rand::{CryptoRng, Rng};
 use std::{collections::HashMap, iter};
@@ -59,6 +60,13 @@ impl Proto for SecretShare {
 
     fn from_proto(m: &proto::SecretShare) -> Result<Self> {
         Ok(Self(point_from_proto(&m.point)?))
+    }
+}
+
+impl TranscriptHashable for SecretShare {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"share".append_to_transcript(t, label);
+        self.0.append_to_transcript(t, b"c1xi");
     }
 }
 
@@ -352,11 +360,6 @@ impl Vtmf {
     }
 }
 
-create_hash! {
-    /// The XOF used as PRF
-    struct RandomXof(Xof) = b"pbmx-random";
-}
-
 impl Vtmf {
     /// Applies a random mask
     pub fn mask_random<R: Rng + CryptoRng>(&self, rng: &mut R) -> Mask {
@@ -366,9 +369,9 @@ impl Vtmf {
 
     /// Undoes a random mask
     pub fn unmask_random(&self, m: &Mask) -> impl XofReader {
-        let mut xof = RandomXof::default();
-        xof.input(&m.1.compress().to_bytes());
-        xof.xof_result()
+        let mut h = TranscriptHash::new(b"pbmx-random");
+        m.append_to_hash(&mut h, b"entropy");
+        h.into_xof()
     }
 }
 

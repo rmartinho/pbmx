@@ -5,6 +5,7 @@
 //          Technical Report, 1997.
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
+    crypto::hash::TranscriptHashable,
     proto,
     random::thread_rng,
     serde::{scalar_from_proto, scalar_to_proto, Proto},
@@ -35,6 +36,14 @@ impl Proto for Proof {
             c: scalar_from_proto(&m.c)?,
             r: scalar_from_proto(&m.r)?,
         })
+    }
+}
+
+impl TranscriptHashable for Proof {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"dlog-eq-proof".append_to_transcript(t, label);
+        self.c.append_to_transcript(t, b"c");
+        self.r.append_to_transcript(t, b"r");
     }
 }
 

@@ -1,125 +1,97 @@
 //! Cryptographic hash functions
 
-use digest::{
-    generic_array::{typenum::U168, ArrayLength, GenericArray},
-    BlockInput, ExtendableOutput, FixedOutput, Input, Reset, XofReader,
-};
-use std::{
-    io::{self, Write},
-    marker::PhantomData,
-};
-use tiny_keccak::{Hasher, KangarooTwelve, KangarooTwelveXof};
+use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use digest::XofReader;
+use merlin::Transcript;
 
-/// Hash function with 256-bit output
-#[derive(Clone)]
-pub struct Hash<N: ArrayLength<u8>> {
-    k12: KangarooTwelve<&'static [u8]>,
-    domain: &'static [u8],
-    phantom: PhantomData<N>,
+/// A STROBE-based hash function
+pub struct TranscriptHash(Transcript);
+
+/// A type that can be hashed using STROBE
+pub trait TranscriptHashable {
+    /// Appends this object for hashing, with a given label for framing
+    fn append_to_hash(&self, h: &mut TranscriptHash, label: &'static [u8]) {
+        self.append_to_transcript(&mut h.0, label);
+    }
+
+    /// Appends this object to a transcript, with a given label for framing
+    fn append_to_transcript(&self, h: &mut Transcript, label: &'static [u8]);
 }
 
-impl<N: ArrayLength<u8>> Hash<N> {
-    /// Creates a customized instance of this hash function
-    pub fn new(domain: &'static [u8]) -> Self {
-        Self {
-            k12: KangarooTwelve::new(domain),
-            domain,
-            phantom: PhantomData,
+impl TranscriptHash {
+    /// Creates a new hash object
+    pub fn new(protocol: &'static [u8]) -> Self {
+        Self(Transcript::new(protocol))
+    }
+
+    /// Appends an object for hashing, with a given label for framing
+    pub fn append<M: TranscriptHashable>(&mut self, label: &'static [u8], m: &M) {
+        m.append_to_hash(self, label);
+    }
+
+    /// Produces a fixed-size hash from all the data that was appended
+    pub fn finish(mut self, buffer: &mut [u8]) {
+        self.0.challenge_bytes(b"$hash", buffer);
+    }
+
+    /// Creates a XOF reader object to produce a variable-size hash
+    pub fn into_xof(self) -> impl XofReader {
+        TranscriptXof(self.0)
+    }
+}
+
+impl<T: TranscriptHashable> TranscriptHashable for [T] {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"vec".append_to_transcript(t, label);
+        self.len().append_to_transcript(t, b"$len");
+        for e in self.iter() {
+            e.append_to_transcript(t, b"element");
         }
     }
 }
 
-impl<N: ArrayLength<u8>> FixedOutput for Hash<N> {
-    type OutputSize = N;
-
-    fn fixed_result(self) -> GenericArray<u8, Self::OutputSize> {
-        let mut out = GenericArray::default();
-        self.k12.finalize(&mut out);
-        out
+impl<'a, T: TranscriptHashable> TranscriptHashable for &'a T {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        (*self).append_to_transcript(t, label);
     }
 }
 
-impl<N: ArrayLength<u8>> BlockInput for Hash<N> {
-    type BlockSize = U168;
-}
-
-impl<N: ArrayLength<u8>> Input for Hash<N> {
-    fn input<B: AsRef<[u8]>>(&mut self, data: B) {
-        self.k12.update(data.as_ref())
+impl TranscriptHashable for usize {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        t.append_u64(label, *self as u64);
     }
 }
 
-impl<N: ArrayLength<u8>> Reset for Hash<N> {
-    fn reset(&mut self) {
-        self.k12 = KangarooTwelve::new(self.domain);
+impl TranscriptHashable for [u8] {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        t.append_message(label, &self);
     }
 }
 
-impl<N: ArrayLength<u8>> Write for Hash<N> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.k12.update(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+impl TranscriptHashable for str {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        t.append_message(label, self.as_bytes());
     }
 }
 
-/// Extendable output function
-#[derive(Clone)]
-pub struct Xof {
-    k12: KangarooTwelve<&'static [u8]>,
-    domain: &'static [u8],
-}
-
-impl Xof {
-    /// Creates a customized instance of this XOF
-    pub fn new(domain: &'static [u8]) -> Self {
-        Self {
-            k12: KangarooTwelve::new(domain),
-            domain,
-        }
+impl TranscriptHashable for Scalar {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"scalar".append_to_transcript(t, label);
+        self.as_bytes().append_to_transcript(t, b"bytes");
     }
 }
 
-impl ExtendableOutput for Xof {
-    type Reader = XofOutput;
-
-    fn xof_result(self) -> Self::Reader {
-        use tiny_keccak::IntoXof;
-        XofOutput(self.k12.into_xof())
+impl TranscriptHashable for RistrettoPoint {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"point".append_to_transcript(t, label);
+        self.compress().as_bytes().append_to_transcript(t, b"bytes");
     }
 }
 
-impl Input for Xof {
-    fn input<B: AsRef<[u8]>>(&mut self, data: B) {
-        self.k12.update(data.as_ref())
-    }
-}
+struct TranscriptXof(Transcript);
 
-impl Reset for Xof {
-    fn reset(&mut self) {
-        self.k12 = KangarooTwelve::new(self.domain);
-    }
-}
-
-impl Write for Xof {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.k12.update(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-pub struct XofOutput(KangarooTwelveXof);
-
-impl XofReader for XofOutput {
+impl XofReader for TranscriptXof {
     fn read(&mut self, buffer: &mut [u8]) {
-        use tiny_keccak::Xof;
-        self.0.squeeze(buffer);
+        self.0.challenge_bytes(b"$xof", buffer);
     }
 }

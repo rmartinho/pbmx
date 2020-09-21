@@ -5,7 +5,7 @@
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{commit::Pedersen, perm::Permutation},
+    crypto::{commit::Pedersen, hash::TranscriptHashable, perm::Permutation},
     proto,
     random::thread_rng,
     serde::{
@@ -55,6 +55,19 @@ impl Proto for Proof {
             fd: scalars_from_proto(&m.fd)?,
             zd: scalar_from_proto(&m.zd)?,
         })
+    }
+}
+
+impl TranscriptHashable for Proof {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"known-shuffle-proof".append_to_transcript(t, label);
+        self.cd.append_to_transcript(t, b"cd");
+        self.cdd.append_to_transcript(t, b"cdd");
+        self.cda.append_to_transcript(t, b"cda");
+        self.f.append_to_transcript(t, b"f");
+        self.z.append_to_transcript(t, b"z");
+        self.fd.append_to_transcript(t, b"fd");
+        self.zd.append_to_transcript(t, b"zd");
     }
 }
 

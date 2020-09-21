@@ -2,7 +2,7 @@
 
 use super::TranscriptProtocol;
 use crate::{
-    crypto::{perm::Permutation, proofs::secret_shuffle, vtmf::Mask},
+    crypto::{hash::TranscriptHashable, perm::Permutation, proofs::secret_shuffle, vtmf::Mask},
     proto,
     serde::{vec_from_proto, vec_to_proto, Proto},
     Result,
@@ -30,6 +30,13 @@ impl Proto for Proof {
         Ok(Proof {
             tangles: vec_from_proto(&m.tangles)?,
         })
+    }
+}
+
+impl TranscriptHashable for Proof {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"entanglement-proof".append_to_transcript(t, label);
+        self.tangles.append_to_transcript(t, b"tangles");
     }
 }
 

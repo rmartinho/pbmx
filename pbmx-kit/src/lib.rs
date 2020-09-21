@@ -11,9 +11,6 @@ extern crate pest;
 extern crate pest_derive;
 
 #[macro_use]
-mod macros;
-
-#[macro_use]
 pub mod serde;
 
 pub mod chain;

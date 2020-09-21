@@ -7,7 +7,7 @@
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{perm::Permutation, proofs::known_rotation, vtmf::Mask},
+    crypto::{hash::TranscriptHashable, perm::Permutation, proofs::known_rotation, vtmf::Mask},
     proto,
     random::thread_rng,
     serde::{
@@ -68,6 +68,21 @@ impl Proto for Proof {
             rho: scalars_from_proto(&m.rho)?,
             mu: scalars_from_proto(&m.mu)?,
         })
+    }
+}
+
+impl TranscriptHashable for Proof {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"secret-rotation-proof".append_to_transcript(t, label);
+        self.rkc.append_to_transcript(t, b"rkc");
+        self.h.append_to_transcript(t, b"h");
+        self.z.append_to_transcript(t, b"z");
+        self.v.append_to_transcript(t, b"v");
+        self.f.append_to_transcript(t, b"f");
+        self.ff.append_to_transcript(t, b"ff");
+        self.tau.append_to_transcript(t, b"tau");
+        self.rho.append_to_transcript(t, b"rho");
+        self.mu.append_to_transcript(t, b"mu");
     }
 }
 

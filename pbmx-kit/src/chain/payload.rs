@@ -3,7 +3,8 @@
 use crate::{
     chain::{block::Block, Id},
     crypto::{
-        keys::{HasFingerprint, PublicKey},
+        hash::TranscriptHashable,
+        keys::PublicKey,
         vtmf::{
             EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
             ShuffleProof, Stack,
@@ -13,7 +14,7 @@ use crate::{
     serde::{vec_from_proto, vec_to_proto, Proto},
     Error, Result,
 };
-use digest::generic_array::typenum::U32;
+use merlin::Transcript;
 use std::{
     convert::TryFrom,
     fmt::{self, Display, Formatter},
@@ -55,19 +56,10 @@ pub enum Payload {
     Bytes(Vec<u8>),
 }
 
-create_hash! {
-    /// The hash used for payload IDs
-    struct PayloadHash(Hash<U32>) = b"pbmx-payload-id";
-}
-
-impl HasFingerprint for Payload {
-    type Digest = PayloadHash;
-}
-
 impl Payload {
     /// Gets the id of this payload
     pub fn id(&self) -> Id {
-        self.fingerprint().unwrap()
+        Id::of(self, b"pbmx-payload-id")
     }
 
     /// Gets a short string description of this payload
@@ -385,5 +377,93 @@ impl Proto for Payload {
             })
         }
         do_it(m).ok_or(Error::Decoding)
+    }
+}
+
+impl TranscriptHashable for Payload {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"payload".append_to_transcript(t, label);
+        use Payload::*;
+        match self {
+            PublishKey(name, pk) => {
+                b"publish-key".append_to_transcript(t, b"type");
+                name.append_to_transcript(t, b"name");
+                pk.append_to_transcript(t, b"public-key");
+            }
+            OpenStack(stk) => {
+                b"open-stack".append_to_transcript(t, b"type");
+                stk.append_to_transcript(t, b"stack");
+            }
+            NameStack(id, name) => {
+                b"name-stack".append_to_transcript(t, b"type");
+                id.append_to_transcript(t, b"stack");
+                name.append_to_transcript(t, b"name");
+            }
+            MaskStack(id, stk, proof) => {
+                b"mask-stack".append_to_transcript(t, b"type");
+                id.append_to_transcript(t, b"input");
+                stk.append_to_transcript(t, b"output");
+                proof.append_to_transcript(t, b"proof");
+            }
+            ShuffleStack(id, stk, proof) => {
+                b"shuffle-stack".append_to_transcript(t, b"type");
+                id.append_to_transcript(t, b"input");
+                stk.append_to_transcript(t, b"output");
+                proof.append_to_transcript(t, b"proof");
+            }
+            ShiftStack(id, stk, proof) => {
+                b"shift-stack".append_to_transcript(t, b"type");
+                id.append_to_transcript(t, b"input");
+                stk.append_to_transcript(t, b"output");
+                proof.append_to_transcript(t, b"proof");
+            }
+            TakeStack(id1, idxs, id2) => {
+                b"take-stack".append_to_transcript(t, b"type");
+                id1.append_to_transcript(t, b"input");
+                idxs.append_to_transcript(t, b"indices");
+                id2.append_to_transcript(t, b"output");
+            }
+            PileStacks(ids, id2) => {
+                b"pile-stack".append_to_transcript(t, b"type");
+                ids.append_to_transcript(t, b"inputs");
+                id2.append_to_transcript(t, b"output");
+            }
+            PublishShares(id, shares, proof) => {
+                b"publish-shares".append_to_transcript(t, b"type");
+                id.append_to_transcript(t, b"stack");
+                shares.append_to_transcript(t, b"shares");
+                proof.append_to_transcript(t, b"proof");
+            }
+            RandomSpec(id, spec) => {
+                b"random-spec".append_to_transcript(t, b"type");
+                id.append_to_transcript(t, b"id");
+                spec.append_to_transcript(t, b"spec");
+            }
+            RandomEntropy(id, entropy) => {
+                b"random-entropy".append_to_transcript(t, b"type");
+                id.append_to_transcript(t, b"id");
+                entropy.append_to_transcript(t, b"entropy");
+            }
+            RandomReveal(id, share, proof) => {
+                b"random-reveal".append_to_transcript(t, b"type");
+                id.append_to_transcript(t, b"id");
+                share.append_to_transcript(t, b"share");
+                proof.append_to_transcript(t, b"proof");
+            }
+            ProveEntanglement(ids1, ids2, proof) => {
+                b"prove-entanglement".append_to_transcript(t, b"type");
+                ids1.append_to_transcript(t, b"input");
+                ids2.append_to_transcript(t, b"output");
+                proof.append_to_transcript(t, b"proof");
+            }
+            Text(text) => {
+                b"text".append_to_transcript(t, b"type");
+                text.append_to_transcript(t, b"text");
+            }
+            Bytes(bytes) => {
+                b"bytes".append_to_transcript(t, b"type");
+                bytes.append_to_transcript(t, b"bytes");
+            }
+        }
     }
 }

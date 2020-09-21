@@ -1,9 +1,10 @@
 //! ElGamal encryption scheme for elliptic curves
 
 use crate::{
+    crypto::hash::{TranscriptHash, TranscriptHashable},
     proto,
     random::thread_rng,
-    serde::{point_from_proto, point_to_proto, Message, Proto},
+    serde::{point_from_proto, point_to_proto, Proto},
     Error, Result,
 };
 use curve25519_dalek::{
@@ -12,7 +13,6 @@ use curve25519_dalek::{
     scalar::Scalar,
     traits::Identity,
 };
-use digest::{generic_array::typenum::U32, Digest};
 use merlin::Transcript;
 use rand::{CryptoRng, Rng};
 use schnorrkel::{self, context::attach_rng, Signature};
@@ -36,11 +36,6 @@ pub struct PublicKey(RistrettoPoint);
 #[repr(C)]
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Fingerprint([u8; FINGERPRINT_SIZE]);
-
-create_hash! {
-    /// The hash used for key fingerprints
-    pub struct FingerprintHash(Hash<U32>) = b"pbmx-key-fp";
-}
 
 impl Deref for Fingerprint {
     type Target = [u8];
@@ -118,11 +113,7 @@ impl PublicKey {
 
     /// Gets this key's fingerprint
     pub fn fingerprint(&self) -> Fingerprint {
-        let bytes = self.0.compress().to_bytes();
-        let hashed = FingerprintHash::new().chain(&bytes).result();
-        let mut array = [0u8; FINGERPRINT_SIZE];
-        array.copy_from_slice(&hashed[..FINGERPRINT_SIZE]);
-        Fingerprint(array)
+        Fingerprint::of(self, b"pbmx-key-fp")
     }
 
     /// Combines this public key with another one to form a shared key
@@ -154,6 +145,13 @@ impl PublicKey {
     }
 }
 
+impl TranscriptHashable for PublicKey {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"public-key".append_to_transcript(t, label);
+        self.0.append_to_transcript(t, b"H");
+    }
+}
+
 impl Proto for PublicKey {
     type Message = proto::PublicKey;
 
@@ -175,18 +173,21 @@ impl Fingerprint {
         r.fill(&mut array);
         Fingerprint(array)
     }
+
+    /// Extracts a fingerprint from a given transcript
+    pub fn of<M: TranscriptHashable>(m: &M, domain: &'static [u8]) -> Fingerprint {
+        let mut h = TranscriptHash::new(domain);
+        m.append_to_hash(&mut h, b"public-key");
+        let mut buf = [0; 32];
+        h.finish(&mut buf);
+        buf.into()
+    }
 }
 
-pub(crate) trait HasFingerprint: Message {
-    type Digest: Digest + Default;
-
-    fn fingerprint(&self) -> Result<Fingerprint> {
-        debug_assert!(Self::Digest::output_size() == FINGERPRINT_SIZE);
-        let bytes = self.encode()?;
-        let hashed = Self::Digest::default().chain(bytes).result();
-        let mut array = [0u8; FINGERPRINT_SIZE];
-        array.copy_from_slice(&hashed[..]);
-        Ok(Fingerprint(array))
+impl TranscriptHashable for Fingerprint {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"fingerprint".append_to_transcript(t, label);
+        self.0.append_to_transcript(t, b"bytes");
     }
 }
 
@@ -243,16 +244,30 @@ impl FromStr for Fingerprint {
     }
 }
 
-impl<'a> TryFrom<&'a Vec<u8>> for Fingerprint {
+impl From<[u8; 32]> for Fingerprint {
+    fn from(array: [u8; 32]) -> Fingerprint {
+        Fingerprint(array)
+    }
+}
+
+impl<'a> TryFrom<&'a [u8]> for Fingerprint {
     type Error = Error;
 
-    fn try_from(v: &'a Vec<u8>) -> Result<Fingerprint> {
+    fn try_from(v: &'a [u8]) -> Result<Fingerprint> {
         if v.len() != FINGERPRINT_SIZE {
             return Err(Error::Decoding);
         }
         let mut array = [0u8; FINGERPRINT_SIZE];
         array.copy_from_slice(&v[..]);
         Ok(Fingerprint(array))
+    }
+}
+
+impl<'a> TryFrom<&'a Vec<u8>> for Fingerprint {
+    type Error = Error;
+
+    fn try_from(v: &'a Vec<u8>) -> Result<Fingerprint> {
+        Fingerprint::try_from(v.as_slice())
     }
 }
 

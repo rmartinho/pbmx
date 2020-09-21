@@ -7,7 +7,7 @@
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{commit::Pedersen, perm::Permutation},
+    crypto::{commit::Pedersen, hash::TranscriptHashable, perm::Permutation},
     proto,
     random::thread_rng,
     serde::{points_from_proto, points_to_proto, scalars_from_proto, scalars_to_proto, Proto},
@@ -42,6 +42,15 @@ impl Proto for Proof {
             l: scalars_from_proto(&m.l)?,
             t: scalars_from_proto(&m.t)?,
         })
+    }
+}
+
+impl TranscriptHashable for Proof {
+    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+        b"known-rotation-proof".append_to_transcript(t, label);
+        self.f.append_to_transcript(t, b"f");
+        self.l.append_to_transcript(t, b"l");
+        self.t.append_to_transcript(t, b"t");
     }
 }
 
