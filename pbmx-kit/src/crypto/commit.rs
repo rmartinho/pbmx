@@ -1,7 +1,11 @@
 //! Pedersen commitment scheme
 
-use crate::{Error, Result};
+use crate::{
+    crypto::hash::{Challenge, Transcribe, TranscriptAppend},
+    Error, Result,
+};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar, traits::MultiscalarMul};
+use merlin::Transcript;
 use rand::{CryptoRng, Rng};
 use std::iter;
 
@@ -93,6 +97,29 @@ impl Pedersen {
         }
 
         Some(self)
+    }
+}
+
+impl Transcribe for Pedersen {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
+        b"pedersen-commitment".append_to_transcript(t, label);
+        self.h.append_to_transcript(t, b"h");
+        self.g.append_to_transcript(t, b"g");
+    }
+}
+
+impl Challenge for Pedersen {
+    fn read_from_transcript_sized(t: &mut Transcript, label: &'static [u8], n: usize) -> Self {
+        b"pedersen-commitment".append_to_transcript(t, label);
+        loop {
+            let com = Pedersen::new(
+                Challenge::read_from_transcript(t, b"h"),
+                Challenge::read_from_transcript_sized(t, b"h", n),
+            );
+            if let Some(com) = com {
+                return com;
+            }
+        }
     }
 }
 

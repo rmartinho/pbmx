@@ -5,7 +5,11 @@
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{commit::Pedersen, hash::TranscriptHashable, perm::Permutation},
+    crypto::{
+        commit::Pedersen,
+        hash::{Transcribe, TranscriptAppend},
+        perm::Permutation,
+    },
     proto,
     random::thread_rng,
     serde::{
@@ -58,8 +62,8 @@ impl Proto for Proof {
     }
 }
 
-impl TranscriptHashable for Proof {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Proof {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"known-shuffle-proof".append_to_transcript(t, label);
         self.cd.append_to_transcript(t, b"cd");
         self.cdd.append_to_transcript(t, b"cdd");
@@ -96,14 +100,14 @@ impl Proof {
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"known_shuffle");
 
-        transcript.commit_pedersen(b"com", publics.com);
-        transcript.commit_point(b"c", publics.c);
-        transcript.commit_scalars(b"m", publics.m);
+        transcript.commit(b"com", publics.com);
+        transcript.commit(b"c", publics.c);
+        transcript.commit(b"m", publics.m);
 
         let rekey_rng = |t: &Transcript| {
             t.build_rng()
-                .commit_permutation(b"pi", secrets.pi)
-                .commit_scalar(b"r", secrets.r)
+                .rekey(b"pi", secrets.pi)
+                .rekey(b"r", secrets.r)
                 .finalize(&mut thread_rng())
         };
         let mut rng = rekey_rng(&transcript);
@@ -119,7 +123,7 @@ impl Proof {
         delta.extend(iter::repeat_with(|| Scalar::random(&mut rng)).take(n - 2));
         delta.push(Scalar::zero());
 
-        let x = transcript.challenge_scalar(b"x");
+        let x: Scalar = transcript.challenge(b"x");
         let a: Vec<_> = (1..=n)
             .map(|i| {
                 secrets
@@ -134,14 +138,14 @@ impl Proof {
         let mut rng = rekey_rng(&transcript);
 
         let (cd, rd) = publics.com.commit_to(&d, &mut rng);
-        transcript.commit_point(b"cd", &cd);
+        transcript.commit(b"cd", &cd);
 
         let mut rng = rekey_rng(&transcript);
 
         let mut dd: Vec<_> = (1..n).map(|i| (-delta[i - 1]) * d[i]).collect();
         dd.push(Scalar::zero());
         let (cdd, rdd) = publics.com.commit_to(&dd, &mut rng);
-        transcript.commit_point(b"cdd", &cdd);
+        transcript.commit(b"cdd", &cdd);
 
         let mut rng = rekey_rng(&transcript);
 
@@ -150,9 +154,9 @@ impl Proof {
             .collect();
         da.push(Scalar::zero());
         let (cda, rda) = publics.com.commit_to(&da, &mut rng);
-        transcript.commit_point(b"cda", &cda);
+        transcript.commit(b"cda", &cda);
 
-        let e = transcript.challenge_scalar(b"e");
+        let e: Scalar = transcript.challenge(b"e");
         let f: Vec<_> = secrets
             .pi
             .iter()
@@ -185,17 +189,17 @@ impl Proof {
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"known_shuffle");
 
-        transcript.commit_pedersen(b"com", publics.com);
-        transcript.commit_point(b"c", publics.c);
-        transcript.commit_scalars(b"m", publics.m);
+        transcript.commit(b"com", publics.com);
+        transcript.commit(b"c", publics.c);
+        transcript.commit(b"m", publics.m);
 
-        let x = transcript.challenge_scalar(b"x");
+        let x: Scalar = transcript.challenge(b"x");
 
-        transcript.commit_point(b"cd", &self.cd);
-        transcript.commit_point(b"cdd", &self.cdd);
-        transcript.commit_point(b"cda", &self.cda);
+        transcript.commit(b"cd", &self.cd);
+        transcript.commit(b"cdd", &self.cdd);
+        transcript.commit(b"cda", &self.cda);
 
-        let e = transcript.challenge_scalar(b"e");
+        let e: Scalar = transcript.challenge(b"e");
 
         let n = publics.m.len();
 

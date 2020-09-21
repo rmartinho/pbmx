@@ -1,7 +1,7 @@
 //! ElGamal encryption scheme for elliptic curves
 
 use crate::{
-    crypto::hash::{TranscriptHash, TranscriptHashable},
+    crypto::hash::{Transcribe, TranscriptAppend, TranscriptHash},
     proto,
     random::thread_rng,
     serde::{point_from_proto, point_to_proto, Proto},
@@ -145,8 +145,8 @@ impl PublicKey {
     }
 }
 
-impl TranscriptHashable for PublicKey {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for PublicKey {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"public-key".append_to_transcript(t, label);
         self.0.append_to_transcript(t, b"H");
     }
@@ -175,17 +175,17 @@ impl Fingerprint {
     }
 
     /// Extracts a fingerprint from a given transcript
-    pub fn of<M: TranscriptHashable>(m: &M, domain: &'static [u8]) -> Fingerprint {
+    pub fn of<M: Transcribe>(m: &M, domain: &'static [u8]) -> Fingerprint {
         let mut h = TranscriptHash::new(domain);
-        m.append_to_hash(&mut h, b"public-key");
+        m.append_to_transcript(&mut h, b"public-key");
         let mut buf = [0; 32];
         h.finish(&mut buf);
         buf.into()
     }
 }
 
-impl TranscriptHashable for Fingerprint {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Fingerprint {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"fingerprint".append_to_transcript(t, label);
         self.0.append_to_transcript(t, b"bytes");
     }

@@ -6,7 +6,7 @@ use crate::{
         Id,
     },
     crypto::{
-        hash::TranscriptHashable,
+        hash::{Transcribe, TranscriptAppend},
         keys::{Fingerprint, PrivateKey, PublicKey},
     },
     proto,
@@ -28,8 +28,8 @@ pub struct Block {
     sig: Signature,
 }
 
-impl TranscriptHashable for Block {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Block {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"block".append_to_transcript(t, label);
         transcribe_unsigned_block(t, self.acks.iter(), self.payloads(), &self.fp);
         self.sig.to_bytes().append_to_transcript(t, b"signature");
@@ -151,8 +151,8 @@ impl BlockBuilder {
     }
 }
 
-fn transcribe_unsigned_block<'a, AckIt, PayloadIt>(
-    t: &mut Transcript,
+fn transcribe_unsigned_block<'a, T: TranscriptAppend, AckIt, PayloadIt>(
+    t: &mut T,
     acks: AckIt,
     payloads: PayloadIt,
     fp: &Fingerprint,
@@ -161,7 +161,9 @@ fn transcribe_unsigned_block<'a, AckIt, PayloadIt>(
     PayloadIt: Iterator<Item = &'a Payload> + 'a,
 {
     acks.collect::<Vec<_>>().append_to_transcript(t, b"acks");
-    payloads.collect::<Vec<_>>().append_to_transcript(t, b"payloads");
+    payloads
+        .collect::<Vec<_>>()
+        .append_to_transcript(t, b"payloads");
     fp.append_to_transcript(t, b"signer");
 }
 

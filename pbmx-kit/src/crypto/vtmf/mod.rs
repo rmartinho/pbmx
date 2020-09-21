@@ -5,7 +5,7 @@
 //          Cryptography and Coding 2003, LNCS 2898, pp. 370--383, 2003
 use crate::{
     crypto::{
-        hash::{TranscriptHash, TranscriptHashable},
+        hash::{Transcribe, TranscriptAppend, TranscriptHash},
         keys::{Fingerprint, PrivateKey, PublicKey},
         perm::Permutation,
         proofs::{dlog_eq, entanglement, secret_rotation, secret_shuffle},
@@ -63,8 +63,8 @@ impl Proto for SecretShare {
     }
 }
 
-impl TranscriptHashable for SecretShare {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for SecretShare {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"share".append_to_transcript(t, label);
         self.0.append_to_transcript(t, b"c1xi");
     }
@@ -370,7 +370,7 @@ impl Vtmf {
     /// Undoes a random mask
     pub fn unmask_random(&self, m: &Mask) -> impl XofReader {
         let mut h = TranscriptHash::new(b"pbmx-random");
-        m.append_to_hash(&mut h, b"entropy");
+        m.append_to_transcript(&mut h, b"entropy");
         h.into_xof()
     }
 }

@@ -1,12 +1,22 @@
 //! Permutation-related utilities
 
-use crate::error::InvalidPermutationError;
+use crate::{
+    crypto::hash::{Transcribe, TranscriptAppend},
+    error::InvalidPermutationError,
+};
 use rand::{distributions::Distribution, seq::SliceRandom, Rng};
 use std::{convert::TryFrom, ops::Deref};
 
 /// A permutation
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Permutation(Vec<usize>);
+
+impl Transcribe for Permutation {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
+        b"permutation".append_to_transcript(t, label);
+        self.0.append_to_transcript(t, b"indices");
+    }
+}
 
 impl Permutation {
     /// Creates a new identity permutation

@@ -3,7 +3,7 @@
 use crate::{
     chain::{block::Block, Id},
     crypto::{
-        hash::TranscriptHashable,
+        hash::{Transcribe, TranscriptAppend},
         keys::PublicKey,
         vtmf::{
             EntanglementProof, Mask, MaskProof, SecretShare, SecretShareProof, ShiftProof,
@@ -14,7 +14,6 @@ use crate::{
     serde::{vec_from_proto, vec_to_proto, Proto},
     Error, Result,
 };
-use merlin::Transcript;
 use std::{
     convert::TryFrom,
     fmt::{self, Display, Formatter},
@@ -380,8 +379,8 @@ impl Proto for Payload {
     }
 }
 
-impl TranscriptHashable for Payload {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Payload {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"payload".append_to_transcript(t, label);
         use Payload::*;
         match self {

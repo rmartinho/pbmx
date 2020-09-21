@@ -7,7 +7,13 @@
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{hash::TranscriptHashable, perm::Permutation, proofs::known_rotation, vtmf::Mask},
+    crypto::{
+        commit::Pedersen,
+        hash::{Transcribe, TranscriptAppend},
+        perm::Permutation,
+        proofs::known_rotation,
+        vtmf::Mask,
+    },
     proto,
     random::thread_rng,
     serde::{
@@ -71,8 +77,8 @@ impl Proto for Proof {
     }
 }
 
-impl TranscriptHashable for Proof {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Proof {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"secret-rotation-proof".append_to_transcript(t, label);
         self.rkc.append_to_transcript(t, b"rkc");
         self.h.append_to_transcript(t, b"h");
@@ -112,23 +118,23 @@ impl Proof {
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"secret_rotation");
 
-        transcript.commit_point(b"h", publics.h);
-        transcript.commit_masks(b"e0", publics.e0);
-        transcript.commit_masks(b"e1", publics.e1);
+        transcript.commit(b"h", publics.h);
+        transcript.commit(b"e0", publics.e0);
+        transcript.commit(b"e1", publics.e1);
 
-        let com = transcript.challenge_pedersen(b"com", 1);
+        let com: Pedersen = transcript.challenge_sized(b"com", 1);
 
         let rekey_rng = |t: &Transcript| {
             t.build_rng()
-                .commit_index(b"k", secrets.k)
-                .commit_scalars(b"r", secrets.r)
+                .rekey(b"k", &secrets.k)
+                .rekey(b"r", secrets.r)
                 .finalize(&mut thread_rng())
         };
 
         let n = publics.e0.len();
         let gh = Mask(G.basepoint(), *publics.h);
 
-        let a = transcript.challenge_scalars(b"a", n);
+        let a: Vec<Scalar> = transcript.challenge_sized(b"a", n);
 
         let mut rng = rekey_rng(&transcript);
 
@@ -144,21 +150,21 @@ impl Proof {
             .zip(u.iter())
             .map(|(a, u)| com.commit_by(&[*a], &u))
             .collect();
-        transcript.commit_points(b"h", &h);
+        transcript.commit(b"h", &h);
         let z: Vec<_> = publics
             .e1
             .iter()
             .zip(t.iter().zip(sa.iter()))
             .map(|(de, (t, a))| de * a + gh * t)
             .collect();
-        transcript.commit_masks(b"z", &z);
+        transcript.commit(b"z", &z);
         let v = sa
             .iter()
             .zip(secrets.r.iter())
             .zip(t.iter())
             .map(|((a, r), t)| a * r + t)
             .sum::<Scalar>();
-        transcript.commit_scalar(b"v", &v);
+        transcript.commit(b"v", &v);
 
         let mut rng = rekey_rng(&transcript);
 
@@ -171,22 +177,22 @@ impl Proof {
             .zip(p.iter())
             .map(|(o, p)| com.commit_by(&[*o], p))
             .collect();
-        transcript.commit_points(b"f", &f);
+        transcript.commit(b"f", &f);
         let ff: Vec<_> = publics
             .e1
             .iter()
             .zip(o.iter().zip(m.iter()))
             .map(|(de, (o, m))| de * o + gh * m)
             .collect();
-        transcript.commit_masks(b"ff", &ff);
+        transcript.commit(b"ff", &ff);
 
-        let l = transcript.challenge_scalar(b"l");
+        let l: Scalar = transcript.challenge(b"l");
         let tau: Vec<_> = o.iter().zip(sa.iter()).map(|(o, a)| o + l * a).collect();
-        transcript.commit_scalars(b"tau", &tau);
+        transcript.commit(b"tau", &tau);
         let rho: Vec<_> = p.iter().zip(u.iter()).map(|(p, u)| p + l * u).collect();
-        transcript.commit_scalars(b"rho", &rho);
+        transcript.commit(b"rho", &rho);
         let mu: Vec<_> = m.iter().zip(t.iter()).map(|(m, t)| m + l * t).collect();
-        transcript.commit_scalars(b"mu", &mu);
+        transcript.commit(b"mu", &mu);
 
         let rkc = known_rotation::Proof::create(
             transcript,
@@ -219,29 +225,29 @@ impl Proof {
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"secret_rotation");
 
-        transcript.commit_point(b"h", publics.h);
-        transcript.commit_masks(b"e0", publics.e0);
-        transcript.commit_masks(b"e1", publics.e1);
+        transcript.commit(b"h", publics.h);
+        transcript.commit(b"e0", publics.e0);
+        transcript.commit(b"e1", publics.e1);
 
-        let com = transcript.challenge_pedersen(b"com", 1);
+        let com: Pedersen = transcript.challenge_sized(b"com", 1);
 
         let n = publics.e0.len();
         let gh = Mask(G.basepoint(), *publics.h);
 
-        let a = transcript.challenge_scalars(b"a", n);
+        let a: Vec<Scalar> = transcript.challenge_sized(b"a", n);
 
-        transcript.commit_points(b"h", &self.h);
-        transcript.commit_masks(b"z", &self.z);
-        transcript.commit_scalar(b"v", &self.v);
+        transcript.commit(b"h", &self.h);
+        transcript.commit(b"z", &self.z);
+        transcript.commit(b"v", &self.v);
 
-        transcript.commit_points(b"f", &self.f);
-        transcript.commit_masks(b"ff", &self.ff);
+        transcript.commit(b"f", &self.f);
+        transcript.commit(b"ff", &self.ff);
 
-        let l = transcript.challenge_scalar(b"l");
+        let l: Scalar = transcript.challenge(b"l");
 
-        transcript.commit_scalars(b"tau", &self.tau);
-        transcript.commit_scalars(b"rho", &self.rho);
-        transcript.commit_scalars(b"mu", &self.mu);
+        transcript.commit(b"tau", &self.tau);
+        transcript.commit(b"rho", &self.rho);
+        transcript.commit(b"mu", &self.mu);
 
         self.rkc.verify(transcript, known_rotation::Publics {
             com: &com,

@@ -7,7 +7,11 @@
 
 use super::{random_scalars, TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{commit::Pedersen, hash::TranscriptHashable, perm::Permutation},
+    crypto::{
+        commit::Pedersen,
+        hash::{Transcribe, TranscriptAppend},
+        perm::Permutation,
+    },
     proto,
     random::thread_rng,
     serde::{points_from_proto, points_to_proto, scalars_from_proto, scalars_to_proto, Proto},
@@ -45,8 +49,8 @@ impl Proto for Proof {
     }
 }
 
-impl TranscriptHashable for Proof {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Proof {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"known-rotation-proof".append_to_transcript(t, label);
         self.f.append_to_transcript(t, b"f");
         self.l.append_to_transcript(t, b"l");
@@ -79,14 +83,14 @@ impl Proof {
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"known_rotation");
 
-        transcript.commit_pedersen(b"com", publics.com);
-        transcript.commit_scalars(b"m", publics.m);
-        transcript.commit_points(b"c", publics.c);
+        transcript.commit(b"com", publics.com);
+        transcript.commit(b"m", publics.m);
+        transcript.commit(b"c", publics.c);
 
         let mut rng = transcript
             .build_rng()
-            .commit_index(b"k", secrets.k)
-            .commit_scalars(b"r", secrets.r)
+            .rekey(b"k", &secrets.k)
+            .rekey(b"r", secrets.r)
             .finalize(&mut thread_rng());
 
         let n = publics.m.len();
@@ -101,7 +105,7 @@ impl Proof {
         let mut t = random_scalars(n, &mut rng);
         t[secrets.k] = Scalar::zero();
 
-        let b = transcript.challenge_scalars(b"b", n);
+        let b: Vec<Scalar> = transcript.challenge_sized(b"b", n);
         let y: Vec<_> = (0..n)
             .map(|i| {
                 (0..n)
@@ -127,9 +131,9 @@ impl Proof {
                 RistrettoPoint::conditional_select(&com_i, &com_u, i.ct_eq(&secrets.k))
             })
             .collect();
-        transcript.commit_points(b"f", &f);
+        transcript.commit(b"f", &f);
 
-        let lambda = transcript.challenge_scalar(b"lambda");
+        let lambda: Scalar = transcript.challenge(b"lambda");
         l[secrets.k] = lambda - l.iter().sum::<Scalar>();
         let br = b
             .iter()
@@ -144,13 +148,13 @@ impl Proof {
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"known_rotation");
 
-        transcript.commit_pedersen(b"com", publics.com);
-        transcript.commit_scalars(b"m", publics.m);
-        transcript.commit_points(b"c", publics.c);
+        transcript.commit(b"com", publics.com);
+        transcript.commit(b"m", publics.m);
+        transcript.commit(b"c", publics.c);
 
         let n = publics.m.len();
 
-        let b = transcript.challenge_scalars(b"b", n);
+        let b: Vec<Scalar> = transcript.challenge_sized(b"b", n);
         let y: Vec<_> = (0..n)
             .map(|k| {
                 (0..n)
@@ -165,9 +169,9 @@ impl Proof {
             .map(|(c, b)| c * b)
             .sum::<RistrettoPoint>();
 
-        transcript.commit_points(b"f", &self.f);
+        transcript.commit(b"f", &self.f);
 
-        let lambda = transcript.challenge_scalar(b"lambda");
+        let lambda: Scalar = transcript.challenge(b"lambda");
         let fgl: Vec<_> = self
             .l
             .iter()

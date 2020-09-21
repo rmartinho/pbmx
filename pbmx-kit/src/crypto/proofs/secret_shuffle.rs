@@ -5,7 +5,13 @@
 
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::{hash::TranscriptHashable, perm::Permutation, proofs::known_shuffle, vtmf::Mask},
+    crypto::{
+        commit::Pedersen,
+        hash::{Transcribe, TranscriptAppend},
+        perm::Permutation,
+        proofs::known_shuffle,
+        vtmf::Mask,
+    },
     proto,
     random::thread_rng,
     serde::{
@@ -61,8 +67,8 @@ impl Proto for Proof {
     }
 }
 
-impl TranscriptHashable for Proof {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Proof {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"secret-shuffle-proof".append_to_transcript(t, label);
         self.skc.append_to_transcript(t, b"skc");
         self.c.append_to_transcript(t, b"c");
@@ -98,17 +104,17 @@ impl Proof {
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"secret_shuffle");
 
-        transcript.commit_point(b"h", publics.h);
-        transcript.commit_masks(b"e0", publics.e0);
-        transcript.commit_masks(b"e1", publics.e1);
+        transcript.commit(b"h", publics.h);
+        transcript.commit(b"e0", publics.e0);
+        transcript.commit(b"e1", publics.e1);
 
         let n = publics.e0.len();
-        let com = transcript.challenge_pedersen(b"com", n);
+        let com: Pedersen = transcript.challenge_sized(b"com", n);
 
         let rekey_rng = |t: &Transcript| {
             t.build_rng()
-                .commit_permutation(b"pi", secrets.pi)
-                .commit_scalars(b"r", secrets.r)
+                .rekey(b"pi", secrets.pi)
+                .rekey(b"r", secrets.r)
                 .finalize(&mut thread_rng())
         };
         let mut rng = rekey_rng(&transcript);
@@ -121,7 +127,7 @@ impl Proof {
             .map(|p| Scalar::from((p + 1) as u64))
             .collect();
         let (c, r) = com.commit_to(&p2, &mut rng);
-        transcript.commit_point(b"c", &c);
+        transcript.commit(b"c", &c);
 
         let mut rng = rekey_rng(&transcript);
 
@@ -130,16 +136,16 @@ impl Proof {
             .take(n)
             .collect();
         let (cd, rd) = com.commit_to(&d, &mut rng);
-        transcript.commit_point(b"cd", &cd);
+        transcript.commit(b"cd", &cd);
 
         let ed = gh * rd
             + d.iter()
                 .zip(publics.e1.iter())
                 .map(|(d, e)| e * d)
                 .sum::<Mask>();
-        transcript.commit_mask(b"ed", &ed);
+        transcript.commit(b"ed", &ed);
 
-        let t = transcript.challenge_scalars(b"t", n);
+        let t: Vec<Scalar> = transcript.challenge_sized(b"t", n);
 
         let f: Vec<_> = secrets
             .pi
@@ -147,7 +153,7 @@ impl Proof {
             .zip(d.iter())
             .map(|(p, d)| t[*p] - d)
             .collect();
-        transcript.commit_scalars(b"f", &f);
+        transcript.commit(b"f", &f);
 
         let z = secrets
             .pi
@@ -156,9 +162,9 @@ impl Proof {
             .map(|(p, r)| t[*p] * r)
             .sum::<Scalar>()
             + rd;
-        transcript.commit_scalar(b"z", &z);
+        transcript.commit(b"z", &z);
 
-        let l = transcript.challenge_scalar(b"l");
+        let l: Scalar = transcript.challenge(b"l");
 
         let m: Vec<_> = (0..n)
             .map(|i| l * Scalar::from((i + 1) as u64) + t[i])
@@ -193,25 +199,25 @@ impl Proof {
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"secret_shuffle");
 
-        transcript.commit_point(b"h", publics.h);
-        transcript.commit_masks(b"e0", publics.e0);
-        transcript.commit_masks(b"e1", publics.e1);
+        transcript.commit(b"h", publics.h);
+        transcript.commit(b"e0", publics.e0);
+        transcript.commit(b"e1", publics.e1);
 
         let n = publics.e0.len();
-        let com = transcript.challenge_pedersen(b"com", n);
+        let com: Pedersen = transcript.challenge_sized(b"com", n);
 
         let gh = Mask(G.basepoint(), *publics.h);
 
-        transcript.commit_point(b"c", &self.c);
-        transcript.commit_point(b"cd", &self.cd);
-        transcript.commit_mask(b"ed", &self.ed);
+        transcript.commit(b"c", &self.c);
+        transcript.commit(b"cd", &self.cd);
+        transcript.commit(b"ed", &self.ed);
 
-        let t = transcript.challenge_scalars(b"t", n);
+        let t: Vec<Scalar> = transcript.challenge_sized(b"t", n);
 
-        transcript.commit_scalars(b"f", &self.f);
-        transcript.commit_scalar(b"z", &self.z);
+        transcript.commit(b"f", &self.f);
+        transcript.commit(b"z", &self.z);
 
-        let l = transcript.challenge_scalar(b"l");
+        let l: Scalar = transcript.challenge(b"l");
 
         let m: Vec<_> = (0..n)
             .map(|i| l * Scalar::from((i + 1) as u64) + t[i])

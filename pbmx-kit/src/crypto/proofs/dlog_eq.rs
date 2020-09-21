@@ -5,7 +5,7 @@
 //          Technical Report, 1997.
 use super::{TranscriptProtocol, TranscriptRngProtocol};
 use crate::{
-    crypto::hash::TranscriptHashable,
+    crypto::hash::{Transcribe, TranscriptAppend},
     proto,
     random::thread_rng,
     serde::{scalar_from_proto, scalar_to_proto, Proto},
@@ -39,8 +39,8 @@ impl Proto for Proof {
     }
 }
 
-impl TranscriptHashable for Proof {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Proof {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"dlog-eq-proof".append_to_transcript(t, label);
         self.c.append_to_transcript(t, b"c");
         self.r.append_to_transcript(t, b"r");
@@ -73,14 +73,14 @@ impl Proof {
     pub fn create(transcript: &mut Transcript, publics: Publics, secrets: Secrets) -> Self {
         transcript.domain_sep(b"dlog_eq");
 
-        transcript.commit_point(b"a", publics.a);
-        transcript.commit_point(b"b", publics.b);
-        transcript.commit_point(b"g", publics.g);
-        transcript.commit_point(b"h", publics.h);
+        transcript.commit(b"a", publics.a);
+        transcript.commit(b"b", publics.b);
+        transcript.commit(b"g", publics.g);
+        transcript.commit(b"h", publics.h);
 
         let mut rng = transcript
             .build_rng()
-            .commit_scalar(b"x", secrets.x)
+            .rekey(b"x", secrets.x)
             .finalize(&mut thread_rng());
 
         let w = Scalar::random(&mut rng);
@@ -88,10 +88,10 @@ impl Proof {
         let t1 = publics.g * w;
         let t2 = publics.h * w;
 
-        transcript.commit_point(b"t1", &t1);
-        transcript.commit_point(b"t2", &t2);
+        transcript.commit(b"t1", &t1);
+        transcript.commit(b"t2", &t2);
 
-        let c = transcript.challenge_scalar(b"c");
+        let c: Scalar = transcript.challenge(b"c");
         let r = w - c * secrets.x;
 
         Self { c, r }
@@ -102,18 +102,18 @@ impl Proof {
     pub fn verify(&self, transcript: &mut Transcript, publics: Publics) -> Result<()> {
         transcript.domain_sep(b"dlog_eq");
 
-        transcript.commit_point(b"a", publics.a);
-        transcript.commit_point(b"b", publics.b);
-        transcript.commit_point(b"g", publics.g);
-        transcript.commit_point(b"h", publics.h);
+        transcript.commit(b"a", publics.a);
+        transcript.commit(b"b", publics.b);
+        transcript.commit(b"g", publics.g);
+        transcript.commit(b"h", publics.h);
 
         let t1 = publics.a * self.c + publics.g * self.r;
         let t2 = publics.b * self.c + publics.h * self.r;
 
-        transcript.commit_point(b"t1", &t1);
-        transcript.commit_point(b"t2", &t2);
+        transcript.commit(b"t1", &t1);
+        transcript.commit(b"t2", &t2);
 
-        let c = transcript.challenge_scalar(b"c");
+        let c: Scalar = transcript.challenge(b"c");
 
         if c == self.c {
             Ok(())

@@ -1,5 +1,5 @@
 use crate::{
-    crypto::hash::TranscriptHashable,
+    crypto::hash::{Transcribe, TranscriptAppend},
     proto,
     serde::{point_from_proto, point_to_proto, Proto},
     Result,
@@ -9,7 +9,6 @@ use curve25519_dalek::{
     scalar::Scalar,
     traits::{Identity, IsIdentity},
 };
-use merlin::Transcript;
 use std::{
     borrow::Borrow,
     hash::{Hash, Hasher},
@@ -21,8 +20,8 @@ use std::{
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Mask(pub RistrettoPoint, pub RistrettoPoint);
 
-impl TranscriptHashable for Mask {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Mask {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"mask".append_to_transcript(t, label);
         self.0.append_to_transcript(t, b"c1");
         self.1.append_to_transcript(t, b"c2");

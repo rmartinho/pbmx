@@ -1,11 +1,13 @@
 use crate::{
     chain::Id,
-    crypto::{hash::TranscriptHashable, vtmf::Mask},
+    crypto::{
+        hash::{Transcribe, TranscriptAppend},
+        vtmf::Mask,
+    },
     proto,
     serde::{vec_from_proto, vec_to_proto, Proto},
     Result,
 };
-use merlin::Transcript;
 use std::{
     borrow::{Borrow, BorrowMut},
     iter::FromIterator,
@@ -37,8 +39,8 @@ impl Stack {
     }
 }
 
-impl TranscriptHashable for Stack {
-    fn append_to_transcript(&self, t: &mut Transcript, label: &'static [u8]) {
+impl Transcribe for Stack {
+    fn append_to_transcript<T: TranscriptAppend>(&self, t: &mut T, label: &'static [u8]) {
         b"stack".append_to_transcript(t, label);
         self.0.append_to_transcript(t, b"$");
     }
