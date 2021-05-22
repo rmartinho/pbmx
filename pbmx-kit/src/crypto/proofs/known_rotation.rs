@@ -215,7 +215,7 @@ mod tests {
 
         let m = &random_scalars(8, &mut rng);
         let mut mp = m.clone();
-        let k = rng.gen_range(0, 8);
+        let k = rng.gen_range(0..8);
         let pi = Permutation::shift(8, k);
         pi.apply_to(&mut mp);
 

@@ -27,7 +27,7 @@ pub fn run(m: &ArgMatches, _: &Config) -> Result<()> {
     }
     let len = min;
 
-    let n = n.unwrap_or_else(|| thread_rng().gen_range(0, len));
+    let n = n.unwrap_or_else(|| thread_rng().gen_range(0..len));
 
     let mut payloads = Vec::new();
     let (shifts, secrets): (Vec<_>, Vec<_>) = stacks

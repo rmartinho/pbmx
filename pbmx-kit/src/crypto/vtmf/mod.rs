@@ -462,7 +462,7 @@ mod tests {
         vtmf0.add_key(pk1);
         vtmf1.add_key(pk0);
 
-        let x = rng.gen_range(0, 16);
+        let x = rng.gen_range(0..16);
         let p = map::to_curve(x);
         let (mask, _, proof) = vtmf0.mask(&p);
         let verified = vtmf1.verify_mask(&p, &mask, &proof);
@@ -517,7 +517,7 @@ mod tests {
         vtmf0.add_key(pk1);
         vtmf1.add_key(pk0);
 
-        let x = rng.gen_range(0, 16);
+        let x = rng.gen_range(0..16);
         let p = map::to_curve(x);
         let mask = Mask::open(p);
 
@@ -607,7 +607,7 @@ mod tests {
             .map(map::to_curve)
             .map(|p| vtmf0.mask(&p).0)
             .collect();
-        let k = thread_rng().gen_range(0, 8);
+        let k = thread_rng().gen_range(0..8);
         let (shift, _, proof) = vtmf0.mask_shift(&m, k);
         let verified = vtmf1.verify_mask_shift(&m, &shift, &proof);
         assert_eq!(verified, Ok(()));

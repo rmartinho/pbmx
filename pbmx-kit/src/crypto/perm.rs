@@ -118,7 +118,7 @@ impl Distribution<Permutation> for Shuffles {
 
 impl Distribution<Permutation> for Shifts {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Permutation {
-        let c = rng.gen_range(0, self.0);
+        let c = rng.gen_range(0..self.0);
         Permutation::shift(self.0, c)
     }
 }

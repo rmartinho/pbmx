@@ -5,50 +5,52 @@ authors = ["R. Martinho Fernandes <rmf@rmf.io>"]
 edition = "2018"
 
 [dependencies.base64]
-version = "0.12"
+version = "0.13"
 
 [dependencies.bytes]
-version = "0.5"
+version = "1"
 
 [dependencies.curve25519-dalek]
-version = "2.0"
+package = "curve25519-dalek-ng"
+version = "4"
 
 [dependencies.digest]
-version = "0.8"
+version = "0.9"
 
 [dependencies.merlin]
-version = "2.0"
+version = "3"
 
 [dependencies.qp-trie]
 version = "0.7"
 
 [dependencies.pest]
-version = "2.1"
+version = "2"
 
 [dependencies.pest_derive]
-version = "2.1"
+version = "2"
 
 [dependencies.prost]
-version = "0.6"
-
-[dependencies.rand]
 version = "0.7"
 
+[dependencies.rand]
+version = "0.8"
+
 [dependencies.schnorrkel]
-version = "0.9.1"
+version = "0.10"
 
 [dependencies.subtle]
-version = "2.0"
+package = "subtle-ng"
+version = "2"
 
 [dependencies.tiny-keccak]
-version = "2.0"
+version = "2"
 features = ["k12"]
 
 [dependencies.tribool]
 version = "0.2"
 
 [build-dependencies.prost-build]
-version = "0.6"
+version = "0.7"
 
 [target.wasm32-unknown-unknown.dependencies.web-sys]
 version = "0.3"

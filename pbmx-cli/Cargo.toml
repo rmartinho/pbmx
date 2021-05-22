@@ -9,28 +9,29 @@ description = "Secure play-by-mail toolkit"
 path = "../pbmx-kit"
 
 [dependencies.base64]
-version = "0.12"
+version = "0.13"
 
 [dependencies.clap]
-version = "2.0"
+version = "2"
 
 [dependencies.colored]
-version = "1.7"
+version = "2"
 
 [dependencies.curve25519-dalek]
-version = "2.0"
+package = "curve25519-dalek-ng"
+version = "4"
 
 [dependencies.itertools]
-version = "0.9"
+version = "0.10"
 
 [dependencies.rand]
-version = "0.7"
+version = "0.8"
 
 [dependencies.serde]
-version = "1.0"
+version = "1"
 
 [dependencies.serde_derive]
-version = "1.0"
+version = "1"
 
 [dependencies.toml]
 version = "0.5"

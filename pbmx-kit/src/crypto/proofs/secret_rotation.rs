@@ -330,7 +330,7 @@ mod tests {
                 (gh * r + e, r)
             })
             .unzip();
-        let k = rng.gen_range(0, 8);
+        let k = rng.gen_range(0..8);
         let pi = Permutation::shift(8, k);
         pi.apply_to(&mut e1);
         pi.apply_to(&mut r);

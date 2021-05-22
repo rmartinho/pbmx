@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-#![feature(vec_remove_item)]
 #![warn(missing_docs)]
 #![deny(clippy::correctness)]
 

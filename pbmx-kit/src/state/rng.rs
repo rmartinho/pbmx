@@ -237,7 +237,7 @@ mod spec {
         }
 
         pub fn new(node: Node) -> Self {
-            Self(box node)
+            Self(Box::new(node))
         }
     }
 
